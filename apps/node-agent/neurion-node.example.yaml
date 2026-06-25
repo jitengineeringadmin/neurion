@@ -1,0 +1,28 @@
+node:
+  name: "Giacomo Home Server"
+  apiUrl: "http://localhost:8091"
+  nodeId: ""
+  nodeKey: ""
+  modes:
+    - "grid"
+    - "realtime"
+  maxConcurrentJobs: 1
+  allowGpu: true
+  workingDir: "./neurion-work"
+  allowedJobTypes:
+    - "echo.v1"
+    - "embedding.v1"
+  limits:
+    maxCpuPercent: 80
+    maxGpuPercent: 80
+    maxGpuTempC: 78
+    maxPowerWatts: 450
+    maxJobSeconds: 1800
+    maxDiskMb: 50000
+realtime:
+  enabled: true
+  provider: "openai_compatible"
+  baseUrl: "http://localhost:11434/v1"
+  apiKey: "local-dev"
+  models:
+    - "llama3.1:8b"

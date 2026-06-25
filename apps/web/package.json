@@ -1,0 +1,24 @@
+{
+  "name": "@neurion/web",
+  "version": "1.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3091",
+    "build": "next build",
+    "start": "next start -p 3091",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"(web) no tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "next": "^14.2.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.4.5"
+  }
+}

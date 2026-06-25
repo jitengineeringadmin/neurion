@@ -1,0 +1,15 @@
+{
+  "name": "@neurion/embedding-worker",
+  "version": "1.2.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"(embedding-worker) no lint yet\" && exit 0",
+    "test": "echo \"(embedding-worker) no tests yet\" && exit 0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "typescript": "^5.4.5"
+  }
+}

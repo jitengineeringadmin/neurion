@@ -1,0 +1,15 @@
+[Unit]
+Description=Neurion API
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/jit-factory/projects/neurion/apps/api
+EnvironmentFile=/opt/jit-factory/projects/neurion/.env
+ExecStart=/usr/bin/node dist/main.js
+Restart=always
+RestartSec=3
+User=neurion
+
+[Install]
+WantedBy=multi-user.target

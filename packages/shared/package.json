@@ -1,0 +1,19 @@
+{
+  "name": "@neurion/shared",
+  "version": "1.2.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"(shared) no lint yet\" && exit 0",
+    "test": "echo \"(shared) no tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

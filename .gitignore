@@ -1,0 +1,40 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# build
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# turbo
+.turbo/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# prisma
+apps/api/prisma/*.db
+
+# hardhat
+packages/contracts/artifacts/
+packages/contracts/cache/
+packages/contracts/typechain-types/
+
+# go
+apps/node-agent/bin/
+*.exe
+# generated node config (contains a secret nodeKey) + job temp
+apps/node-agent/neurion-node.yaml
+neurion-work/
+
+# logs
+*.log
+tia_openness_server.log
+
+# os
+.DS_Store
+Thumbs.db

@@ -1,0 +1,839 @@
+// Neurion consolidated Prisma schema — v1.2
+// v1.1 baseline (spec §9) + gap deltas: G1 verification, G2 privacy, G5 sybil,
+// G6 refresh tokens, G7 attachments, G9 linkedJob relation, G12 emission.
+// Design docs: docs/architecture/{verification-g1,privacy-g2,gaps-g5-g15}.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Workspace / User
+// ============================================================================
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users            User[]
+  nodes            ComputeNode[]
+  jobs             Job[]
+  chats            ChatConversation[]
+  ownerReputations OwnerReputation[]   // G5
+  config           WorkspaceConfig?    // G5
+  attachments      Attachment[]        // G7
+}
+
+model User {
+  id            String     @id @default(cuid())
+  workspaceId   String
+  email         String     @unique
+  passwordHash  String?
+  displayName   String?
+  role          UserRole   @default(USER)
+  status        UserStatus @default(ACTIVE)
+  walletAddress String?
+  kycStatus     KycStatus  @default(KYC_NOT_REQUIRED)
+  payoutHold    Boolean    @default(false) // G5: compliance soft-hold
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  workspace              Workspace               @relation(fields: [workspaceId], references: [id])
+  nodes                  ComputeNode[]
+  jobs                   Job[]
+  chats                  ChatConversation[]
+  creditLedger           CreditLedger[]
+  tokenPayouts           TokenPayout[]
+  ownerReputation        OwnerReputation?        @relation("OwnerRepUser") // G5
+  refreshTokens          RefreshToken[]          // G6
+  attachments            Attachment[]            // G7
+  registrationChallenges RegistrationChallenge[] // G5
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+  USER
+  NODE_PROVIDER
+  COMPLIANCE
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  PENDING
+}
+
+enum KycStatus {
+  KYC_NOT_REQUIRED
+  KYC_REQUIRED
+  KYC_PENDING
+  KYC_APPROVED
+  KYC_REJECTED
+  PAYOUT_BLOCKED
+}
+
+// ============================================================================
+// Compute Node
+// ============================================================================
+
+model ComputeNode {
+  id                String         @id @default(cuid())
+  workspaceId       String
+  ownerUserId       String
+  name              String
+  nodeKeyHash       String
+  status            NodeStatus     @default(OFFLINE)    // liveness only
+  lifecycleState    NodeLifecycle  @default(PROBATION)  // G1/G5: trust lifecycle (orthogonal to liveness)
+  trustLevel        NodeTrustLevel @default(COMMUNITY)
+  regionCode        String?
+  os                String?
+  arch              String?
+  cpuModel          String?
+  cpuCores          Int?
+  ramMb             Int?
+  gpuVendor         String?
+  gpuModel          String?
+  gpuMemoryMb       Int?
+  dockerAvailable   Boolean        @default(false)
+  nvidiaAvailable   Boolean        @default(false)
+  maxConcurrentJobs Int            @default(1)
+  supportedModes    String[]       @default([])
+  supportedJobTypes String[]       @default([])
+  loadedModels      String[]       @default([])
+  avgFirstTokenMs   Int?
+  avgTokensPerSecond Float?
+
+  // G1 verification / reputation
+  reputation                   Float    @default(0.5)
+  reputationScore              Float    @default(0)
+  verifiedJobCount             Int      @default(0)
+  outstandingOptimisticCredits Int      @default(0)
+  lifetimeUnverifiedCredits    Int      @default(0)
+  lastVerifiedAt               DateTime?
+  totalJobs                    Int      @default(0)
+  successfulJobs               Int      @default(0)
+  failedJobs                   Int      @default(0)
+
+  // G5 sybil
+  registrationIp      String?
+  subnet24Hash        String?
+  hardwareFingerprint String?
+  stakeChallengeId    String?  @unique
+
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  workspace          Workspace                    @relation(fields: [workspaceId], references: [id])
+  owner              User                         @relation(fields: [ownerUserId], references: [id])
+  jobs               Job[]
+  heartbeats         NodeHeartbeat[]
+  realtimeSessions   RealtimeSession[]
+  confidentiality    NodeConfidentialityProfile?  // G2
+  attestations       NodeAttestation[]            // G2
+  agreementAcceptances NodeOperatorAgreementAcceptance[] // G2
+
+  @@index([workspaceId])
+  @@index([ownerUserId])
+  @@index([subnet24Hash])
+  @@index([hardwareFingerprint])
+}
+
+enum NodeStatus {
+  OFFLINE
+  ONLINE
+  BUSY
+  DEGRADED
+  DISABLED
+  BANNED
+}
+
+enum NodeLifecycle {
+  PROBATION
+  ACTIVE
+  SUSPENDED
+}
+
+enum NodeTrustLevel {
+  COMMUNITY
+  VERIFIED
+  ENTERPRISE
+  INTERNAL
+}
+
+model NodeHeartbeat {
+  id                     String   @id @default(cuid())
+  nodeId                 String
+  cpuLoad                Float?
+  ramUsedMb              Int?
+  gpuLoad                Float?
+  gpuTempC               Float?
+  freeDiskMb             Int?
+  firstTokenMs           Int?
+  tokensPerSecond        Float?
+  activeRealtimeSessions Int?
+  createdAt              DateTime @default(now())
+
+  node ComputeNode @relation(fields: [nodeId], references: [id])
+
+  @@index([nodeId, createdAt])
+}
+
+// ============================================================================
+// Jobs
+// ============================================================================
+
+model Job {
+  id                String          @id @default(cuid())
+  workspaceId       String
+  userId            String
+  nodeId            String?
+  chatMessageId     String?
+  type              String
+  lane              JobLane         @default(GRID)
+  status            JobStatus       @default(PENDING)
+  priority          Int             @default(5)
+  privacyLevel      JobPrivacyLevel @default(PUBLIC)
+  inputObjectKey    String?
+  outputObjectKey   String?
+  inputJson         Json?
+  outputJson        Json?
+  errorMessage      String?
+  costCredits       Int             @default(0)
+  rewardCredits     Int             @default(0)
+  rewardTokenWei    String?
+  verificationScore Float?
+
+  // G1 reward lifecycle
+  grantedOptimistically Boolean   @default(false)
+  rewardPaidAt          DateTime?
+  nrnPayoutEligible     Boolean   @default(false)
+
+  assignedAt  DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  verifiedAt  DateTime?
+  rewardedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace         Workspace        @relation(fields: [workspaceId], references: [id])
+  user              User             @relation(fields: [userId], references: [id])
+  node              ComputeNode?     @relation(fields: [nodeId], references: [id])
+  events            JobEvent[]
+  verification      JobVerification? // G1
+  linkedFromMessages ChatMessage[]   @relation("ChatMessageLinkedJob") // G9
+  attachments       Attachment[]     // G7
+
+  @@index([workspaceId, status])
+  @@index([userId])
+  @@index([nodeId])
+}
+
+enum JobLane {
+  FAST
+  GRID
+  FALLBACK
+}
+
+enum JobStatus {
+  PENDING
+  ASSIGNED
+  ACCEPTED
+  RUNNING
+  COMPLETED
+  VERIFIED
+  REWARDED
+  FAILED
+  RETRYING
+  CANCELLED
+  EXPIRED
+}
+
+enum JobPrivacyLevel {
+  PUBLIC
+  EU_ONLY
+  VERIFIED_ONLY
+  ENTERPRISE_ONLY
+  INTERNAL_ONLY
+}
+
+model JobEvent {
+  id        String   @id @default(cuid())
+  jobId     String
+  type      String
+  message   String?
+  data      Json?
+  createdAt DateTime @default(now())
+
+  job Job @relation(fields: [jobId], references: [id])
+
+  @@index([jobId, createdAt])
+}
+
+// ============================================================================
+// G1 — Verification
+// ============================================================================
+
+model JobVerification {
+  id           String              @id @default(cuid())
+  jobId        String              @unique // idempotency key for the whole lifecycle
+  jobType      String
+  sanityPassed Boolean
+  sampled      Boolean             @default(false)
+  method       VerificationMethod
+  outcome      VerificationOutcome @default(PENDING)
+  score        Float?
+  threshold    Float?
+  executorRef  String?  // "fallback:embed" | "gpu:whisper-v3" — never a peer
+  provisional  Boolean             @default(false)
+  goldenTaskId String?
+  detail       Json?
+  createdAt    DateTime            @default(now())
+  resolvedAt   DateTime?
+
+  job        Job         @relation(fields: [jobId], references: [id])
+  goldenTask GoldenTask? @relation(fields: [goldenTaskId], references: [id])
+
+  @@index([jobType, outcome])
+}
+
+model GoldenTask {
+  id         String   @id @default(cuid())
+  jobType    String
+  input      Json
+  expected   Json
+  active     Boolean  @default(true)
+  usageCount Int      @default(0)
+  lastUsedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  verifications JobVerification[]
+
+  @@index([jobType, active])
+}
+
+enum VerificationMethod {
+  SANITY_ONLY
+  REEXEC
+  GOLDEN
+  FEEDBACK
+}
+
+enum VerificationOutcome {
+  PASS
+  FAIL
+  PENDING
+  SKIPPED
+}
+
+// ============================================================================
+// Chat / AI Router
+// ============================================================================
+
+model ChatConversation {
+  id               String          @id @default(cuid())
+  workspaceId      String
+  userId           String
+  title            String?
+  mode             ChatMode        @default(AUTO)
+  privacyLevel     JobPrivacyLevel @default(VERIFIED_ONLY) // G2: by-default floor
+  openTierConsentId String?                                // G2
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id])
+  user            User             @relation(fields: [userId], references: [id])
+  messages        ChatMessage[]
+  openTierConsent OpenTierConsent? @relation(fields: [openTierConsentId], references: [id])
+
+  @@index([workspaceId, userId])
+}
+
+enum ChatMode {
+  AUTO
+  FAST
+  GRID
+  PRIVATE
+}
+
+model ChatMessage {
+  id              String   @id @default(cuid())
+  conversationId  String
+  role            ChatRole
+  content         String
+  laneUsed        JobLane?
+  modelUsed       String?
+  providerUsed    String?
+  routingDecision Json?
+  tokenUsage      Json?
+  costCredits     Int      @default(0)
+  linkedJobId     String?
+  createdAt       DateTime @default(now())
+
+  conversation ChatConversation  @relation(fields: [conversationId], references: [id])
+  linkedJob    Job?              @relation("ChatMessageLinkedJob", fields: [linkedJobId], references: [id]) // G9
+  route        ChatMessageRoute? // G2
+  attachments  Attachment[]      // G7
+
+  @@index([conversationId, createdAt])
+}
+
+enum ChatRole {
+  SYSTEM
+  USER
+  ASSISTANT
+  TOOL
+}
+
+model ModelRegistry {
+  id             String    @id @default(cuid())
+  name           String
+  providerType   String
+  modelRef       String
+  mode           ModelMode
+  contextTokens  Int?
+  supportsStream Boolean   @default(true)
+  supportsTools  Boolean   @default(false)
+  requiresGpu    Boolean   @default(false)
+  enabled        Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+enum ModelMode {
+  CHAT
+  EMBEDDING
+  TRANSCRIPTION
+  IMAGE
+  OCR
+}
+
+model RealtimeSession {
+  id              String                @id @default(cuid())
+  nodeId          String?
+  userId          String
+  model           String
+  status          RealtimeSessionStatus @default(OPEN)
+  firstTokenMs    Int?
+  tokensPerSecond Float?
+  startedAt       DateTime              @default(now())
+  endedAt         DateTime?
+
+  node ComputeNode? @relation(fields: [nodeId], references: [id])
+
+  @@index([nodeId])
+}
+
+enum RealtimeSessionStatus {
+  OPEN
+  CLOSED
+  FAILED
+  FALLBACK_USED
+}
+
+// ============================================================================
+// G2 — Confidential routing / attestation
+// ============================================================================
+
+model NodeConfidentialityProfile {
+  id     String @id @default(cuid())
+  nodeId String @unique
+
+  trustLevel        NodeTrustLevel
+  ccType            ConfidentialComputeType @default(NONE)
+  attestationStatus AttestationStatus       @default(PENDING)
+  attestationId     String?
+
+  ephemeralContextOnly Boolean @default(false)
+  noRetentionAgreed    Boolean @default(false)
+  acceptedAgreementId  String?
+
+  chatEligible Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  node             ComputeNode                      @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  attestation      NodeAttestation?                 @relation("ActiveAttestation", fields: [attestationId], references: [id])
+  acceptedAgreement NodeOperatorAgreementAcceptance? @relation(fields: [acceptedAgreementId], references: [id])
+  attestations     NodeAttestation[]                @relation("ProfileAttestations")
+
+  @@index([trustLevel, chatEligible])
+  @@index([ccType, attestationStatus])
+}
+
+model NodeAttestation {
+  id              String                  @id @default(cuid())
+  nodeId          String
+  profileId       String?
+  ccType          ConfidentialComputeType
+  status          AttestationStatus       @default(PENDING)
+  quoteRaw        Bytes
+  measurement     String
+  boundModelHash  String? // TP5: measurement bound to the loaded model
+  nonce           String  @unique // anti-replay challenge we issued
+  nonceConsumedAt DateTime?
+  verifierVendor  String?
+  rejectionReason String?
+  verifiedAt      DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime                @default(now())
+
+  node      ComputeNode                 @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  profile   NodeConfidentialityProfile? @relation("ProfileAttestations", fields: [profileId], references: [id])
+  activeFor NodeConfidentialityProfile[] @relation("ActiveAttestation")
+
+  @@index([nodeId, status])
+  @@index([expiresAt])
+}
+
+model NodeOperatorAgreement {
+  id        String   @id @default(cuid())
+  version   String   @unique
+  bodyHash  String
+  effective DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  acceptances NodeOperatorAgreementAcceptance[]
+}
+
+model NodeOperatorAgreementAcceptance {
+  id          String   @id @default(cuid())
+  nodeId      String
+  operatorId  String
+  agreementId String
+  acceptedAt  DateTime @default(now())
+  ipHash      String
+  userAgent   String?
+  signature   String?
+
+  node      ComputeNode                  @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  agreement NodeOperatorAgreement        @relation(fields: [agreementId], references: [id])
+  profiles  NodeConfidentialityProfile[]
+
+  @@unique([nodeId, agreementId])
+  @@index([operatorId])
+}
+
+model ChatMessageRoute {
+  id        String @id @default(cuid())
+  messageId String @unique
+
+  effectivePrivacy JobPrivacyLevel
+  requestedPrivacy JobPrivacyLevel
+  routeReason      RouteReason
+  lane             JobLane
+  servedTrustLevel NodeTrustLevel
+  servedNodeId     String?
+  servedViaTee     Boolean                 @default(false)
+  ccTypeUsed       ConfidentialComputeType @default(NONE)
+
+  escalated            Boolean   @default(false)
+  classifierCategory   String    @default("NONE")
+  classifierDetailsEnc Bytes?
+  classifierDetailsTtl DateTime?
+
+  responseTrusted  Boolean @default(true)
+  responseDigest   String?
+  nodeSignature    String?
+  integrityChecked Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([effectivePrivacy, servedTrustLevel])
+  @@index([routeReason])
+}
+
+model OpenTierConsent {
+  id         String    @id @default(cuid())
+  sessionId  String // opaque anonymous session; NO userId linkage (G2)
+  acceptedAt DateTime  @default(now())
+  bannerHash String
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  conversations ChatConversation[]
+
+  @@index([sessionId, revokedAt])
+}
+
+enum ConfidentialComputeType {
+  NONE
+  NVIDIA_CC
+  AMD_SEV_SNP
+  INTEL_SGX
+  INTEL_TDX
+}
+
+enum AttestationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  REVOKED
+  EXPIRED
+}
+
+enum RouteReason {
+  USER_SELECTED
+  CLASSIFIER_ESCALATED
+  SERVER_HARD_BLOCK
+  CLASSIFIER_FAILSAFE
+  NO_WARM_TRUSTED_NODE
+  POLICY_DEFAULT
+}
+
+// ============================================================================
+// Credits / Token / Audit
+// ============================================================================
+
+model CreditLedger {
+  id             String   @id @default(cuid())
+  userId         String
+  reason         String // USER_SPEND | USER_SPEND_HOLD | USER_SPEND_SETTLE | USER_REFUND | NODE_REWARD | NODE_REWARD_CLAWBACK | ...
+  amount         Int // signed; append-only
+  balanceAfter   Int
+  jobId          String?
+  chatMessageId  String?
+  idempotencyKey String?  @unique // G5: retry-safe
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([jobId, reason])
+  @@index([userId, createdAt])
+}
+
+model TokenPayout {
+  id           String       @id @default(cuid())
+  userId       String
+  jobId        String?
+  walletAddress String
+  tokenSymbol  String       @default("NRN")
+  amountWei    String
+  chainId      Int
+  txHash       String?
+  status       PayoutStatus @default(PENDING)
+  errorMessage String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+}
+
+enum PayoutStatus {
+  PENDING
+  SUBMITTED
+  CONFIRMED
+  FAILED
+  CANCELLED
+  BLOCKED
+}
+
+model WalletNonce {
+  id        String   @id @default(cuid())
+  address   String
+  nonce     String
+  used      Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([address, used])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  actorUserId String?
+  action      String
+  entityType  String?
+  entityId    String?
+  ipAddress   String?
+  userAgent   String?
+  data        Json?
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+}
+
+model ComplianceRecord {
+  id        String   @id @default(cuid())
+  userId    String?
+  type      String // KYC | SYBIL_VELOCITY | REWARD_FARMING | SUBNET_FANOUT | FINGERPRINT_COLLISION | ...
+  status    String // OPEN | UNDER_REVIEW | RESOLVED | DISMISSED
+  data      Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([type, status])
+}
+
+// ============================================================================
+// G5 — Sybil / abuse
+// ============================================================================
+
+model OwnerReputation {
+  id                                String    @id @default(cuid())
+  workspaceId                       String
+  userId                            String    @unique
+  nodeCount                         Int       @default(0)
+  effectiveReputation               Float     @default(0)
+  ownerOutstandingOptimisticCredits Int       @default(0)
+  lifetimeUnverifiedCredits         Int       @default(0)
+  lifetimePayoutCredits             Int       @default(0)
+  deepFailCount                     Int       @default(0)
+  payoutHold                        Boolean   @default(false)
+  lastRegistrationAt                DateTime?
+  registrationsToday                Int       @default(0)
+  registrationsDayKey               String?
+  createdAt                         DateTime  @default(now())
+  updatedAt                         DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  user      User      @relation("OwnerRepUser", fields: [userId], references: [id])
+
+  @@index([workspaceId])
+}
+
+model RegistrationChallenge {
+  id            String                      @id @default(cuid())
+  workspaceId   String
+  userId        String
+  kind          RegistrationChallengeKind   @default(STAKE)
+  status        RegistrationChallengeStatus @default(PENDING)
+  stakeCredits  Int                         @default(0)
+  powChallenge  String?
+  powDifficulty Int?
+  powSolution   String?
+  nodeId        String?
+  expiresAt     DateTime
+  createdAt     DateTime                    @default(now())
+  resolvedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+}
+
+enum RegistrationChallengeKind {
+  STAKE
+  POW
+}
+
+enum RegistrationChallengeStatus {
+  PENDING
+  SOLVED
+  CONSUMED
+  REFUNDED
+  FORFEITED
+  EXPIRED
+}
+
+model WorkspaceConfig {
+  id                                   String   @id @default(cuid())
+  workspaceId                          String   @unique
+  maxNodesPerOwner                     Int      @default(5)
+  maxNodeRegistrationsPerDay           Int      @default(3)
+  registrationStakeCredits             Int      @default(50)
+  powDifficultyBits                    Int      @default(20)
+  maxOwnerOutstandingUnverifiedCredits Int      @default(500)
+  kycPayoutThresholdCredits            Int      @default(1000)
+  maxNodesPerSubnet24                  Int      @default(3)
+  maxNodesPerFingerprint               Int      @default(2)
+  createdAt                            DateTime @default(now())
+  updatedAt                            DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+}
+
+// ============================================================================
+// G6 — Refresh tokens
+// ============================================================================
+
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String
+  tokenHash    String    @unique
+  family       String // lineage id; reuse anywhere in a family => revoke whole family
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?   @unique
+  userAgent    String?
+  ipHash       String?
+  createdAt    DateTime  @default(now())
+
+  user       User          @relation(fields: [userId], references: [id])
+  replacedBy RefreshToken? @relation("RefreshTokenRotation", fields: [replacedById], references: [id])
+  replaces   RefreshToken[] @relation("RefreshTokenRotation")
+
+  @@index([userId])
+  @@index([family])
+}
+
+// ============================================================================
+// G7 — Attachments
+// ============================================================================
+
+model Attachment {
+  id            String           @id @default(cuid())
+  workspaceId   String
+  userId        String
+  objectKey     String           @unique
+  mime          String
+  sizeBytes     Int
+  sha256        String?
+  chatMessageId String?
+  jobId         String?
+  status        AttachmentStatus @default(PENDING_UPLOAD)
+  expiresAt     DateTime?
+  createdAt     DateTime         @default(now())
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+  chatMessage ChatMessage? @relation(fields: [chatMessageId], references: [id])
+  job         Job?         @relation(fields: [jobId], references: [id])
+
+  @@index([workspaceId])
+  @@index([chatMessageId])
+  @@index([jobId])
+  @@index([status, expiresAt])
+}
+
+enum AttachmentStatus {
+  PENDING_UPLOAD
+  STORED
+  SCANNED
+  DELETED
+}
+
+// ============================================================================
+// G12 — Reward emission schedule
+// ============================================================================
+
+model EmissionSchedule {
+  id                  String   @id @default(cuid())
+  epochKey            String   @unique // e.g. UTC yyyy-mm-dd
+  epochBudgetWei      String
+  emittedThisEpochWei String   @default("0")
+  emittedLifetimeWei  String   @default("0")
+  poolCapWei          String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([epochKey])
+}
