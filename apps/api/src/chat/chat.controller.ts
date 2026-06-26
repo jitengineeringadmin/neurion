@@ -81,6 +81,8 @@ export class ChatController {
         hasLiveOpenTierConsent: false,
       });
       const cost = plan.estimate.estCredits;
+      // user-chosen model overrides the default for real (non-mock) providers.
+      const chosenModel = dto.preferredModel && plan.provider.name !== 'mock' ? dto.preferredModel : plan.model;
 
       const balance = await this.credits.getBalance(user.sub);
       if (balance < cost) {
@@ -93,7 +95,7 @@ export class ChatController {
       send('routing', {
         lane: plan.lane,
         provider: plan.provider.name,
-        model: plan.model,
+        model: chosenModel,
         labeled: plan.provider.labeled,
         effectivePrivacy: plan.effectivePrivacy,
         routeReason: plan.routeReason,
@@ -104,10 +106,10 @@ export class ChatController {
       let full = '';
       let firstTokenMs: number | null = null;
       let usedProvider = plan.provider;
-      let usedModel = plan.model;
+      let usedModel = chosenModel;
       const t0 = Date.now();
       try {
-        for await (const text of plan.provider.streamChat(context, plan.model)) {
+        for await (const text of plan.provider.streamChat(context, chosenModel)) {
           if (firstTokenMs === null) firstTokenMs = Date.now() - t0;
           full += text;
           send('token', { text });

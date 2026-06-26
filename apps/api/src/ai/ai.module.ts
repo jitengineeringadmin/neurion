@@ -5,9 +5,11 @@ import { PrivacyClassifierService } from './privacy/classifier.service';
 import { EstimatorService } from './estimator.service';
 import { RealtimePoolService } from './realtime-pool.service';
 import { AiRouterService } from './ai-router.service';
+import { ModelsController } from './models.controller';
 
 @Module({
   imports: [NodesModule],
+  controllers: [ModelsController],
   providers: [
     ProviderResolverService,
     PrivacyClassifierService,

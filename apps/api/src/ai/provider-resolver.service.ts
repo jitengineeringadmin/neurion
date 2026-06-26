@@ -37,6 +37,18 @@ export class ProviderResolverService {
     }
   }
 
+  /** List models available on the configured OpenAI-compatible endpoint (ollama). */
+  async listModels(): Promise<string[]> {
+    try {
+      const res = await fetch(`${this.baseUrl}/models`);
+      if (!res.ok) return [];
+      const json = (await res.json()) as { data?: Array<{ id: string }> };
+      return (json.data ?? []).map((m) => m.id).sort();
+    } catch {
+      return [];
+    }
+  }
+
   async resolveFallback(): Promise<ResolvedProvider> {
     const forced = this.config.get<string>('AI_PROVIDER_DEFAULT');
     const chatModel = this.config.get<string>('AI_DEFAULT_CHAT_MODEL') ?? 'llama3.1:8b';

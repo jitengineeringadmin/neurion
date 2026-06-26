@@ -26,13 +26,27 @@ export default function ChatPage() {
   const [agentMode, setAgentMode] = useState(false);
   const [convId, setConvId] = useState<string | undefined>();
   const [balance, setBalance] = useState<number | null>(null);
+  const [models, setModels] = useState<string[]>([]);
+  const [model, setModel] = useState<string>('');
   const endRef = useRef<HTMLDivElement>(null);
 
   const refreshBalance = () =>
     api<{ balance: number }>('/credits/balance').then((b) => setBalance(b.balance)).catch(() => undefined);
   useEffect(() => {
     void refreshBalance();
+    void api<{ models: string[]; chatDefault: string | null }>('/ai/models')
+      .then((r) => {
+        setModels(r.models);
+        const saved = typeof window !== 'undefined' ? localStorage.getItem('neurion_model') : null;
+        setModel(saved || r.chatDefault || r.models[0] || '');
+      })
+      .catch(() => undefined);
   }, []);
+
+  function pickModel(m: string) {
+    setModel(m);
+    if (typeof window !== 'undefined') localStorage.setItem('neurion_model', m);
+  }
   useEffect(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), [messages]);
 
   function patch(idx: number, fn: (a: Msg) => void) {
@@ -60,7 +74,9 @@ export default function ChatPage() {
     const idx = messages.length + 1;
     try {
       if (agentMode) {
-        await streamAgent(msg, {
+        await streamAgent(
+          msg,
+          {
           onEvent: (event, d) => {
             patch(idx, (a) => {
               a.trace = a.trace ?? [];
@@ -74,11 +90,13 @@ export default function ChatPage() {
               else if (event === 'agent.error') a.content = `⚠️ ${d.message}`;
             });
           },
-        });
+          },
+          model || undefined,
+        );
         void refreshBalance();
       } else {
         await streamChat(
-          { message: msg, conversationId: convId },
+          { message: msg, conversationId: convId, preferredModel: model || undefined },
           {
             onEvent: (event, data) => {
               patch(idx, (a) => {
@@ -106,6 +124,29 @@ export default function ChatPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h2 style={{ margin: 0, fontSize: 20 }}>Chat</h2>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+          {models.length > 0 && (
+            <select
+              value={model}
+              onChange={(e) => pickModel(e.target.value)}
+              title="model"
+              style={{
+                background: 'var(--surface-2)',
+                color: theme.text,
+                border: `1px solid ${theme.border}`,
+                borderRadius: 8,
+                padding: '5px 8px',
+                fontSize: 12,
+                fontFamily: 'var(--font-mono)',
+                maxWidth: 180,
+              }}
+            >
+              {models.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             onClick={() => setAgentMode((v) => !v)}
             style={{

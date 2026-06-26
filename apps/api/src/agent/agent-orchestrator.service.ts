@@ -83,9 +83,9 @@ export class AgentOrchestratorService {
     ].join('\n') + memBlock;
   }
 
-  private async callLLM(messages: ChatMsg[]): Promise<string> {
+  private async callLLM(messages: ChatMsg[], override?: string): Promise<string> {
     const resolved = await this.resolver.resolveFallback();
-    const model = this.config.get<string>('AI_AGENT_MODEL') || resolved.model;
+    const model = override || this.config.get<string>('AI_AGENT_MODEL') || resolved.model;
     let full = '';
     for await (const t of resolved.provider.streamChat(messages, model)) full += t;
     return full;
@@ -133,7 +133,7 @@ export class AgentOrchestratorService {
     const maxSteps = isSub ? SUB_MAX_STEPS : MAX_STEPS;
 
     for (let step = 0; step < maxSteps; step++) {
-      const raw = await this.callLLM(messages);
+      const raw = await this.callLLM(messages, ctx.model);
       const action = this.parseAction(raw);
 
       if (action.final !== undefined || !action.tool) {
@@ -177,7 +177,7 @@ export class AgentOrchestratorService {
 
     // out of steps -> ask for a final summary
     messages.push({ role: 'user', content: 'Stop using tools. Reply now with {"final": "..."} summarising the result.' });
-    const wrap = this.parseAction(await this.callLLM(messages));
+    const wrap = this.parseAction(await this.callLLM(messages, ctx.model));
     const answer = wrap.final ?? 'Reached step limit without a final answer.';
     ctx.emit('agent.final', { depth: ctx.depth, text: answer });
     return answer;

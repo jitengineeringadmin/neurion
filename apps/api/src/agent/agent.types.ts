@@ -6,6 +6,7 @@ export interface ToolCtx {
   user: AuthUser;
   emit: AgentEmit;
   depth: number;
+  model?: string;
 }
 
 export interface AgentTool {
