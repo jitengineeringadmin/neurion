@@ -13,7 +13,15 @@ const WEB_DIR = path.join(ROOT, 'apps', 'web');
 const WEB_URL = 'http://localhost:3091';
 const API_HEALTH = 'http://localhost:8091/api/health';
 
+// Embedded Postgres — standalone, no Docker.
+const PG_PORT = 5433;
+const PG_USER = 'neurion';
+const PG_PASS = 'neurion';
+const PG_DB = 'neurion';
+const DB_URL = `postgresql://${PG_USER}:${PG_PASS}@localhost:${PG_PORT}/${PG_DB}`;
+
 const children = [];
+let pg = null;
 let mainWindow = null;
 let splash = null;
 
@@ -82,15 +90,34 @@ function setStatus(text) {
   if (splash && !splash.isDestroyed()) splash.webContents.executeJavaScript(`window.setStatus && window.setStatus(${JSON.stringify(text)})`).catch(() => {});
 }
 
-async function startStack() {
-  // 1) services (best-effort; Postgres is the only hard dependency)
-  setStatus('avvio servizi (postgres)…');
-  await run('docker', ['compose', 'up', '-d', 'postgres', 'redis', 'minio'], { cwd: ROOT, env: ENV });
-  await waitPort('localhost', 5432, 25000);
+async function startDb() {
+  const mod = await import('embedded-postgres'); // ESM package -> dynamic import from CJS
+  const EmbeddedPostgres = mod.default || mod;
+  const dataDir = path.join(app.getPath('userData'), 'pgdata');
+  pg = new EmbeddedPostgres({ databaseDir: dataDir, user: PG_USER, password: PG_PASS, port: PG_PORT, persistent: true });
+  const init = pg.initialise || pg.initialize;
+  if (!fs.existsSync(path.join(dataDir, 'PG_VERSION'))) await init.call(pg);
+  await pg.start();
+  try {
+    await pg.createDatabase(PG_DB);
+  } catch {
+    /* already exists */
+  }
+  await waitPort('localhost', PG_PORT, 25000);
+}
 
-  // 2) migrate (idempotent, best-effort)
+async function startStack() {
+  // children + tooling all use the embedded DB
+  ENV.DATABASE_URL = DB_URL;
+
+  // 1) embedded Postgres (no Docker)
+  setStatus('avvio database integrato…');
+  await startDb();
+
+  // 2) migrate + seed (idempotent)
   setStatus('preparo il database…');
   await run('npx', ['prisma', 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
+  await run('npx', ['tsx', path.join('prisma', 'seed.ts')], { cwd: API_DIR, env: ENV });
 
   // 3) API
   setStatus('avvio API…');
@@ -191,8 +218,19 @@ function killChildren() {
   }
 }
 
-app.on('before-quit', killChildren);
-app.on('window-all-closed', () => {
+function stopAll() {
   killChildren();
+  if (pg) {
+    try {
+      pg.stop();
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+app.on('before-quit', stopAll);
+app.on('window-all-closed', () => {
+  stopAll();
   app.quit();
 });

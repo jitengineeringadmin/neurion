@@ -17,9 +17,27 @@
   "build": {
     "appId": "engineering.jit.neurion",
     "productName": "Neurion",
-    "directories": { "output": "dist-installer", "buildResources": "build" },
-    "files": ["main.js", "preload.js", "splash.html", "build/**"],
-    "win": { "target": "nsis", "icon": "build/icon.ico" },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false }
+    "directories": {
+      "output": "dist-installer",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "splash.html",
+      "build/**"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    }
+  },
+  "dependencies": {
+    "embedded-postgres": "18.4.0-beta.17"
   }
 }
