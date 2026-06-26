@@ -11,7 +11,7 @@ const MAX_STEPS = 6;
 const MAX_DEPTH = 2;
 const SUB_MAX_STEPS = 4;
 // Tools that mutate the machine or execute code -> require human approval.
-const DANGEROUS = new Set(['run_command', 'write_file', 'edit_file']);
+const DANGEROUS = new Set(['run_command', 'write_file', 'edit_file', 'append_file', 'move_path', 'delete_path']);
 
 @Injectable()
 export class AgentOrchestratorService {

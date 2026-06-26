@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, writeFile, readdir, mkdir, stat } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { readFile, writeFile, readdir, mkdir, stat, rm, rename } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
 import { JobsService } from '../jobs/jobs.service';
@@ -39,7 +39,182 @@ export class AgentToolsService {
   }
 
   tools(): AgentTool[] {
-    return [...this.networkTools(), ...this.fileTools()];
+    return [...this.networkTools(), ...this.fileTools(), ...this.devTools()];
+  }
+
+  private static readonly SKIP_DIRS = new Set(['node_modules', '.git', '.next', 'dist', '.turbo', 'cache']);
+
+  private async walk(dir: string, depth: number, fn: (path: string) => Promise<void>): Promise<void> {
+    if (depth > 7) return;
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (AgentToolsService.SKIP_DIRS.has(e.name)) continue;
+      const full = join(dir, e.name);
+      if (e.isDirectory()) await this.walk(full, depth + 1, fn);
+      else await fn(full);
+    }
+  }
+
+  private devTools(): AgentTool[] {
+    const guard = (): string | null => (this.fsEnabled() ? null : 'error: filesystem tools are disabled');
+    return [
+      {
+        name: 'search_files',
+        description: 'Recursively search for text inside files under a directory. Returns matches as path:line.',
+        params: { dir: 'directory to search', query: 'text to find' },
+        run: async (args, ctx) => {
+          const g = guard();
+          if (g) return g;
+          const dir = String(args.dir ?? '.');
+          const query = String(args.query ?? '');
+          if (!query) return 'error: empty query';
+          await this.logAction(ctx, 'search_files', { dir, query });
+          const hits: string[] = [];
+          await this.walk(dir, 0, async (path) => {
+            if (hits.length >= 80) return;
+            try {
+              const st = await stat(path);
+              if (st.size > 2_000_000) return;
+              const lines = (await readFile(path, 'utf8')).split('\n');
+              for (let i = 0; i < lines.length && hits.length < 80; i++) {
+                if (lines[i]!.includes(query)) hits.push(`${path}:${i + 1}: ${lines[i]!.trim().slice(0, 160)}`);
+              }
+            } catch {
+              /* binary / unreadable */
+            }
+          });
+          return hits.length ? hits.join('\n') : 'no matches';
+        },
+      },
+      {
+        name: 'find_files',
+        description: 'Recursively find files by name glob (e.g. "*.ts", "package.json").',
+        params: { dir: 'directory to search', pattern: 'filename glob' },
+        run: async (args, ctx) => {
+          const g = guard();
+          if (g) return g;
+          const dir = String(args.dir ?? '.');
+          const pattern = String(args.pattern ?? '*');
+          await this.logAction(ctx, 'find_files', { dir, pattern });
+          const re = new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i');
+          const out: string[] = [];
+          await this.walk(dir, 0, async (path) => {
+            if (out.length >= 150) return;
+            if (re.test(path.split(/[/\\]/).pop() ?? '')) out.push(path);
+          });
+          return out.length ? out.join('\n') : 'no files';
+        },
+      },
+      {
+        name: 'web_fetch',
+        description: 'HTTP GET a URL and return the response text (read-only). Use for docs/APIs.',
+        params: { url: 'the URL to fetch' },
+        run: async (args, ctx) => {
+          const url = String(args.url ?? '');
+          if (!/^https?:\/\//.test(url)) return 'error: url must start with http(s)://';
+          await this.logAction(ctx, 'web_fetch', { url });
+          try {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), 15000);
+            const res = await fetch(url, { signal: ctrl.signal });
+            clearTimeout(t);
+            const text = await res.text();
+            return `HTTP ${res.status}\n${text.slice(0, 50000)}`;
+          } catch (e) {
+            return `error: ${(e as Error).message}`;
+          }
+        },
+      },
+      {
+        name: 'stat_path',
+        description: 'Get info about a file or directory (size, type, modified time).',
+        params: { path: 'file or directory path' },
+        run: async (args, _ctx) => {
+          try {
+            const s = await stat(String(args.path ?? ''));
+            return JSON.stringify({ type: s.isDirectory() ? 'dir' : 'file', sizeBytes: s.size, modified: s.mtime.toISOString() });
+          } catch (e) {
+            return `error: ${(e as Error).message}`;
+          }
+        },
+      },
+      {
+        name: 'make_dir',
+        description: 'Create a directory (and parents).',
+        params: { path: 'directory path' },
+        run: async (args, ctx) => {
+          const g = guard();
+          if (g) return g;
+          const path = String(args.path ?? '');
+          await this.logAction(ctx, 'make_dir', { path });
+          try {
+            await mkdir(path, { recursive: true });
+            return `created ${path}`;
+          } catch (e) {
+            return `error: ${(e as Error).message}`;
+          }
+        },
+      },
+      {
+        name: 'append_file',
+        description: 'Append text to the end of a file (creates it if missing).',
+        params: { path: 'file path', content: 'text to append' },
+        run: async (args, ctx) => {
+          const g = guard();
+          if (g) return g;
+          const path = String(args.path ?? '');
+          await this.logAction(ctx, 'append_file', { path, bytes: String(args.content ?? '').length });
+          try {
+            await mkdir(dirname(path), { recursive: true });
+            const prev = await readFile(path, 'utf8').catch(() => '');
+            await writeFile(path, prev + String(args.content ?? ''), 'utf8');
+            return `appended ${String(args.content ?? '').length} bytes to ${path}`;
+          } catch (e) {
+            return `error: ${(e as Error).message}`;
+          }
+        },
+      },
+      {
+        name: 'move_path',
+        description: 'Move or rename a file or directory.',
+        params: { from: 'source path', to: 'destination path' },
+        run: async (args, ctx) => {
+          const g = guard();
+          if (g) return g;
+          const from = String(args.from ?? '');
+          const to = String(args.to ?? '');
+          await this.logAction(ctx, 'move_path', { from, to });
+          try {
+            await rename(from, to);
+            return `moved ${from} -> ${to}`;
+          } catch (e) {
+            return `error: ${(e as Error).message}`;
+          }
+        },
+      },
+      {
+        name: 'delete_path',
+        description: 'Delete a file or directory (recursive).',
+        params: { path: 'path to delete' },
+        run: async (args, ctx) => {
+          const g = guard();
+          if (g) return g;
+          const path = String(args.path ?? '');
+          await this.logAction(ctx, 'delete_path', { path });
+          try {
+            await rm(path, { recursive: true, force: true });
+            return `deleted ${path}`;
+          } catch (e) {
+            return `error: ${(e as Error).message}`;
+          }
+        },
+      },
+    ];
   }
 
   private networkTools(): AgentTool[] {
