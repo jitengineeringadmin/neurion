@@ -1,0 +1,140 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { ProviderResolverService } from '../ai/provider-resolver.service';
+import { ChatMsg } from '../ai/providers/ai-provider.interface';
+import { AgentToolsService } from './agent-tools.service';
+import { AgentAction, AgentTool, ToolCtx } from './agent.types';
+
+const MAX_STEPS = 6;
+const MAX_DEPTH = 2;
+const SUB_MAX_STEPS = 4;
+
+@Injectable()
+export class AgentOrchestratorService {
+  private readonly logger = new Logger(AgentOrchestratorService.name);
+
+  constructor(
+    private readonly toolsService: AgentToolsService,
+    private readonly resolver: ProviderResolverService,
+    private readonly config: ConfigService,
+  ) {}
+
+  private toolset(ctx: ToolCtx): AgentTool[] {
+    const tools = [...this.toolsService.tools()];
+    if (ctx.depth < MAX_DEPTH) {
+      tools.push({
+        name: 'spawn_agent',
+        description: 'Delegate a focused sub-task to a sub-agent and receive its result. Use for independent sub-problems.',
+        params: { goal: 'the self-contained sub-task for the sub-agent' },
+        run: async (args, c) => {
+          const goal = String(args.goal ?? '');
+          c.emit('agent.subagent.start', { depth: c.depth + 1, goal });
+          const result = await this.run(goal, { ...c, depth: c.depth + 1 }, true);
+          c.emit('agent.subagent.end', { depth: c.depth + 1, result });
+          return result;
+        },
+      });
+    }
+    return tools;
+  }
+
+  private systemPrompt(tools: AgentTool[]): string {
+    const list = tools
+      .map((t) => {
+        const p = Object.entries(t.params).map(([k, d]) => `${k} (${d})`).join(', ');
+        return `- ${t.name}(${p}): ${t.description}`;
+      })
+      .join('\n');
+    return [
+      'You are Neurion Agent, an autonomous assistant on a distributed AI compute network.',
+      'Solve the user GOAL by reasoning step-by-step and using tools.',
+      '',
+      'Reply with EXACTLY ONE JSON object and nothing else, one of:',
+      '1) Use a tool:  {"thought":"brief reason","tool":"tool_name","args":{ ... }}',
+      '2) Finish:      {"final":"your complete answer for the user"}',
+      '',
+      'Available tools:',
+      list,
+      '',
+      'After each tool call you get an "Observation:". Use it. Never invent tool results.',
+      'Prefer finishing quickly. When you have enough information, return {"final": ...}.',
+    ].join('\n');
+  }
+
+  private async callLLM(messages: ChatMsg[]): Promise<string> {
+    const resolved = await this.resolver.resolveFallback();
+    const model = this.config.get<string>('AI_AGENT_MODEL') || resolved.model;
+    let full = '';
+    for await (const t of resolved.provider.streamChat(messages, model)) full += t;
+    return full;
+  }
+
+  /** Tolerant extraction of the first JSON object from model output. */
+  private parseAction(text: string): AgentAction {
+    const cleaned = text.replace(/```json/gi, '').replace(/```/g, '');
+    const start = cleaned.indexOf('{');
+    if (start >= 0) {
+      let depth = 0;
+      for (let i = start; i < cleaned.length; i++) {
+        if (cleaned[i] === '{') depth++;
+        else if (cleaned[i] === '}') {
+          depth--;
+          if (depth === 0) {
+            try {
+              return JSON.parse(cleaned.slice(start, i + 1)) as AgentAction;
+            } catch {
+              break;
+            }
+          }
+        }
+      }
+    }
+    return { final: text.trim() }; // model didn't follow format -> treat as the answer
+  }
+
+  /** Run the agent loop for a goal. Emits agent.* events. Returns the final answer. */
+  async run(goal: string, ctx: ToolCtx, isSub = false): Promise<string> {
+    const tools = this.toolset(ctx);
+    const byName = new Map(tools.map((t) => [t.name, t]));
+    const messages: ChatMsg[] = [
+      { role: 'system', content: this.systemPrompt(tools) },
+      { role: 'user', content: `GOAL: ${goal}` },
+    ];
+    const maxSteps = isSub ? SUB_MAX_STEPS : MAX_STEPS;
+
+    for (let step = 0; step < maxSteps; step++) {
+      const raw = await this.callLLM(messages);
+      const action = this.parseAction(raw);
+
+      if (action.final !== undefined || !action.tool) {
+        const answer = action.final ?? raw.trim();
+        ctx.emit('agent.final', { depth: ctx.depth, text: answer });
+        return answer;
+      }
+
+      ctx.emit('agent.tool_call', { depth: ctx.depth, step, thought: action.thought ?? '', tool: action.tool, args: action.args ?? {} });
+      const tool = byName.get(action.tool);
+      let observation: string;
+      if (!tool) {
+        observation = `error: unknown tool "${action.tool}". Available: ${[...byName.keys()].join(', ')}`;
+      } else {
+        try {
+          observation = await tool.run(action.args ?? {}, ctx);
+        } catch (e) {
+          observation = `error: ${(e as Error).message}`;
+        }
+      }
+      ctx.emit('agent.tool_result', { depth: ctx.depth, step, tool: action.tool, result: observation });
+
+      messages.push({ role: 'assistant', content: raw });
+      messages.push({ role: 'user', content: `Observation: ${observation}` });
+    }
+
+    // out of steps -> ask for a final summary
+    messages.push({ role: 'user', content: 'Stop using tools. Reply now with {"final": "..."} summarising the result.' });
+    const wrap = this.parseAction(await this.callLLM(messages));
+    const answer = wrap.final ?? 'Reached step limit without a final answer.';
+    ctx.emit('agent.final', { depth: ctx.depth, text: answer });
+    return answer;
+  }
+}

@@ -1,33 +1,41 @@
+'use client';
 import Link from 'next/link';
+import { MatrixRain } from '../components/MatrixRain';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { button } from '../lib/ui';
 
 export default function Home() {
   return (
-    <main style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px' }}>
-      <h1 style={{ fontSize: 44, letterSpacing: -1, marginBottom: 8 }}>
-        Neurion <span style={{ color: '#3b82f6' }}>AI</span>
-      </h1>
-      <p style={{ opacity: 0.8, lineHeight: 1.6, fontSize: 18 }}>
-        Share idle power. Access AI. Earn credits and utility tokens.
-      </p>
-      <p style={{ opacity: 0.6, lineHeight: 1.7 }}>
-        Fast ChatGPT-like chat over a distributed grid of community nodes, with a Fast / Grid / Fallback router,
-        internal credits and the NRN utility token.
-      </p>
-      <Link
-        href="/login"
+    <main style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.18 }}>
+        <MatrixRain />
+      </div>
+      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 2 }}>
+        <ThemeToggle />
+      </div>
+      <div
         style={{
-          display: 'inline-block',
-          marginTop: 20,
-          background: '#3b82f6',
-          color: '#fff',
-          padding: '12px 22px',
-          borderRadius: 8,
-          textDecoration: 'none',
-          fontWeight: 500,
+          position: 'relative',
+          zIndex: 1,
+          maxWidth: 760,
+          margin: '0 auto',
+          padding: '120px 24px',
         }}
       >
-        Open app →
-      </Link>
+        <h1 className="neon" style={{ fontSize: 'clamp(44px, 9vw, 84px)', margin: 0, letterSpacing: '0.12em', color: 'var(--accent)' }}>
+          NEURION
+        </h1>
+        <p style={{ fontSize: 18, color: 'var(--text)', marginTop: 8 }}>
+          Share idle power. Access AI. Earn credits and the NRN token.
+        </p>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.8, maxWidth: 560 }}>
+          A distributed AI compute network: fast chat over a community grid, with a Fast / Grid / Fallback
+          router, internal credits and an on-chain NRN utility token.
+        </p>
+        <Link href="/login" style={{ ...button, display: 'inline-block', marginTop: 24, textDecoration: 'none' }}>
+          ENTER ▸
+        </Link>
+      </div>
     </main>
   );
 }

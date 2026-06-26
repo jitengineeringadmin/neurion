@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { theme, card, input, button } from '../../lib/ui';
+import { MatrixRain } from '../../components/MatrixRain';
+import { ThemeToggle } from '../../components/ThemeToggle';
 
 export default function LoginPage() {
   const { login, register } = useAuth();
@@ -29,9 +31,16 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{ maxWidth: 380, margin: '0 auto', padding: '80px 24px' }}>
-      <h1 style={{ fontSize: 30, letterSpacing: -1 }}>
-        Neurion <span style={{ color: theme.accent }}>AI</span>
+    <main style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.16 }}>
+        <MatrixRain />
+      </div>
+      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 2 }}>
+        <ThemeToggle />
+      </div>
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: 380, margin: '0 auto', padding: '110px 24px' }}>
+      <h1 className="display neon" style={{ fontSize: 34, letterSpacing: '0.12em', color: 'var(--accent)' }}>
+        NEURION <span style={{ color: theme.text }}>AI</span>
       </h1>
       <div style={{ ...card, marginTop: 24 }}>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -68,6 +77,7 @@ export default function LoginPage() {
             {busy ? '...' : mode === 'login' ? 'Login' : 'Register'}
           </button>
         </form>
+      </div>
       </div>
     </main>
   );

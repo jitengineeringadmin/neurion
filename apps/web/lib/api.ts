@@ -44,8 +44,8 @@ export interface SseHandlers {
   onEvent: (event: string, data: any) => void;
 }
 
-export async function streamChat(body: unknown, handlers: SseHandlers): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/chat/stream`, {
+export async function streamSSE(path: string, body: unknown, handlers: SseHandlers): Promise<void> {
+  const res = await fetch(`${API_BASE}/api${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -81,3 +81,6 @@ export async function streamChat(body: unknown, handlers: SseHandlers): Promise<
     }
   }
 }
+
+export const streamChat = (body: unknown, handlers: SseHandlers) => streamSSE('/chat/stream', body, handlers);
+export const streamAgent = (goal: string, handlers: SseHandlers) => streamSSE('/agent/stream', { goal }, handlers);

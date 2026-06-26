@@ -13,12 +13,13 @@ import { NodesModule } from './nodes/nodes.module';
 import { JobsModule } from './jobs/jobs.module';
 import { CryptoModule } from './crypto/crypto.module';
 import { ComplianceModule } from './compliance/compliance.module';
+import { AgentModule } from './agent/agent.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env', '../../.env'] }),
     JwtModule.register({ global: true }),
     PrismaModule,
     AuditModule,
@@ -31,6 +32,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     JobsModule,
     CryptoModule,
     ComplianceModule,
+    AgentModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

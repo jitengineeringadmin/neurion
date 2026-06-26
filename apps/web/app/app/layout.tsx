@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { theme } from '../../lib/ui';
+import { ThemeToggle } from '../../components/ThemeToggle';
 
 const NAV = [
   ['/app/chat', 'Chat'],
+  ['/app/agent', 'Agent'],
   ['/app/dashboard', 'Dashboard'],
   ['/app/jobs', 'Jobs'],
   ['/app/nodes', 'Nodes'],
@@ -38,8 +40,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           gap: 4,
         }}
       >
-        <div style={{ fontSize: 20, fontWeight: 500, marginBottom: 20 }}>
-          Neurion <span style={{ color: theme.accent }}>AI</span>
+        <div className="display neon" style={{ fontSize: 22, marginBottom: 22, letterSpacing: '0.1em' }}>
+          NEURION <span style={{ color: theme.accent }}>AI</span>
         </div>
         {NAV.map(([href, label]) => (
           <Link
@@ -72,6 +74,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </Link>
         )}
         <div style={{ marginTop: 'auto', fontSize: 12, color: theme.muted }}>
+          <div style={{ marginBottom: 10 }}>
+            <ThemeToggle />
+          </div>
           <div style={{ marginBottom: 8 }}>{user.email}</div>
           <button
             onClick={() => {

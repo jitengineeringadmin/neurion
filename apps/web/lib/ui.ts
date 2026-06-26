@@ -1,50 +1,55 @@
+import type { CSSProperties } from 'react';
+
+// All colors are CSS variables -> auto dark/light (see app/globals.css).
 export const theme = {
-  bg: '#0b0d10',
-  surface: '#14171c',
-  surface2: '#1b1f26',
-  border: '#262b33',
-  text: '#e6e8eb',
-  muted: '#8b929c',
-  accent: '#3b82f6',
-  green: '#22c55e',
-  amber: '#f59e0b',
-  red: '#ef4444',
+  bg: 'var(--bg)',
+  surface: 'var(--surface)',
+  surface2: 'var(--surface-2)',
+  border: 'var(--border)',
+  text: 'var(--text)',
+  muted: 'var(--muted)',
+  accent: 'var(--accent)',
+  green: 'var(--green)',
+  amber: 'var(--amber)',
+  red: 'var(--red)',
 };
 
-export const card: React.CSSProperties = {
-  background: theme.surface,
-  border: `1px solid ${theme.border}`,
-  borderRadius: 12,
+export const card: CSSProperties = {
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
   padding: '16px 20px',
 };
 
-export const input: React.CSSProperties = {
-  background: theme.surface2,
-  border: `1px solid ${theme.border}`,
+export const input: CSSProperties = {
+  background: 'var(--surface-2)',
+  border: '1px solid var(--border)',
   borderRadius: 8,
-  color: theme.text,
+  color: 'var(--text)',
   padding: '10px 12px',
   fontSize: 14,
   width: '100%',
   outline: 'none',
 };
 
-export const button: React.CSSProperties = {
-  background: theme.accent,
-  border: 'none',
+export const button: CSSProperties = {
+  background: 'var(--accent)',
+  border: '1px solid var(--accent)',
   borderRadius: 8,
-  color: '#fff',
+  color: 'var(--bg)',
   padding: '10px 16px',
   fontSize: 14,
-  fontWeight: 500,
+  fontWeight: 600,
   cursor: 'pointer',
+  letterSpacing: '0.03em',
+  boxShadow: 'var(--glow)',
 };
 
-export const ghostButton: React.CSSProperties = {
+export const ghostButton: CSSProperties = {
   background: 'transparent',
-  border: `1px solid ${theme.border}`,
+  border: '1px solid var(--border)',
   borderRadius: 8,
-  color: theme.text,
+  color: 'var(--text)',
   padding: '8px 14px',
   fontSize: 14,
   cursor: 'pointer',

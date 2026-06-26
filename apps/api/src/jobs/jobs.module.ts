@@ -9,5 +9,6 @@ import { VerificationService } from './verification.service';
   imports: [NodesModule],
   controllers: [JobsController],
   providers: [JobsService, JobScheduler, VerificationService],
+  exports: [JobsService],
 })
 export class JobsModule {}

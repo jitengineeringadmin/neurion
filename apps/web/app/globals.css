@@ -1,0 +1,131 @@
+/* Neurion — Matrix theme (dark default + light), green/black phosphor palette. */
+:root {
+  --bg: #04070a;
+  --bg-deep: #02040a;
+  --surface: #0a1410;
+  --surface-2: #0f1d15;
+  --border: #1c3326;
+  --border-soft: #14271c;
+  --text: #d6ffe2;
+  --text-dim: #9ad6ab;
+  --muted: #5f9a72;
+  --accent: #00ff70;
+  --accent-dim: #16b85a;
+  --green: #00ff70;
+  --amber: #ffd23a;
+  --red: #ff5a6a;
+  --glow: 0 0 8px rgba(0, 255, 112, 0.45);
+  --radius: 10px;
+  --scanline: rgba(0, 255, 112, 0.03);
+}
+
+[data-theme='light'] {
+  --bg: #eef5ef;
+  --bg-deep: #e3eee5;
+  --surface: #ffffff;
+  --surface-2: #f1f9f3;
+  --border: #c4e0cb;
+  --border-soft: #d7ecdc;
+  --text: #07210f;
+  --text-dim: #1f5b32;
+  --muted: #4c7d5b;
+  --accent: #0a9b46;
+  --accent-dim: #0a9b46;
+  --green: #0a9b46;
+  --amber: #b07d09;
+  --red: #c92f3d;
+  --glow: 0 0 6px rgba(10, 155, 70, 0.25);
+  --scanline: rgba(10, 155, 70, 0.04);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+body {
+  font-family: var(--font-mono), ui-monospace, 'SFMono-Regular', monospace;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* faint CRT scanlines */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(0deg, transparent 0 2px, var(--scanline) 2px 3px);
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+}
+
+h1,
+h2,
+h3,
+.display {
+  font-family: var(--font-display), var(--font-mono), monospace;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-shadow: var(--glow);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+input:focus,
+textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: var(--glow);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-dim);
+}
+
+.neon {
+  text-shadow: var(--glow);
+}
+
+@keyframes flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+  20%, 24%, 55% { opacity: 0.7; }
+}
+.flicker {
+  animation: flicker 4s infinite;
+}
