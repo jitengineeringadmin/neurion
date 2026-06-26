@@ -66,7 +66,14 @@ export default function ChatPage() {
   async function createProject() {
     const name = window.prompt('Nome progetto?');
     if (!name) return;
-    const path = window.prompt('Cartella del progetto (es. C:/Users/Giacomo/Desktop/mio-progetto)?');
+    let path: string | null = null;
+    try {
+      const r = await api<{ path: string | null }>('/projects/pick-folder', { method: 'POST' });
+      path = r.path;
+    } catch {
+      /* dialog unavailable */
+    }
+    if (!path) path = window.prompt('Cartella del progetto (es. C:/Users/Giacomo/Desktop/mio-progetto)?');
     if (!path) return;
     await api('/projects', { method: 'POST', body: JSON.stringify({ name, path }) }).catch(() => undefined);
     void loadProjects();

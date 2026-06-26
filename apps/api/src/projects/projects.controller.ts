@@ -1,11 +1,37 @@
 import { Body, Controller, Delete, ForbiddenException, Get, Injectable, Param, Post } from '@nestjs/common';
 import { IsString, MaxLength } from 'class-validator';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
+
+const pexec = promisify(exec);
 
 @Injectable()
 export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Opens a native folder-picker on the host (this machine) and returns the chosen path. */
+  async pickFolder(): Promise<{ path: string | null }> {
+    if (process.platform !== 'win32') return { path: null };
+    const ps =
+      "Add-Type -AssemblyName System.Windows.Forms; " +
+      "$f = New-Object System.Windows.Forms.FolderBrowserDialog; " +
+      "$f.Description = 'Seleziona la cartella del progetto Neurion'; " +
+      "$f.ShowNewFolderButton = $true; " +
+      "$d = $f.ShowDialog([System.Windows.Forms.NativeWindow]::new()); " +
+      "if ($d -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($f.SelectedPath) }";
+    try {
+      const { stdout } = await pexec(
+        `powershell -STA -NoProfile -ExecutionPolicy Bypass -Command "${ps.replace(/"/g, '\\"')}"`,
+        { timeout: 120000, windowsHide: false },
+      );
+      const p = stdout.trim();
+      return { path: p ? p.replace(/\\/g, '/') : null };
+    } catch {
+      return { path: null };
+    }
+  }
 
   create(user: AuthUser, name: string, path: string) {
     return this.prisma.project.create({ data: { workspaceId: user.workspaceId, userId: user.sub, name, path } });
@@ -44,6 +70,11 @@ export class ProjectsController {
   @Get()
   list(@CurrentUser() user: AuthUser) {
     return this.projects.list(user);
+  }
+
+  @Post('pick-folder')
+  pickFolder() {
+    return this.projects.pickFolder();
   }
 
   @Delete(':id')
