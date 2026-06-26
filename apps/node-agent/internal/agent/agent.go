@@ -66,7 +66,11 @@ func (a *Agent) send(v any) error {
 }
 
 // Start connects, says hello, and runs the heartbeat + read loops until error.
-func (a *Agent) Start() error {
+func (a *Agent) Start() error { return a.StartCtx(context.Background()) }
+
+// StartCtx is Start with cancellation: when ctx is done, the connection closes
+// and the loops return.
+func (a *Agent) StartCtx(ctx context.Context) error {
 	wsURL := strings.Replace(a.cfg.Node.APIURL, "http", "ws", 1) + "/ws/nodes"
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
@@ -74,6 +78,10 @@ func (a *Agent) Start() error {
 	}
 	a.conn = conn
 	defer conn.Close()
+	go func() {
+		<-ctx.Done()
+		_ = conn.Close()
+	}()
 
 	if err := a.send(map[string]any{
 		"type":         "node.hello",
