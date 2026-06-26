@@ -62,13 +62,15 @@ export default function ChatPage() {
   }
 
   const [projects, setProjects] = useState<any[]>([]);
+  const [dragOver, setDragOver] = useState(false);
   const loadProjects = () => api<any[]>('/projects').then(setProjects).catch(() => undefined);
-  async function createProject() {
-    const name = window.prompt('Nome progetto?');
+  async function createProject(prefillName?: string) {
+    const name = prefillName || window.prompt('Nome progetto?');
     if (!name) return;
     let path: string | null = null;
     try {
-      const r = await api<{ path: string | null }>('/projects/pick-folder', { method: 'POST' });
+      const initial = projects[0]?.path; // open the picker near the last project
+      const r = await api<{ path: string | null }>('/projects/pick-folder', { method: 'POST', body: JSON.stringify({ initial }) });
       path = r.path;
     } catch {
       /* dialog unavailable */
@@ -77,6 +79,17 @@ export default function ChatPage() {
     if (!path) return;
     await api('/projects', { method: 'POST', body: JSON.stringify({ name, path }) }).catch(() => undefined);
     void loadProjects();
+  }
+
+  function handleFolderDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    let name = '';
+    const item = e.dataTransfer.items?.[0] as any;
+    const entry = item?.webkitGetAsEntry?.();
+    if (entry?.isDirectory) name = entry.name;
+    else if (e.dataTransfer.files?.[0]) name = e.dataTransfer.files[0].name.replace(/\.[^.]+$/, '');
+    void createProject(name || undefined);
   }
   async function newSessionInProject(projectId: string) {
     const conv = await api<any>('/chat/conversations', { method: 'POST', body: JSON.stringify({ title: 'Nuova chat' }) });
@@ -219,9 +232,20 @@ export default function ChatPage() {
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 56px)', gap: 14 }}>
-      <aside style={{ width: 230, flexShrink: 0, borderRight: `1px solid ${theme.border}`, paddingRight: 12, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <aside
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!dragOver) setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleFolderDrop}
+        style={{ width: 230, flexShrink: 0, borderRight: `1px solid ${dragOver ? theme.accent : theme.border}`, paddingRight: 12, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: dragOver ? 'var(--surface)' : 'transparent' }}
+      >
         <button onClick={newSession} style={{ ...ghostButton, textAlign: 'left', marginBottom: 6 }}>＋ Nuova sessione</button>
-        <button onClick={() => void createProject()} style={{ ...ghostButton, textAlign: 'left', marginBottom: 8, fontSize: 12 }}>＋ Progetto (cartella)</button>
+        <button onClick={() => void createProject()} style={{ ...ghostButton, textAlign: 'left', marginBottom: 4, fontSize: 12 }}>＋ Progetto (cartella)</button>
+        <div style={{ fontSize: 10, color: dragOver ? theme.accent : theme.muted, marginBottom: 8, textAlign: 'center' }}>
+          {dragOver ? '▼ rilascia la cartella' : 'o trascina una cartella qui'}
+        </div>
         {pinned.length > 0 && (
           <>
             <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '8px 0 4px' }}>Fissato</div>

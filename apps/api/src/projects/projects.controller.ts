@@ -2,6 +2,8 @@ import { Body, Controller, Delete, ForbiddenException, Get, Injectable, Param, P
 import { IsString, MaxLength } from 'class-validator';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 
@@ -12,13 +14,18 @@ export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Opens a native folder-picker on the host (this machine) and returns the chosen path. */
-  async pickFolder(): Promise<{ path: string | null }> {
+  async pickFolder(initial?: string): Promise<{ path: string | null }> {
     if (process.platform !== 'win32') return { path: null };
+    const home = process.env.USERPROFILE ?? '';
+    const seed =
+      initial && existsSync(initial) ? initial : home ? join(home, 'Desktop') : '';
+    const seedLine = seed ? `$f.SelectedPath = '${seed.replace(/'/g, "''")}'; ` : '';
     const ps =
       "Add-Type -AssemblyName System.Windows.Forms; " +
       "$f = New-Object System.Windows.Forms.FolderBrowserDialog; " +
       "$f.Description = 'Seleziona la cartella del progetto Neurion'; " +
       "$f.ShowNewFolderButton = $true; " +
+      seedLine +
       "$d = $f.ShowDialog([System.Windows.Forms.NativeWindow]::new()); " +
       "if ($d -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($f.SelectedPath) }";
     try {
@@ -73,8 +80,8 @@ export class ProjectsController {
   }
 
   @Post('pick-folder')
-  pickFolder() {
-    return this.projects.pickFolder();
+  pickFolder(@Body() dto: { initial?: string }) {
+    return this.projects.pickFolder(dto?.initial);
   }
 
   @Delete(':id')
