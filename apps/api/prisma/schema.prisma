@@ -825,6 +825,16 @@ enum AttachmentStatus {
 // G12 — Reward emission schedule
 // ============================================================================
 
+// Agent persistent memory — facts the agent was asked to remember, per user.
+model AgentMemory {
+  id        String   @id @default(cuid())
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
 model EmissionSchedule {
   id                  String   @id @default(cuid())
   epochKey            String   @unique // e.g. UTC yyyy-mm-dd

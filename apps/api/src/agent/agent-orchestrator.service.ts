@@ -5,6 +5,7 @@ import { ProviderResolverService } from '../ai/provider-resolver.service';
 import { ChatMsg } from '../ai/providers/ai-provider.interface';
 import { AgentToolsService } from './agent-tools.service';
 import { AgentApprovalService } from './agent-approval.service';
+import { AgentMemoryService } from './agent-memory.service';
 import { AgentAction, AgentTool, ToolCtx } from './agent.types';
 
 const MAX_STEPS = 6;
@@ -24,6 +25,7 @@ export class AgentOrchestratorService {
     private readonly resolver: ProviderResolverService,
     private readonly config: ConfigService,
     private readonly approvals: AgentApprovalService,
+    private readonly memory: AgentMemoryService,
   ) {}
 
   private requireApproval(): boolean {
@@ -49,7 +51,11 @@ export class AgentOrchestratorService {
     return tools;
   }
 
-  private systemPrompt(tools: AgentTool[]): string {
+  private systemPrompt(tools: AgentTool[], memories: string[] = []): string {
+    const memBlock =
+      memories.length > 0
+        ? '\n\nPersistent memory (facts you were told to remember):\n' + memories.map((m) => `- ${m}`).join('\n')
+        : '';
     const list = tools
       .map((t) => {
         const p = Object.entries(t.params).map(([k, d]) => `${k} (${d})`).join(', ');
@@ -72,8 +78,9 @@ export class AgentOrchestratorService {
       'For a multi-step goal, FIRST call set_plan with the list of steps, then work through',
       'them, calling update_plan(index, done=true) as you complete each. To scaffold a new',
       'project use create_project. To change several files at once use apply_patch.',
+      'You can remember(note) facts for future sessions and recall() them.',
       'Prefer finishing quickly. When you have enough information, return {"final": ...}.',
-    ].join('\n');
+    ].join('\n') + memBlock;
   }
 
   private async callLLM(messages: ChatMsg[]): Promise<string> {
@@ -118,8 +125,9 @@ export class AgentOrchestratorService {
   async run(goal: string, ctx: ToolCtx, isSub = false): Promise<string> {
     const tools = this.toolset(ctx);
     const byName = new Map(tools.map((t) => [t.name, t]));
+    const memories = ctx.depth === 0 ? (await this.memory.recent(ctx.user.sub, 15)).map((m) => m.content) : [];
     const messages: ChatMsg[] = [
-      { role: 'system', content: this.systemPrompt(tools) },
+      { role: 'system', content: this.systemPrompt(tools, memories) },
       { role: 'user', content: `GOAL: ${goal}` },
     ];
     const maxSteps = isSub ? SUB_MAX_STEPS : MAX_STEPS;

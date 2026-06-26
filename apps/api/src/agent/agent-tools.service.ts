@@ -9,6 +9,7 @@ import { CreditsService } from '../credits/credits.service';
 import { JobsService } from '../jobs/jobs.service';
 import { NodeGatewayService } from '../nodes/node-gateway.service';
 import { AuditService } from '../audit/audit.service';
+import { AgentMemoryService } from './agent-memory.service';
 import { AgentTool, ToolCtx } from './agent.types';
 
 const pexec = promisify(exec);
@@ -28,6 +29,7 @@ export class AgentToolsService {
     private readonly gateway: NodeGatewayService,
     private readonly audit: AuditService,
     private readonly config: ConfigService,
+    private readonly memory: AgentMemoryService,
   ) {}
 
   private fsEnabled(): boolean {
@@ -39,7 +41,37 @@ export class AgentToolsService {
   }
 
   tools(): AgentTool[] {
-    return [...this.networkTools(), ...this.fileTools(), ...this.devTools(), ...this.projectTools(), ...this.planTools()];
+    return [
+      ...this.networkTools(),
+      ...this.fileTools(),
+      ...this.devTools(),
+      ...this.projectTools(),
+      ...this.planTools(),
+      ...this.memoryTools(),
+    ];
+  }
+
+  private memoryTools(): AgentTool[] {
+    return [
+      {
+        name: 'remember',
+        description: 'Save a fact to persistent memory so you recall it in future sessions.',
+        params: { note: 'the fact to remember' },
+        run: async (args, ctx) => {
+          await this.memory.save(ctx.user.sub, String(args.note ?? ''));
+          return 'remembered';
+        },
+      },
+      {
+        name: 'recall',
+        description: 'List facts saved in persistent memory.',
+        params: {},
+        run: async (_a, ctx) => {
+          const m = await this.memory.recent(ctx.user.sub);
+          return m.length ? m.map((x) => '- ' + x.content).join('\n') : 'no memories';
+        },
+      },
+    ];
   }
 
   private planTools(): AgentTool[] {
