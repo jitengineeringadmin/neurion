@@ -1,10 +1,10 @@
 'use client';
 import { useState } from 'react';
-import { streamAgent } from '../../../lib/api';
-import { theme, card, input, button } from '../../../lib/ui';
+import { api, streamAgent } from '../../../lib/api';
+import { theme, card, input, button, ghostButton } from '../../../lib/ui';
 
 interface Step {
-  kind: 'start' | 'tool_call' | 'tool_result' | 'sub_start' | 'sub_end' | 'final' | 'error';
+  kind: 'start' | 'tool_call' | 'tool_result' | 'sub_start' | 'sub_end' | 'final' | 'error' | 'approval';
   depth: number;
   data: any;
 }
@@ -27,6 +27,9 @@ export default function AgentPage() {
             if (event === 'agent.tool_result') return [...s, { kind: 'tool_result', depth: d.depth, data: d }];
             if (event === 'agent.subagent.start') return [...s, { kind: 'sub_start', depth: d.depth, data: d }];
             if (event === 'agent.subagent.end') return [...s, { kind: 'sub_end', depth: d.depth, data: d }];
+            if (event === 'agent.approval_request') return [...s, { kind: 'approval', depth: d.depth, data: { ...d, resolved: null } }];
+            if (event === 'agent.approval_result')
+              return s.map((x) => (x.kind === 'approval' && x.data.id === d.id ? { ...x, data: { ...x.data, resolved: d.approved } } : x));
             if (event === 'agent.final') return [...s, { kind: 'final', depth: d.depth, data: d }];
             if (event === 'agent.error') return [...s, { kind: 'error', depth: 0, data: d }];
             return s;
@@ -38,6 +41,11 @@ export default function AgentPage() {
     } finally {
       setRunning(false);
     }
+  }
+
+  async function respond(id: string, approved: boolean) {
+    setSteps((s) => s.map((x) => (x.kind === 'approval' && x.data.id === id ? { ...x, data: { ...x.data, resolved: approved } } : x)));
+    await api('/agent/approve', { method: 'POST', body: JSON.stringify({ id, approved }) }).catch(() => undefined);
   }
 
   return (
@@ -63,6 +71,29 @@ export default function AgentPage() {
             {s.kind === 'start' && <Dim>▸ goal: {s.data.goal}</Dim>}
             {s.kind === 'sub_start' && <div style={{ color: theme.accent, fontSize: 13 }}>↳ sub-agent: {s.data.goal}</div>}
             {s.kind === 'sub_end' && <Dim>↳ sub-agent done</Dim>}
+            {s.kind === 'approval' && (
+              <div style={{ ...card, borderLeft: `2px solid ${theme.amber}`, padding: '10px 14px' }}>
+                <div style={{ color: theme.amber, fontSize: 12, marginBottom: 6 }}>⚠ approval required</div>
+                <div style={{ fontSize: 13, marginBottom: 8, wordBreak: 'break-word' }}>
+                  <span style={{ color: theme.accent }}>{s.data.tool}</span>
+                  <span style={{ color: theme.muted }}> ({JSON.stringify(s.data.args)})</span>
+                </div>
+                {s.data.resolved === null ? (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button style={{ ...button, padding: '6px 14px' }} onClick={() => void respond(s.data.id, true)}>
+                      Approve
+                    </button>
+                    <button style={ghostButton} onClick={() => void respond(s.data.id, false)}>
+                      Deny
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: s.data.resolved ? theme.green : theme.red }}>
+                    {s.data.resolved ? '✓ approved' : '✗ denied'}
+                  </div>
+                )}
+              </div>
+            )}
             {s.kind === 'tool_call' && (
               <div style={{ ...card, padding: '8px 12px', borderLeft: `2px solid ${theme.accent}` }}>
                 {s.data.thought && <div style={{ color: theme.muted, fontSize: 12, marginBottom: 4 }}>💭 {s.data.thought}</div>}

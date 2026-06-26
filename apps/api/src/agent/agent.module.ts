@@ -5,10 +5,11 @@ import { NodesModule } from '../nodes/nodes.module';
 import { AgentController } from './agent.controller';
 import { AgentToolsService } from './agent-tools.service';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
+import { AgentApprovalService } from './agent-approval.service';
 
 @Module({
   imports: [AiModule, JobsModule, NodesModule],
   controllers: [AgentController],
-  providers: [AgentToolsService, AgentOrchestratorService],
+  providers: [AgentToolsService, AgentOrchestratorService, AgentApprovalService],
 })
 export class AgentModule {}

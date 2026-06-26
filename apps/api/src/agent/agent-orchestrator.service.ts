@@ -1,13 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'node:crypto';
 import { ProviderResolverService } from '../ai/provider-resolver.service';
 import { ChatMsg } from '../ai/providers/ai-provider.interface';
 import { AgentToolsService } from './agent-tools.service';
+import { AgentApprovalService } from './agent-approval.service';
 import { AgentAction, AgentTool, ToolCtx } from './agent.types';
 
 const MAX_STEPS = 6;
 const MAX_DEPTH = 2;
 const SUB_MAX_STEPS = 4;
+// Tools that mutate the machine or execute code -> require human approval.
+const DANGEROUS = new Set(['run_command', 'write_file', 'edit_file']);
 
 @Injectable()
 export class AgentOrchestratorService {
@@ -17,7 +21,12 @@ export class AgentOrchestratorService {
     private readonly toolsService: AgentToolsService,
     private readonly resolver: ProviderResolverService,
     private readonly config: ConfigService,
+    private readonly approvals: AgentApprovalService,
   ) {}
+
+  private requireApproval(): boolean {
+    return String(this.config.get('AGENT_REQUIRE_APPROVAL') ?? 'true') !== 'false';
+  }
 
   private toolset(ctx: ToolCtx): AgentTool[] {
     const tools = [...this.toolsService.tools()];
@@ -125,6 +134,21 @@ export class AgentOrchestratorService {
       let observation: string;
       if (!tool) {
         observation = `error: unknown tool "${action.tool}". Available: ${[...byName.keys()].join(', ')}`;
+      } else if (this.requireApproval() && DANGEROUS.has(tool.name)) {
+        // human-in-the-loop: pause until the user approves or denies this action.
+        const approvalId = randomUUID();
+        ctx.emit('agent.approval_request', { id: approvalId, depth: ctx.depth, tool: tool.name, args: action.args ?? {} });
+        const approved = await this.approvals.wait(approvalId);
+        ctx.emit('agent.approval_result', { id: approvalId, tool: tool.name, approved });
+        if (!approved) {
+          observation = 'denied by user — action not executed. Choose a different approach or finish.';
+        } else {
+          try {
+            observation = await tool.run(action.args ?? {}, ctx);
+          } catch (e) {
+            observation = `error: ${(e as Error).message}`;
+          }
+        }
       } else {
         try {
           observation = await tool.run(action.args ?? {}, ctx);
