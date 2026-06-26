@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile, readdir, mkdir, stat, rm, rename } from 'node:fs/promises';
-import { dirname, join, basename } from 'node:path';
+import { dirname, join, basename, isAbsolute } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
 import { JobsService } from '../jobs/jobs.service';
@@ -34,6 +34,11 @@ export class AgentToolsService {
 
   private fsEnabled(): boolean {
     return String(this.config.get('AGENT_FS_ENABLED') ?? 'true') !== 'false';
+  }
+
+  /** Resolve a possibly-relative path against the project working directory. */
+  private resolve(ctx: ToolCtx, p: string): string {
+    return p && ctx.cwd && !isAbsolute(p) ? join(ctx.cwd, p) : p;
   }
 
   private async logAction(ctx: ToolCtx, action: string, data: Record<string, unknown>): Promise<void> {
@@ -155,7 +160,7 @@ export class AgentToolsService {
         run: async (args, ctx) => {
           const g = guard();
           if (g) return g;
-          const path = String(args.path ?? '');
+          const path = this.resolve(ctx, String(args.path ?? ''));
           if (!path) return 'error: path required';
           const type = String(args.type ?? 'node');
           const name = String(args.name ?? (basename(path) || 'app'));
@@ -245,7 +250,7 @@ export class AgentToolsService {
         run: async (args, ctx) => {
           const g = guard();
           if (g) return g;
-          const dir = String(args.dir ?? '.');
+          const dir = this.resolve(ctx, String(args.dir ?? '.'));
           const query = String(args.query ?? '');
           if (!query) return 'error: empty query';
           await this.logAction(ctx, 'search_files', { dir, query });
@@ -273,7 +278,7 @@ export class AgentToolsService {
         run: async (args, ctx) => {
           const g = guard();
           if (g) return g;
-          const dir = String(args.dir ?? '.');
+          const dir = this.resolve(ctx, String(args.dir ?? '.'));
           const pattern = String(args.pattern ?? '*');
           await this.logAction(ctx, 'find_files', { dir, pattern });
           const re = new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i');
@@ -309,9 +314,9 @@ export class AgentToolsService {
         name: 'stat_path',
         description: 'Get info about a file or directory (size, type, modified time).',
         params: { path: 'file or directory path' },
-        run: async (args, _ctx) => {
+        run: async (args, ctx) => {
           try {
-            const s = await stat(String(args.path ?? ''));
+            const s = await stat(this.resolve(ctx, String(args.path ?? '')));
             return JSON.stringify({ type: s.isDirectory() ? 'dir' : 'file', sizeBytes: s.size, modified: s.mtime.toISOString() });
           } catch (e) {
             return `error: ${(e as Error).message}`;
@@ -325,7 +330,7 @@ export class AgentToolsService {
         run: async (args, ctx) => {
           const g = guard();
           if (g) return g;
-          const path = String(args.path ?? '');
+          const path = this.resolve(ctx, String(args.path ?? ''));
           await this.logAction(ctx, 'make_dir', { path });
           try {
             await mkdir(path, { recursive: true });
@@ -342,7 +347,7 @@ export class AgentToolsService {
         run: async (args, ctx) => {
           const g = guard();
           if (g) return g;
-          const path = String(args.path ?? '');
+          const path = this.resolve(ctx, String(args.path ?? ''));
           await this.logAction(ctx, 'append_file', { path, bytes: String(args.content ?? '').length });
           try {
             await mkdir(dirname(path), { recursive: true });
@@ -361,8 +366,8 @@ export class AgentToolsService {
         run: async (args, ctx) => {
           const g = guard();
           if (g) return g;
-          const from = String(args.from ?? '');
-          const to = String(args.to ?? '');
+          const from = this.resolve(ctx, String(args.from ?? ''));
+          const to = this.resolve(ctx, String(args.to ?? ''));
           await this.logAction(ctx, 'move_path', { from, to });
           try {
             await rename(from, to);
@@ -379,7 +384,7 @@ export class AgentToolsService {
         run: async (args, ctx) => {
           const g = guard();
           if (g) return g;
-          const path = String(args.path ?? '');
+          const path = this.resolve(ctx, String(args.path ?? ''));
           await this.logAction(ctx, 'delete_path', { path });
           try {
             await rm(path, { recursive: true, force: true });
@@ -449,7 +454,7 @@ export class AgentToolsService {
         run: async (args, ctx) => {
           const g = guard();
           if (g) return g;
-          const path = String(args.path ?? '');
+          const path = this.resolve(ctx, String(args.path ?? ''));
           await this.logAction(ctx, 'read_file', { path });
           try {
             const content = await readFile(path, 'utf8');
@@ -466,7 +471,7 @@ export class AgentToolsService {
         run: async (args, ctx) => {
           const g = guard();
           if (g) return g;
-          const path = String(args.path ?? '');
+          const path = this.resolve(ctx, String(args.path ?? ''));
           await this.logAction(ctx, 'write_file', { path, bytes: String(args.content ?? '').length });
           try {
             await mkdir(dirname(path), { recursive: true });
@@ -484,7 +489,7 @@ export class AgentToolsService {
         run: async (args, ctx) => {
           const g = guard();
           if (g) return g;
-          const path = String(args.path ?? '');
+          const path = this.resolve(ctx, String(args.path ?? ''));
           const find = String(args.find ?? '');
           await this.logAction(ctx, 'edit_file', { path });
           try {
@@ -505,7 +510,7 @@ export class AgentToolsService {
         run: async (args, ctx) => {
           const g = guard();
           if (g) return g;
-          const path = String(args.path ?? '.');
+          const path = this.resolve(ctx, String(args.path ?? '.'));
           await this.logAction(ctx, 'list_dir', { path });
           try {
             const entries = await readdir(path, { withFileTypes: true });
@@ -523,7 +528,7 @@ export class AgentToolsService {
           const g = guard();
           if (g) return g;
           const command = String(args.command ?? '');
-          const cwd = args.cwd ? String(args.cwd) : process.cwd();
+          const cwd = args.cwd ? this.resolve(ctx, String(args.cwd)) : (ctx.cwd ?? process.cwd());
           await this.logAction(ctx, 'run_command', { command, cwd });
           try {
             await stat(cwd).catch(() => undefined);

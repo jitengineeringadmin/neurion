@@ -30,11 +30,15 @@ export class ChatService {
     });
   }
 
-  async updateConversation(user: AuthUser, id: string, data: { title?: string; pinned?: boolean }) {
+  async updateConversation(user: AuthUser, id: string, data: { title?: string; pinned?: boolean; projectId?: string | null }) {
     await this.getConversation(user, id);
     return this.prisma.chatConversation.update({
       where: { id },
-      data: { ...(data.title !== undefined ? { title: data.title } : {}), ...(data.pinned !== undefined ? { pinned: data.pinned } : {}) },
+      data: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.pinned !== undefined ? { pinned: data.pinned } : {}),
+        ...(data.projectId !== undefined ? { projectId: data.projectId } : {}),
+      },
     });
   }
 

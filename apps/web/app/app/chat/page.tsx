@@ -61,11 +61,33 @@ export default function ChatPage() {
     void loadConversations();
   }
 
+  const [projects, setProjects] = useState<any[]>([]);
+  const loadProjects = () => api<any[]>('/projects').then(setProjects).catch(() => undefined);
+  async function createProject() {
+    const name = window.prompt('Nome progetto?');
+    if (!name) return;
+    const path = window.prompt('Cartella del progetto (es. C:/Users/Giacomo/Desktop/mio-progetto)?');
+    if (!path) return;
+    await api('/projects', { method: 'POST', body: JSON.stringify({ name, path }) }).catch(() => undefined);
+    void loadProjects();
+  }
+  async function newSessionInProject(projectId: string) {
+    const conv = await api<any>('/chat/conversations', { method: 'POST', body: JSON.stringify({ title: 'Nuova chat' }) });
+    await api(`/chat/conversations/${conv.id}`, { method: 'PATCH', body: JSON.stringify({ projectId }) }).catch(() => undefined);
+    await loadConversations();
+    void selectConversation(conv.id);
+  }
+  async function assignProject(id: string, projectId: string | null) {
+    await api(`/chat/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ projectId }) }).catch(() => undefined);
+    void loadConversations();
+  }
+
   const refreshBalance = () =>
     api<{ balance: number }>('/credits/balance').then((b) => setBalance(b.balance)).catch(() => undefined);
   useEffect(() => {
     void refreshBalance();
     void loadConversations();
+    void loadProjects();
     void api<{ models: string[]; chatDefault: string | null }>('/ai/models')
       .then((r) => {
         setModels(r.models);
@@ -104,6 +126,8 @@ export default function ChatPage() {
     setBusy(true);
     setMessages((m) => [...m, { role: 'user', content: msg }, { role: 'assistant', content: '', agent: agentMode, trace: [], approval: null }]);
     const idx = messages.length + 1;
+    const activeConv = conversations.find((c) => c.id === convId);
+    const cwd = projects.find((p) => p.id === activeConv?.projectId)?.path as string | undefined;
     try {
       if (agentMode) {
         await streamAgent(
@@ -124,6 +148,7 @@ export default function ChatPage() {
           },
           },
           model || undefined,
+          cwd,
         );
         void refreshBalance();
       } else {
@@ -153,7 +178,6 @@ export default function ChatPage() {
   }
 
   const pinned = conversations.filter((c) => c.pinned);
-  const recent = conversations.filter((c) => !c.pinned);
   const Item = (c: any) => (
     <div
       key={c.id}
@@ -163,6 +187,24 @@ export default function ChatPage() {
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: convId === c.id ? theme.text : theme.muted }}>
         {c.title || 'Nuova chat'}
       </span>
+      <span
+        onClick={(e) => {
+          e.stopPropagation();
+          if (projects.length === 0) {
+            void createProject();
+            return;
+          }
+          const list = projects.map((p, i) => `${i + 1}. ${p.name}`).join('\n');
+          const sel = window.prompt('Assegna a progetto (numero, vuoto = nessuno):\n' + list);
+          if (sel === null) return;
+          const idx = parseInt(sel, 10) - 1;
+          void assignProject(c.id, projects[idx]?.id ?? null);
+        }}
+        title="assegna progetto"
+        style={{ color: theme.muted, fontSize: 12 }}
+      >
+        📁
+      </span>
       <span onClick={(e) => { e.stopPropagation(); void pinConv(c.id, !c.pinned); }} title="pin" style={{ color: c.pinned ? theme.accent : theme.muted, fontSize: 12 }}>{c.pinned ? '★' : '☆'}</span>
       <span onClick={(e) => { e.stopPropagation(); void delConv(c.id); }} title="delete" style={{ color: theme.muted, fontSize: 12 }}>✕</span>
     </div>
@@ -171,15 +213,28 @@ export default function ChatPage() {
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 56px)', gap: 14 }}>
       <aside style={{ width: 230, flexShrink: 0, borderRight: `1px solid ${theme.border}`, paddingRight: 12, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        <button onClick={newSession} style={{ ...ghostButton, textAlign: 'left', marginBottom: 8 }}>＋ Nuova sessione</button>
+        <button onClick={newSession} style={{ ...ghostButton, textAlign: 'left', marginBottom: 6 }}>＋ Nuova sessione</button>
+        <button onClick={() => void createProject()} style={{ ...ghostButton, textAlign: 'left', marginBottom: 8, fontSize: 12 }}>＋ Progetto (cartella)</button>
         {pinned.length > 0 && (
           <>
             <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '8px 0 4px' }}>Fissato</div>
             {pinned.map(Item)}
           </>
         )}
-        <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '10px 0 4px' }}>Recenti</div>
-        {recent.map(Item)}
+        {projects.map((p) => {
+          const items = conversations.filter((c) => !c.pinned && c.projectId === p.id);
+          return (
+            <div key={p.id}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '10px 0 4px', gap: 6 }}>
+                <span title={p.path} style={{ fontSize: 11, color: theme.accent, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📂 {p.name}</span>
+                <span onClick={() => void newSessionInProject(p.id)} title="nuova sessione nel progetto" style={{ cursor: 'pointer', color: theme.muted, fontSize: 15 }}>+</span>
+              </div>
+              {items.map(Item)}
+            </div>
+          );
+        })}
+        <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '10px 0 4px' }}>Non raggruppato</div>
+        {conversations.filter((c) => !c.pinned && !c.projectId).map(Item)}
         {conversations.length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 8px' }}>Nessuna sessione</div>}
       </aside>
 

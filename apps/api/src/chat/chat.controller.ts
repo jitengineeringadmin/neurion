@@ -16,6 +16,9 @@ class PatchConversationDto {
   @IsOptional()
   @IsBoolean()
   pinned?: boolean;
+
+  @IsOptional()
+  projectId?: string | null;
 }
 
 @Controller('chat')

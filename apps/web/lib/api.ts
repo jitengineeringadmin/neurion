@@ -83,5 +83,5 @@ export async function streamSSE(path: string, body: unknown, handlers: SseHandle
 }
 
 export const streamChat = (body: unknown, handlers: SseHandlers) => streamSSE('/chat/stream', body, handlers);
-export const streamAgent = (goal: string, handlers: SseHandlers, model?: string) =>
-  streamSSE('/agent/stream', { goal, model }, handlers);
+export const streamAgent = (goal: string, handlers: SseHandlers, model?: string, cwd?: string) =>
+  streamSSE('/agent/stream', { goal, model, cwd }, handlers);

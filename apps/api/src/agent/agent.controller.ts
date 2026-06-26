@@ -13,6 +13,10 @@ class RunAgentDto {
   @IsOptional()
   @IsString()
   model?: string;
+
+  @IsOptional()
+  @IsString()
+  cwd?: string;
 }
 
 class ApproveDto {
@@ -42,8 +46,8 @@ export class AgentController {
     };
 
     try {
-      emit('agent.start', { goal: dto.goal, model: dto.model ?? null });
-      const answer = await this.orchestrator.run(dto.goal, { user, emit, depth: 0, model: dto.model });
+      emit('agent.start', { goal: dto.goal, model: dto.model ?? null, cwd: dto.cwd ?? null });
+      const answer = await this.orchestrator.run(dto.goal, { user, emit, depth: 0, model: dto.model, cwd: dto.cwd });
       emit('agent.done', { answer });
     } catch (err) {
       emit('agent.error', { message: (err as Error).message });

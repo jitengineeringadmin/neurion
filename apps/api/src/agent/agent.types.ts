@@ -7,6 +7,7 @@ export interface ToolCtx {
   emit: AgentEmit;
   depth: number;
   model?: string;
+  cwd?: string; // project working directory; relative paths + run_command resolve here
 }
 
 export interface AgentTool {

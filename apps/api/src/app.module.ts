@@ -14,6 +14,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { CryptoModule } from './crypto/crypto.module';
 import { ComplianceModule } from './compliance/compliance.module';
 import { AgentModule } from './agent/agent.module';
+import { ProjectsModule } from './projects/projects.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
@@ -33,6 +34,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     CryptoModule,
     ComplianceModule,
     AgentModule,
+    ProjectsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

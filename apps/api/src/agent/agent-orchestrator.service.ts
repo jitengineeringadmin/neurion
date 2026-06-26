@@ -51,11 +51,14 @@ export class AgentOrchestratorService {
     return tools;
   }
 
-  private systemPrompt(tools: AgentTool[], memories: string[] = []): string {
+  private systemPrompt(tools: AgentTool[], memories: string[] = [], cwd?: string): string {
     const memBlock =
       memories.length > 0
         ? '\n\nPersistent memory (facts you were told to remember):\n' + memories.map((m) => `- ${m}`).join('\n')
         : '';
+    const cwdBlock = cwd
+      ? `\n\nProject working directory: ${cwd}\nRelative file paths and run_command resolve inside this directory. Prefer relative paths.`
+      : '';
     const list = tools
       .map((t) => {
         const p = Object.entries(t.params).map(([k, d]) => `${k} (${d})`).join(', ');
@@ -80,7 +83,7 @@ export class AgentOrchestratorService {
       'project use create_project. To change several files at once use apply_patch.',
       'You can remember(note) facts for future sessions and recall() them.',
       'Prefer finishing quickly. When you have enough information, return {"final": ...}.',
-    ].join('\n') + memBlock;
+    ].join('\n') + cwdBlock + memBlock;
   }
 
   private async callLLM(messages: ChatMsg[], override?: string): Promise<string> {
@@ -127,7 +130,7 @@ export class AgentOrchestratorService {
     const byName = new Map(tools.map((t) => [t.name, t]));
     const memories = ctx.depth === 0 ? (await this.memory.recent(ctx.user.sub, 15)).map((m) => m.content) : [];
     const messages: ChatMsg[] = [
-      { role: 'system', content: this.systemPrompt(tools, memories) },
+      { role: 'system', content: this.systemPrompt(tools, memories, ctx.cwd) },
       { role: 'user', content: `GOAL: ${goal}` },
     ];
     const maxSteps = isSub ? SUB_MAX_STEPS : MAX_STEPS;

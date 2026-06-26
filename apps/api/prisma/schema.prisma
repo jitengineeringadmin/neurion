@@ -349,6 +349,7 @@ model ChatConversation {
   mode             ChatMode        @default(AUTO)
   privacyLevel     JobPrivacyLevel @default(VERIFIED_ONLY) // G2: by-default floor
   pinned           Boolean         @default(false)
+  projectId        String?
   openTierConsentId String?                                // G2
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
@@ -825,6 +826,18 @@ enum AttachmentStatus {
 // ============================================================================
 // G12 — Reward emission schedule
 // ============================================================================
+
+// A project binds chat sessions to a folder on disk (the agent's working dir).
+model Project {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  name        String
+  path        String
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
 
 // Agent persistent memory — facts the agent was asked to remember, per user.
 model AgentMemory {
