@@ -81,6 +81,24 @@ function ChatInner() {
     await api('/agent/approve', { method: 'POST', body: JSON.stringify({ id, approved }) }).catch(() => undefined);
   }
 
+  // Stream an agent run into the assistant message at `idx` (file/shell tools, project cwd).
+  async function streamAgentInto(idx: number, goal: string) {
+    await streamAgent(goal, {
+      onEvent: (event, d) => patch(idx, (a) => {
+        a.trace = a.trace ?? [];
+        if (event === 'agent.plan') a.trace.push('📋 ' + d.steps.map((s: any) => s.text).join(' · '));
+        else if (event === 'agent.tool_call') a.trace.push(`⚙ ${d.tool} ${JSON.stringify(d.args).slice(0, 80)}`);
+        else if (event === 'agent.tool_result') a.trace.push(`⟵ ${String(d.result).slice(0, 110)}`);
+        else if (event === 'agent.subagent.start') a.trace.push('↳ sub-agent: ' + d.goal);
+        else if (event === 'agent.approval_request') a.approval = { id: d.id, tool: d.tool, args: d.args, resolved: null };
+        else if (event === 'agent.approval_result' && a.approval) a.approval = { ...a.approval, resolved: d.approved };
+        else if (event === 'agent.final') a.content = d.text;
+        else if (event === 'agent.error') a.content = `⚠️ ${d.message}`;
+      }),
+    }, model || undefined, cwd);
+    void refreshBalance();
+  }
+
   async function send() {
     const msg = text.trim();
     if (!msg || busy) return;
@@ -90,20 +108,7 @@ function ChatInner() {
     const idx = messages.length + 1;
     try {
       if (agentMode) {
-        await streamAgent(msg, {
-          onEvent: (event, d) => patch(idx, (a) => {
-            a.trace = a.trace ?? [];
-            if (event === 'agent.plan') a.trace.push('📋 ' + d.steps.map((s: any) => s.text).join(' · '));
-            else if (event === 'agent.tool_call') a.trace.push(`⚙ ${d.tool} ${JSON.stringify(d.args).slice(0, 80)}`);
-            else if (event === 'agent.tool_result') a.trace.push(`⟵ ${String(d.result).slice(0, 110)}`);
-            else if (event === 'agent.subagent.start') a.trace.push('↳ sub-agent: ' + d.goal);
-            else if (event === 'agent.approval_request') a.approval = { id: d.id, tool: d.tool, args: d.args, resolved: null };
-            else if (event === 'agent.approval_result' && a.approval) a.approval = { ...a.approval, resolved: d.approved };
-            else if (event === 'agent.final') a.content = d.text;
-            else if (event === 'agent.error') a.content = `⚠️ ${d.message}`;
-          }),
-        }, model || undefined, cwd);
-        void refreshBalance();
+        await streamAgentInto(idx, msg);
       } else {
         await streamChat({ message: msg, conversationId: convId, preferredModel: model || undefined }, {
           onEvent: (event, data) => patch(idx, (a) => {
@@ -128,6 +133,26 @@ function ChatInner() {
     }
   }
 
+  // Quick action: analyze the bound project folder. Plain chat can't read files,
+  // so this forces Agent mode (read-only) and runs a folder-scoped goal.
+  async function analyzeFolder() {
+    if (!cwd || busy) return;
+    setAgentMode(true);
+    setBusy(true);
+    const goal =
+      `Analizza la cartella del progetto: ${cwd}. Usa list_dir per elencare file e sottocartelle, leggi i file chiave con read_file, ` +
+      `poi spiegami struttura, stack tecnologico e scopo del progetto in un riassunto chiaro. Sola lettura: non creare, modificare o eseguire nulla.`;
+    setMessages((m) => [...m, { role: 'user', content: `📂 Analizza la cartella` }, { role: 'assistant', content: '', agent: true, trace: [], approval: null }]);
+    const idx = messages.length + 1;
+    try {
+      await streamAgentInto(idx, goal);
+    } catch (e) {
+      patch(idx, (a) => (a.content = `⚠️ ${(e as Error).message}`));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -137,6 +162,16 @@ function ChatInner() {
             {model && !models.includes(model) && <option value={model}>{model}</option>}
             {models.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
+          {cwd && (
+            <button
+              onClick={() => void analyzeFolder()}
+              disabled={busy}
+              title={`Analizza ${cwd} con l’agent (sola lettura)`}
+              style={{ background: 'transparent', color: theme.accent, border: `1px solid ${theme.accent}`, borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}
+            >
+              📂 Analizza cartella
+            </button>
+          )}
           <button onClick={() => setAgentMode((v) => !v)} style={{ background: agentMode ? theme.accent : 'transparent', color: agentMode ? 'var(--bg)' : theme.muted, border: `1px solid ${agentMode ? theme.accent : theme.border}`, borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer' }}>🤖 Agent {agentMode ? 'on' : 'off'}</button>
           <div style={{ fontSize: 13, color: theme.muted }}>credits: <span style={{ color: theme.text }}>{balance ?? '…'}</span></div>
         </div>
