@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Logger, Param, Patch, Post, Res } from '
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { Response } from 'express';
 import { ChatService } from './chat.service';
-import { AiRouterService } from '../ai/ai-router.service';
+import { AiRouterService, RoutePlan } from '../ai/ai-router.service';
 import { CreditsService } from '../credits/credits.service';
 import { MockProvider } from '../ai/providers/mock.provider';
 import { CreateConversationDto, EstimateDto, StreamChatDto } from './dto/chat.dto';
@@ -103,6 +103,7 @@ export class ChatController {
         message: dto.message,
         conversationPrivacy: dto.privacyLevel ?? conv.privacyLevel,
         hasLiveOpenTierConsent: false,
+        preferredModel: dto.preferredModel,
       });
       const cost = plan.estimate.estCredits;
       // user-chosen model overrides the default for real (non-mock) providers.
@@ -158,16 +159,33 @@ export class ChatController {
         }
       }
 
-      const effectivePlan = { ...plan, provider: usedProvider, model: usedModel };
+      // If the planned (FAST) node failed before any token, we fell back to the
+      // mock provider — record the route honestly (FALLBACK/INTERNAL), not the
+      // dead node, so the audit trail and reward reflect what actually served.
+      const servedByNode = usedProvider === plan.provider;
+      const effectivePlan: RoutePlan = servedByNode
+        ? { ...plan, provider: usedProvider, model: usedModel }
+        : { ...plan, provider: usedProvider, model: usedModel, lane: 'FALLBACK', servedTrustLevel: 'INTERNAL', responseTrusted: true, nodeId: undefined };
       const assistant = await this.chat.addAssistantMessage(conv.id, full, effectivePlan, cost, firstTokenMs);
       await this.credits.spend(user.sub, cost, 'chat.fallback.small', { chatMessageId: assistant.id });
+
+      // Reward the serving node owner (earn NRN) only when the realtime node
+      // actually produced the reply — never on the mock fallback.
+      let nodeReward = 0;
+      if (servedByNode) {
+        nodeReward = await this.router
+          .rewardRealtimeServe(plan, full.length, `realtime:${assistant.id}`)
+          .catch(() => 0);
+      }
 
       send('final', {
         messageId: assistant.id,
         conversationId: conv.id,
         costCredits: cost,
         firstTokenMs,
-        lane: plan.lane,
+        lane: effectivePlan.lane,
+        servedBy: servedByNode ? plan.nodeId : undefined,
+        nodeReward,
         balance: balance - cost,
       });
       res.end();

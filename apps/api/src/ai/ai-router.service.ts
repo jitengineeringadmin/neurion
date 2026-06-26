@@ -12,6 +12,8 @@ export interface RoutePlan {
   lane: JobLane;
   provider: AiProvider;
   model: string;
+  /** Serving realtime node (FAST lane only) — used to reward the node owner. */
+  nodeId?: string;
   effectivePrivacy: JobPrivacyLevel;
   requestedPrivacy: JobPrivacyLevel;
   routeReason: RouteReason;
@@ -26,6 +28,8 @@ export interface RouteInput {
   conversationPrivacy: JobPrivacyLevel;
   hasLiveOpenTierConsent: boolean;
   attachmentBytes?: number;
+  /** Model the user picked; used to find a warm node that has it loaded. */
+  preferredModel?: string;
 }
 
 /**
@@ -75,13 +79,15 @@ export class AiRouterService {
     // level satisfies the effective privacy (G2). COMMUNITY is excluded by the
     // VERIFIED_ONLY default unless the user opted down to PUBLIC.
     if (!estimate.isHeavy) {
-      const preferredModel = this.config.get<string>('AI_DEFAULT_CHAT_MODEL') ?? 'llama3.1:8b';
-      const warm = await this.realtimePool.findWarm(preferredModel, eff.level);
+      const wantModel =
+        input.preferredModel || this.config.get<string>('AI_DEFAULT_CHAT_MODEL') || 'llama3.1:8b';
+      const warm = await this.realtimePool.findWarm(wantModel, eff.level);
       if (warm) {
         return {
           lane: 'FAST',
           provider: warm.provider,
           model: warm.model,
+          nodeId: warm.nodeId,
           effectivePrivacy: eff.level,
           requestedPrivacy: input.conversationPrivacy,
           routeReason: eff.reason,
@@ -110,5 +116,15 @@ export class AiRouterService {
       estimate,
       responseTrusted: true, // internal provider is trusted
     };
+  }
+
+  /**
+   * Reward the owner of a node that served a FAST-lane chat (earn NRN for serving,
+   * e.g. a ds4/DeepSeek-V4 node). No-op unless the plan was actually served by a
+   * realtime node. Idempotent per message via `ref`.
+   */
+  async rewardRealtimeServe(plan: RoutePlan, outputChars: number, ref: string): Promise<number> {
+    if (plan.lane !== 'FAST' || !plan.nodeId || outputChars <= 0) return 0;
+    return this.realtimePool.rewardServe(plan.nodeId, outputChars, ref);
   }
 }

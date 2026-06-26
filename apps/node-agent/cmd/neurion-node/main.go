@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jit-engineering/neurion/node-agent/internal/agent"
@@ -47,6 +48,14 @@ func main() {
 func usage() {
 	fmt.Println("neurion-node", version)
 	fmt.Println("usage: neurion-node <register|start|status|benchmark|warmup|test-job|test-chat>")
+	fmt.Println("  register --realtime --realtime-base-url <url> [--realtime-models a,b]  # serve chat, earn NRN")
+}
+
+func orAuto(s string) string {
+	if strings.TrimSpace(s) == "" {
+		return "(auto-discover)"
+	}
+	return s
 }
 
 func httpJSON(method, url string, body any, token string, out any) error {
@@ -82,6 +91,11 @@ func cmdRegister(args []string) {
 	email := fs.String("email", os.Getenv("NODE_EMAIL"), "owner email")
 	password := fs.String("password", os.Getenv("NODE_PASSWORD"), "owner password")
 	out := fs.String("config", "neurion-node.yaml", "config output path")
+	realtime := fs.Bool("realtime", false, "serve realtime chat (FAST lane) and earn NRN")
+	rtProvider := fs.String("realtime-provider", "ds4", "realtime backend label (ds4 | openai_compatible)")
+	rtBaseURL := fs.String("realtime-base-url", "http://localhost:11434/v1", "OpenAI-compatible backend: ds4-server (e.g. http://localhost:8080/v1) or ollama")
+	rtModels := fs.String("realtime-models", "", "comma-separated model ids; empty = auto-discover from the backend's /models")
+	rtKey := fs.String("realtime-api-key", "local-dev", "bearer token for the realtime backend")
 	_ = fs.Parse(args)
 
 	if *email == "" || *password == "" {
@@ -104,19 +118,35 @@ func cmdRegister(args []string) {
 		log.Fatal(err)
 	}
 
+	modes := []string{"grid"}
+	rt := config.Realtime{Enabled: false, Provider: "openai_compatible", BaseURL: "http://localhost:11434/v1", APIKey: "local-dev"}
+	if *realtime {
+		modes = []string{"grid", "realtime"}
+		var models []string
+		for _, m := range strings.Split(*rtModels, ",") {
+			if s := strings.TrimSpace(m); s != "" {
+				models = append(models, s)
+			}
+		}
+		rt = config.Realtime{Enabled: true, Provider: *rtProvider, BaseURL: *rtBaseURL, APIKey: *rtKey, Models: models}
+	}
+
 	cfg := &config.Config{}
 	cfg.Node = config.Node{
 		Name:    *name,
 		APIURL:  *api,
 		NodeID:  reg.NodeID,
 		NodeKey: reg.NodeKey,
-		Modes:   []string{"grid"},
+		Modes:   modes,
 	}
-	cfg.Realtime = config.Realtime{Enabled: false, Provider: "openai_compatible", BaseURL: "http://localhost:11434/v1", APIKey: "local-dev"}
+	cfg.Realtime = rt
 	if err := cfg.Save(*out); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("registered node %s — config written to %s\n", reg.NodeID, *out)
+	if *realtime {
+		fmt.Printf("realtime serving enabled via %s (%s); models: %s\n", *rtBaseURL, *rtProvider, orAuto(*rtModels))
+	}
 }
 
 func cmdStart(args []string) {
