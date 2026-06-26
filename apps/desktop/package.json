@@ -1,0 +1,25 @@
+{
+  "name": "@neurion/desktop",
+  "version": "1.2.0",
+  "private": true,
+  "description": "Neurion desktop app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "lint": "echo \"(desktop) no lint\" && exit 0",
+    "test": "echo \"(desktop) no tests\" && exit 0"
+  },
+  "devDependencies": {
+    "electron": "^31.7.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "engineering.jit.neurion",
+    "productName": "Neurion",
+    "directories": { "output": "dist-installer", "buildResources": "build" },
+    "files": ["main.js", "preload.js", "splash.html", "build/**"],
+    "win": { "target": "nsis", "icon": "build/icon.ico" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "perMachine": false }
+  }
+}

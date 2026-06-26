@@ -64,31 +64,51 @@ export default function ChatPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const loadProjects = () => api<any[]>('/projects').then(setProjects).catch(() => undefined);
+  async function createProjectWithPath(name: string, path: string) {
+    await api('/projects', { method: 'POST', body: JSON.stringify({ name, path }) }).catch(() => undefined);
+    void loadProjects();
+  }
+
   async function createProject(prefillName?: string) {
     const name = prefillName || window.prompt('Nome progetto?');
     if (!name) return;
     let path: string | null = null;
-    try {
-      const initial = projects[0]?.path; // open the picker near the last project
-      const r = await api<{ path: string | null }>('/projects/pick-folder', { method: 'POST', body: JSON.stringify({ initial }) });
-      path = r.path;
-    } catch {
-      /* dialog unavailable */
+    const initial = projects[0]?.path; // open the picker near the last project
+    const neurion = (window as any).neurion;
+    if (neurion?.pickFolder) {
+      // native Electron dialog
+      try {
+        const r = await neurion.pickFolder(initial);
+        path = r?.path ?? null;
+      } catch {
+        /* cancelled */
+      }
+    } else {
+      try {
+        const r = await api<{ path: string | null }>('/projects/pick-folder', { method: 'POST', body: JSON.stringify({ initial }) });
+        path = r.path;
+      } catch {
+        /* dialog unavailable */
+      }
     }
     if (!path) path = window.prompt('Cartella del progetto (es. C:/Users/Giacomo/Desktop/mio-progetto)?');
     if (!path) return;
-    await api('/projects', { method: 'POST', body: JSON.stringify({ name, path }) }).catch(() => undefined);
-    void loadProjects();
+    await createProjectWithPath(name, path);
   }
 
   function handleFolderDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
+    const f = e.dataTransfer.files?.[0] as any;
+    if (f?.path) {
+      // Electron exposes the real absolute path of a dropped folder.
+      void createProjectWithPath(f.name || 'progetto', String(f.path).replace(/\\/g, '/'));
+      return;
+    }
     let name = '';
     const item = e.dataTransfer.items?.[0] as any;
     const entry = item?.webkitGetAsEntry?.();
     if (entry?.isDirectory) name = entry.name;
-    else if (e.dataTransfer.files?.[0]) name = e.dataTransfer.files[0].name.replace(/\.[^.]+$/, '');
     void createProject(name || undefined);
   }
   async function newSessionInProject(projectId: string) {
