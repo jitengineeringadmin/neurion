@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Logger, Param, Post, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Logger, Param, Patch, Post, Res } from '@nestjs/common';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { Response } from 'express';
 import { ChatService } from './chat.service';
 import { AiRouterService } from '../ai/ai-router.service';
@@ -6,6 +7,16 @@ import { CreditsService } from '../credits/credits.service';
 import { MockProvider } from '../ai/providers/mock.provider';
 import { CreateConversationDto, EstimateDto, StreamChatDto } from './dto/chat.dto';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
+
+class PatchConversationDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  pinned?: boolean;
+}
 
 @Controller('chat')
 export class ChatController {
@@ -35,6 +46,16 @@ export class ChatController {
   @Get('conversations/:id/messages')
   listMessages(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.chat.listMessages(user, id);
+  }
+
+  @Patch('conversations/:id')
+  updateConversation(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: PatchConversationDto) {
+    return this.chat.updateConversation(user, id, dto);
+  }
+
+  @Delete('conversations/:id')
+  removeConversation(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.chat.removeConversation(user, id);
   }
 
   @Post('estimate')

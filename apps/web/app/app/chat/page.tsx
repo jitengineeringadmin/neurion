@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { api, streamChat, streamAgent } from '../../../lib/api';
-import { theme, input, button } from '../../../lib/ui';
+import { theme, input, button, ghostButton } from '../../../lib/ui';
 
 interface Approval {
   id: string;
@@ -28,12 +28,44 @@ export default function ChatPage() {
   const [balance, setBalance] = useState<number | null>(null);
   const [models, setModels] = useState<string[]>([]);
   const [model, setModel] = useState<string>('');
+  const [conversations, setConversations] = useState<any[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+
+  const loadConversations = () =>
+    api<any[]>('/chat/conversations').then(setConversations).catch(() => undefined);
+
+  async function selectConversation(id: string) {
+    setConvId(id);
+    try {
+      const msgs = await api<any[]>(`/chat/conversations/${id}/messages`);
+      setMessages(
+        msgs
+          .filter((m) => m.role === 'USER' || m.role === 'ASSISTANT')
+          .map((m) => ({ role: m.role === 'ASSISTANT' ? 'assistant' : 'user', content: m.content })),
+      );
+    } catch {
+      setMessages([]);
+    }
+  }
+  function newSession() {
+    setConvId(undefined);
+    setMessages([]);
+  }
+  async function pinConv(id: string, pinned: boolean) {
+    await api(`/chat/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ pinned }) }).catch(() => undefined);
+    void loadConversations();
+  }
+  async function delConv(id: string) {
+    await api(`/chat/conversations/${id}`, { method: 'DELETE' }).catch(() => undefined);
+    if (convId === id) newSession();
+    void loadConversations();
+  }
 
   const refreshBalance = () =>
     api<{ balance: number }>('/credits/balance').then((b) => setBalance(b.balance)).catch(() => undefined);
   useEffect(() => {
     void refreshBalance();
+    void loadConversations();
     void api<{ models: string[]; chatDefault: string | null }>('/ai/models')
       .then((r) => {
         setModels(r.models);
@@ -116,11 +148,42 @@ export default function ChatPage() {
       patch(idx, (a) => (a.content = `⚠️ ${(e as Error).message}`));
     } finally {
       setBusy(false);
+      void loadConversations();
     }
   }
 
+  const pinned = conversations.filter((c) => c.pinned);
+  const recent = conversations.filter((c) => !c.pinned);
+  const Item = (c: any) => (
+    <div
+      key={c.id}
+      onClick={() => void selectConversation(c.id)}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 8, cursor: 'pointer', background: convId === c.id ? theme.surface : 'transparent' }}
+    >
+      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: convId === c.id ? theme.text : theme.muted }}>
+        {c.title || 'Nuova chat'}
+      </span>
+      <span onClick={(e) => { e.stopPropagation(); void pinConv(c.id, !c.pinned); }} title="pin" style={{ color: c.pinned ? theme.accent : theme.muted, fontSize: 12 }}>{c.pinned ? '★' : '☆'}</span>
+      <span onClick={(e) => { e.stopPropagation(); void delConv(c.id); }} title="delete" style={{ color: theme.muted, fontSize: 12 }}>✕</span>
+    </div>
+  );
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 56px)' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 56px)', gap: 14 }}>
+      <aside style={{ width: 230, flexShrink: 0, borderRight: `1px solid ${theme.border}`, paddingRight: 12, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <button onClick={newSession} style={{ ...ghostButton, textAlign: 'left', marginBottom: 8 }}>＋ Nuova sessione</button>
+        {pinned.length > 0 && (
+          <>
+            <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '8px 0 4px' }}>Fissato</div>
+            {pinned.map(Item)}
+          </>
+        )}
+        <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '10px 0 4px' }}>Recenti</div>
+        {recent.map(Item)}
+        {conversations.length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 8px' }}>Nessuna sessione</div>}
+      </aside>
+
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h2 style={{ margin: 0, fontSize: 20 }}>Chat</h2>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
@@ -236,6 +299,7 @@ export default function ChatPage() {
         <button style={{ ...button, opacity: busy ? 0.6 : 1 }} onClick={() => void send()} disabled={busy}>
           {agentMode ? 'Run' : 'Send'}
         </button>
+      </div>
       </div>
     </div>
   );

@@ -26,8 +26,25 @@ export class ChatService {
   async listConversations(user: AuthUser) {
     return this.prisma.chatConversation.findMany({
       where: { userId: user.sub },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
     });
+  }
+
+  async updateConversation(user: AuthUser, id: string, data: { title?: string; pinned?: boolean }) {
+    await this.getConversation(user, id);
+    return this.prisma.chatConversation.update({
+      where: { id },
+      data: { ...(data.title !== undefined ? { title: data.title } : {}), ...(data.pinned !== undefined ? { pinned: data.pinned } : {}) },
+    });
+  }
+
+  async removeConversation(user: AuthUser, id: string) {
+    await this.getConversation(user, id);
+    await this.prisma.$transaction([
+      this.prisma.chatMessage.deleteMany({ where: { conversationId: id } }),
+      this.prisma.chatConversation.delete({ where: { id } }),
+    ]);
+    return { ok: true };
   }
 
   async getConversation(user: AuthUser, id: string): Promise<ChatConversation> {
