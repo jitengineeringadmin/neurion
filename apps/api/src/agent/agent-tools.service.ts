@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile, readdir, mkdir, stat, rm, rename } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, join, basename } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
 import { JobsService } from '../jobs/jobs.service';
@@ -39,7 +39,150 @@ export class AgentToolsService {
   }
 
   tools(): AgentTool[] {
-    return [...this.networkTools(), ...this.fileTools(), ...this.devTools()];
+    return [...this.networkTools(), ...this.fileTools(), ...this.devTools(), ...this.projectTools(), ...this.planTools()];
+  }
+
+  private planTools(): AgentTool[] {
+    return [
+      {
+        name: 'set_plan',
+        description: 'Set a step-by-step plan for a multi-step goal. Call this first for non-trivial goals.',
+        params: { steps: 'array of short step descriptions' },
+        run: async (args, ctx) => {
+          const steps = Array.isArray(args.steps) ? (args.steps as unknown[]).map(String) : [];
+          ctx.emit('agent.plan', { steps: steps.map((text) => ({ text, done: false })) });
+          return `plan set with ${steps.length} step(s)`;
+        },
+      },
+      {
+        name: 'update_plan',
+        description: 'Mark a plan step as done (0-based index).',
+        params: { index: 'step index', done: 'true/false' },
+        run: async (args, ctx) => {
+          ctx.emit('agent.plan_update', { index: Number(args.index ?? 0), done: args.done !== false });
+          return `step ${Number(args.index ?? 0)} updated`;
+        },
+      },
+      {
+        name: 'read_many_files',
+        description: 'Read several files at once. Returns each prefixed by its path.',
+        params: { paths: 'array of file paths' },
+        run: async (args, ctx) => {
+          const g = this.fsEnabled() ? null : 'error: filesystem tools are disabled';
+          if (g) return g;
+          const paths = Array.isArray(args.paths) ? (args.paths as unknown[]).map(String) : [];
+          await this.logAction(ctx, 'read_many_files', { count: paths.length });
+          const parts: string[] = [];
+          for (const p of paths.slice(0, 20)) {
+            try {
+              parts.push(`=== ${p} ===\n${(await readFile(p, 'utf8')).slice(0, 20000)}`);
+            } catch (e) {
+              parts.push(`=== ${p} ===\nerror: ${(e as Error).message}`);
+            }
+          }
+          return parts.join('\n\n');
+        },
+      },
+    ];
+  }
+
+  private projectTools(): AgentTool[] {
+    const guard = (): string | null => (this.fsEnabled() ? null : 'error: filesystem tools are disabled');
+    type File = { p: string; c: string };
+    const templates: Record<string, (n: string) => File[]> = {
+      node: (n) => [
+        { p: 'package.json', c: JSON.stringify({ name: n, version: '0.1.0', type: 'module', scripts: { start: 'node src/index.js' } }, null, 2) + '\n' },
+        { p: 'src/index.js', c: `console.log('hello from ${n}');\n` },
+        { p: 'README.md', c: `# ${n}\n` },
+        { p: '.gitignore', c: 'node_modules/\n' },
+      ],
+      python: (n) => [
+        { p: 'pyproject.toml', c: `[project]\nname = "${n}"\nversion = "0.1.0"\n` },
+        { p: 'main.py', c: `def main():\n    print("hello from ${n}")\n\n\nif __name__ == "__main__":\n    main()\n` },
+        { p: 'README.md', c: `# ${n}\n` },
+        { p: '.gitignore', c: '__pycache__/\n.venv/\n' },
+      ],
+      go: (n) => [
+        { p: 'go.mod', c: `module ${n}\n\ngo 1.22\n` },
+        { p: 'main.go', c: `package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("hello from ${n}")\n}\n` },
+        { p: 'README.md', c: `# ${n}\n` },
+      ],
+      static: (n) => [
+        { p: 'index.html', c: `<!doctype html>\n<html>\n<head><meta charset="utf-8"><title>${n}</title><link rel="stylesheet" href="style.css"></head>\n<body><h1>${n}</h1><script src="script.js"></script></body>\n</html>\n` },
+        { p: 'style.css', c: 'body { font-family: system-ui; margin: 2rem; }\n' },
+        { p: 'script.js', c: `console.log('${n}');\n` },
+        { p: 'README.md', c: `# ${n}\n` },
+      ],
+      empty: (n) => [{ p: 'README.md', c: `# ${n}\n` }, { p: '.gitignore', c: '' }],
+    };
+    return [
+      {
+        name: 'create_project',
+        description: `Scaffold a new project. type one of: ${Object.keys(templates).join(', ')}.`,
+        params: { path: 'directory to create the project in', type: 'project type', name: 'optional project name' },
+        run: async (args, ctx) => {
+          const g = guard();
+          if (g) return g;
+          const path = String(args.path ?? '');
+          if (!path) return 'error: path required';
+          const type = String(args.type ?? 'node');
+          const name = String(args.name ?? (basename(path) || 'app'));
+          const make = (templates[type] ?? templates.node) as (n: string) => File[];
+          await this.logAction(ctx, 'create_project', { path, type, name });
+          const created: string[] = [];
+          try {
+            for (const f of make(name)) {
+              const full = join(path, f.p);
+              await mkdir(dirname(full), { recursive: true });
+              await writeFile(full, f.c, 'utf8');
+              created.push(f.p);
+            }
+            return `created ${type} project "${name}" at ${path}:\n${created.join('\n')}`;
+          } catch (e) {
+            return `error: ${(e as Error).message}`;
+          }
+        },
+      },
+      {
+        name: 'apply_patch',
+        description: 'Apply multiple file edits at once. edits: array of {path, content} (overwrite) or {path, find, replace}.',
+        params: { edits: 'array of edit objects' },
+        run: async (args, ctx) => {
+          const g = guard();
+          if (g) return g;
+          const edits = Array.isArray(args.edits) ? (args.edits as Array<Record<string, unknown>>) : [];
+          await this.logAction(ctx, 'apply_patch', { files: edits.length });
+          const out: string[] = [];
+          for (const e of edits.slice(0, 30)) {
+            const path = String(e.path ?? '');
+            if (!path) {
+              out.push('skip: missing path');
+              continue;
+            }
+            try {
+              if (e.content !== undefined) {
+                await mkdir(dirname(path), { recursive: true });
+                await writeFile(path, String(e.content), 'utf8');
+                out.push(`wrote ${path}`);
+              } else {
+                const before = await readFile(path, 'utf8');
+                const find = String(e.find ?? '');
+                const count = find ? before.split(find).length - 1 : 0;
+                if (count === 0) {
+                  out.push(`no match in ${path}`);
+                } else {
+                  await writeFile(path, before.split(find).join(String(e.replace ?? '')), 'utf8');
+                  out.push(`edited ${path} (${count}x)`);
+                }
+              }
+            } catch (err) {
+              out.push(`error ${path}: ${(err as Error).message}`);
+            }
+          }
+          return out.join('\n');
+        },
+      },
+    ];
   }
 
   private static readonly SKIP_DIRS = new Set(['node_modules', '.git', '.next', 'dist', '.turbo', 'cache']);

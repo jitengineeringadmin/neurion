@@ -12,15 +12,25 @@ interface Step {
 export default function AgentPage() {
   const [goal, setGoal] = useState('Check my credits and online nodes, then run an echo job with text "hello" and summarise.');
   const [steps, setSteps] = useState<Step[]>([]);
+  const [plan, setPlan] = useState<{ text: string; done: boolean }[] | null>(null);
   const [running, setRunning] = useState(false);
 
   async function run() {
     if (running || !goal.trim()) return;
     setSteps([]);
+    setPlan(null);
     setRunning(true);
     try {
       await streamAgent(goal, {
         onEvent: (event, d) => {
+          if (event === 'agent.plan') {
+            setPlan(d.steps);
+            return;
+          }
+          if (event === 'agent.plan_update') {
+            setPlan((p) => (p ? p.map((s, i) => (i === d.index ? { ...s, done: d.done } : s)) : p));
+            return;
+          }
           setSteps((s) => {
             if (event === 'agent.start') return [...s, { kind: 'start', depth: 0, data: d }];
             if (event === 'agent.tool_call') return [...s, { kind: 'tool_call', depth: d.depth, data: d }];
@@ -64,6 +74,18 @@ export default function AgentPage() {
           </button>
         </div>
       </div>
+
+      {plan && plan.length > 0 && (
+        <div style={{ ...card, marginBottom: 14 }}>
+          <div style={{ fontSize: 12, color: theme.muted, marginBottom: 8 }}>plan</div>
+          {plan.map((s, i) => (
+            <div key={i} style={{ fontSize: 13, display: 'flex', gap: 8, padding: '2px 0' }}>
+              <span style={{ color: s.done ? theme.green : theme.muted }}>{s.done ? '☑' : '☐'}</span>
+              <span style={{ textDecoration: s.done ? 'line-through' : 'none', opacity: s.done ? 0.7 : 1 }}>{s.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {steps.map((s, i) => (

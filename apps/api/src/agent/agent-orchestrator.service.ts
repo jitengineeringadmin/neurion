@@ -11,7 +11,9 @@ const MAX_STEPS = 6;
 const MAX_DEPTH = 2;
 const SUB_MAX_STEPS = 4;
 // Tools that mutate the machine or execute code -> require human approval.
-const DANGEROUS = new Set(['run_command', 'write_file', 'edit_file', 'append_file', 'move_path', 'delete_path']);
+const DANGEROUS = new Set([
+  'run_command', 'write_file', 'edit_file', 'append_file', 'move_path', 'delete_path', 'create_project', 'apply_patch',
+]);
 
 @Injectable()
 export class AgentOrchestratorService {
@@ -67,6 +69,9 @@ export class AgentOrchestratorService {
       '',
       'After each tool call you get an "Observation:". Use it. Never invent tool results.',
       'In file paths use forward slashes, e.g. "C:/Users/name/file.txt".',
+      'For a multi-step goal, FIRST call set_plan with the list of steps, then work through',
+      'them, calling update_plan(index, done=true) as you complete each. To scaffold a new',
+      'project use create_project. To change several files at once use apply_patch.',
       'Prefer finishing quickly. When you have enough information, return {"final": ...}.',
     ].join('\n');
   }
