@@ -14,7 +14,8 @@
   },
   "devDependencies": {
     "electron": "^31.7.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "rcedit": "^4.0.1"
   },
   "build": {
     "appId": "engineering.jit.neurion",
@@ -23,6 +24,7 @@
       "output": "dist-installer",
       "buildResources": "build"
     },
+    "afterPack": "scripts/after-pack.js",
     "asar": true,
     "npmRebuild": false,
     "files": [
@@ -48,7 +50,12 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "perMachine": false
+      "perMachine": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Neurion",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     }
   },
   "dependencies": {

@@ -25,11 +25,23 @@ export class ProviderResolverService {
     return this.config.get<string>('AI_OPENAI_COMPATIBLE_BASE_URL') ?? 'http://localhost:11434/v1';
   }
 
-  private async ollamaReachable(): Promise<boolean> {
+  /** ds4 / DwarfStar (antirez) — native DeepSeek V4 engine, OpenAI-compatible. Optional. */
+  private get ds4BaseUrl(): string | undefined {
+    return this.config.get<string>('AI_DS4_BASE_URL') || undefined;
+  }
+  private get ds4Model(): string {
+    return this.config.get<string>('AI_DS4_MODEL') ?? 'deepseek-v4-flash';
+  }
+  private apiKey(): string {
+    return this.config.get<string>('AI_OPENAI_COMPATIBLE_API_KEY') ?? 'local-dev';
+  }
+
+  /** True if an OpenAI-compatible /models endpoint answers ok within a short timeout. */
+  private async reachable(base: string): Promise<boolean> {
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 800);
-      const res = await fetch(`${this.baseUrl}/models`, { signal: ctrl.signal });
+      const res = await fetch(`${base}/models`, { signal: ctrl.signal });
       clearTimeout(t);
       return res.ok;
     } catch {
@@ -37,16 +49,23 @@ export class ProviderResolverService {
     }
   }
 
-  /** List models available on the configured OpenAI-compatible endpoint (ollama). */
-  async listModels(): Promise<string[]> {
+  private async modelsOf(base: string): Promise<string[]> {
     try {
-      const res = await fetch(`${this.baseUrl}/models`);
+      const res = await fetch(`${base}/models`);
       if (!res.ok) return [];
       const json = (await res.json()) as { data?: Array<{ id: string }> };
-      return (json.data ?? []).map((m) => m.id).sort();
+      return (json.data ?? []).map((m) => m.id);
     } catch {
       return [];
     }
+  }
+
+  /** Models from the ds4 endpoint (if configured) and the ollama endpoint, merged. */
+  async listModels(): Promise<string[]> {
+    const bases = this.ds4BaseUrl ? [this.ds4BaseUrl, this.baseUrl] : [this.baseUrl];
+    const all = new Set<string>();
+    for (const b of bases) for (const m of await this.modelsOf(b)) all.add(m);
+    return [...all].sort();
   }
 
   async resolveFallback(): Promise<ResolvedProvider> {
@@ -57,12 +76,18 @@ export class ProviderResolverService {
       return { provider: this.mock, model: 'mock' };
     }
 
-    if (await this.ollamaReachable()) {
-      const apiKey = this.config.get<string>('AI_OPENAI_COMPATIBLE_API_KEY') ?? 'local-dev';
-      return { provider: new OpenAICompatibleProvider(this.baseUrl, apiKey), model: chatModel };
+    // Prefer ds4 (quasi-frontier DeepSeek V4) when a ds4-server is configured + reachable.
+    const ds4 = this.ds4BaseUrl;
+    if (ds4 && (await this.reachable(ds4))) {
+      this.logger.log(`Fallback -> ds4 (DwarfStar) at ${ds4}, model ${this.ds4Model}`);
+      return { provider: new OpenAICompatibleProvider(ds4, this.apiKey(), 'ds4'), model: this.ds4Model };
     }
 
-    this.logger.error('No AI provider reachable — using LABELED mock. Configure ollama (infra/scripts/setup-ollama.ps1).');
+    if (await this.reachable(this.baseUrl)) {
+      return { provider: new OpenAICompatibleProvider(this.baseUrl, this.apiKey()), model: chatModel };
+    }
+
+    this.logger.error('No AI provider reachable — using LABELED mock. Configure ollama (infra/scripts/setup-ollama.ps1) or a ds4-server (AI_DS4_BASE_URL).');
     return { provider: this.mock, model: 'mock' };
   }
 }

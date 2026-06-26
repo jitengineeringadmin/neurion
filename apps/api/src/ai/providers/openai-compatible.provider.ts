@@ -5,12 +5,13 @@ import { AiProvider, ChatMsg } from './ai-provider.interface';
  * Used as the real Fallback-lane provider in dev (G3).
  */
 export class OpenAICompatibleProvider implements AiProvider {
-  readonly name = 'openai_compatible';
   readonly labeled = false;
 
   constructor(
     private readonly baseUrl: string,
     private readonly apiKey: string,
+    // route-badge id; ds4 (antirez DwarfStar) reuses this provider with name 'ds4'.
+    readonly name: string = 'openai_compatible',
   ) {}
 
   async *streamChat(messages: ChatMsg[], model: string, signal?: AbortSignal): AsyncIterable<string> {
