@@ -57,6 +57,7 @@ export class AgentOrchestratorService {
       list,
       '',
       'After each tool call you get an "Observation:". Use it. Never invent tool results.',
+      'In file paths use forward slashes, e.g. "C:/Users/name/file.txt".',
       'Prefer finishing quickly. When you have enough information, return {"final": ...}.',
     ].join('\n');
   }
@@ -80,10 +81,17 @@ export class AgentOrchestratorService {
         else if (cleaned[i] === '}') {
           depth--;
           if (depth === 0) {
+            const candidate = cleaned.slice(start, i + 1);
+            // Windows paths etc.: escape lone backslashes that aren't valid JSON escapes.
+            const safe = candidate.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
             try {
-              return JSON.parse(cleaned.slice(start, i + 1)) as AgentAction;
+              return JSON.parse(candidate) as AgentAction;
             } catch {
-              break;
+              try {
+                return JSON.parse(safe) as AgentAction;
+              } catch {
+                break;
+              }
             }
           }
         }
