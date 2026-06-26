@@ -11,6 +11,11 @@ out/
 # turbo
 .turbo/
 
+# desktop packaging (generated runtime stack + installer output)
+.neurion-stage/
+apps/desktop/staging/
+apps/desktop/dist-installer/
+
 # env
 .env
 .env.local

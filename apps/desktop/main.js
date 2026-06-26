@@ -6,10 +6,16 @@ const fs = require('node:fs');
 const net = require('node:net');
 const http = require('node:http');
 const { spawn } = require('node:child_process');
+const { pathToFileURL } = require('node:url');
 
+// In a packaged build the stack lives under resources/app-stack (extraResources);
+// in dev it is the monorepo working tree.
+const PACKAGED = app.isPackaged;
 const ROOT = path.resolve(__dirname, '..', '..');
-const API_DIR = path.join(ROOT, 'apps', 'api');
-const WEB_DIR = path.join(ROOT, 'apps', 'web');
+const STACK = PACKAGED ? path.join(process.resourcesPath, 'app-stack') : ROOT;
+const API_DIR = PACKAGED ? path.join(STACK, 'api') : path.join(ROOT, 'apps', 'api');
+const WEB_DIR = PACKAGED ? path.join(STACK, 'web') : path.join(ROOT, 'apps', 'web');
+const ENV_PATH = PACKAGED ? path.join(STACK, '.env') : path.join(ROOT, '.env');
 const WEB_URL = 'http://localhost:3091';
 const API_HEALTH = 'http://localhost:8091/api/health';
 
@@ -28,7 +34,7 @@ let splash = null;
 function parseEnv() {
   const env = { ...process.env };
   try {
-    const txt = fs.readFileSync(path.join(ROOT, '.env'), 'utf8');
+    const txt = fs.readFileSync(ENV_PATH, 'utf8');
     for (const line of txt.split('\n')) {
       const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
       if (m) env[m[1]] = m[2].replace(/(^"|"$)/g, '');
@@ -86,13 +92,41 @@ function run(cmd, args, opts) {
   });
 }
 
+// Run a JS file with Electron's embedded Node (ELECTRON_RUN_AS_NODE) so the
+// packaged app needs no system Node. Args are passed directly (no shell).
+function nodeSpawn(args, opts = {}) {
+  return spawn(process.execPath, args, {
+    windowsHide: true,
+    ...opts,
+    env: { ...(opts.env || ENV), ELECTRON_RUN_AS_NODE: '1' },
+  });
+}
+function nodeRun(args, opts) {
+  return new Promise((resolve) => {
+    const p = nodeSpawn(args, opts);
+    p.on('close', (code) => resolve(code ?? 0));
+    p.on('error', () => resolve(1));
+  });
+}
+
 function setStatus(text) {
   if (splash && !splash.isDestroyed()) splash.webContents.executeJavaScript(`window.setStatus && window.setStatus(${JSON.stringify(text)})`).catch(() => {});
 }
 
+async function loadEmbeddedPostgres() {
+  // ESM package -> dynamic import from CJS. In a packaged build it is vendored
+  // under app-stack/_desktop (extraResources); in dev it is a normal dependency.
+  if (PACKAGED) {
+    const entry = path.join(STACK, '_desktop', 'node_modules', 'embedded-postgres', 'dist', 'index.js');
+    const mod = await import(pathToFileURL(entry).href);
+    return mod.default || mod;
+  }
+  const mod = await import('embedded-postgres');
+  return mod.default || mod;
+}
+
 async function startDb() {
-  const mod = await import('embedded-postgres'); // ESM package -> dynamic import from CJS
-  const EmbeddedPostgres = mod.default || mod;
+  const EmbeddedPostgres = await loadEmbeddedPostgres();
   const dataDir = path.join(app.getPath('userData'), 'pgdata');
   pg = new EmbeddedPostgres({ databaseDir: dataDir, user: PG_USER, password: PG_PASS, port: PG_PORT, persistent: true });
   const init = pg.initialise || pg.initialize;
@@ -116,19 +150,24 @@ async function startStack() {
 
   // 2) migrate + seed (idempotent)
   setStatus('preparo il database…');
-  await run('npx', ['prisma', 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
-  await run('npx', ['tsx', path.join('prisma', 'seed.ts')], { cwd: API_DIR, env: ENV });
+  if (PACKAGED) {
+    await nodeRun([path.join(API_DIR, 'node_modules', 'prisma', 'build', 'index.js'), 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
+    await nodeRun([path.join(API_DIR, 'prisma', 'seed.js')], { cwd: API_DIR, env: ENV });
+  } else {
+    await run('npx', ['prisma', 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
+    await run('npx', ['tsx', path.join('prisma', 'seed.ts')], { cwd: API_DIR, env: ENV });
+  }
 
   // 3) API
   setStatus('avvio API…');
-  const api = sh('node', [path.join('dist', 'main.js')], { cwd: API_DIR, env: ENV });
+  const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV });
   children.push(api);
   await waitHttp(API_HEALTH, 30000);
 
   // 4) web
   setStatus('avvio interfaccia…');
   const nextBin = path.join(WEB_DIR, 'node_modules', 'next', 'dist', 'bin', 'next');
-  const web = sh('node', [nextBin, 'start', '-p', '3091'], { cwd: WEB_DIR, env: ENV });
+  const web = nodeSpawn([nextBin, 'start', '-p', '3091'], { cwd: WEB_DIR, env: ENV });
   children.push(web);
   await waitHttp(WEB_URL, 40000);
 }

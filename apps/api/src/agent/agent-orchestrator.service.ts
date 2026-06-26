@@ -153,8 +153,9 @@ export class AgentOrchestratorService {
       } else if (this.requireApproval() && DANGEROUS.has(tool.name)) {
         // human-in-the-loop: pause until the user approves or denies this action.
         const approvalId = randomUUID();
+        const pending = this.approvals.wait(approvalId); // register BEFORE emit to avoid a fast-approve race
         ctx.emit('agent.approval_request', { id: approvalId, depth: ctx.depth, tool: tool.name, args: action.args ?? {} });
-        const approved = await this.approvals.wait(approvalId);
+        const approved = await pending;
         ctx.emit('agent.approval_result', { id: approvalId, tool: tool.name, approved });
         if (!approved) {
           observation = 'denied by user — action not executed. Choose a different approach or finish.';

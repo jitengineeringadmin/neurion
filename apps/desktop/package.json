@@ -6,6 +6,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "prepare-stack": "node scripts/prepare-stack.mjs",
+    "pack": "node scripts/prepare-stack.mjs && electron-builder",
     "dist": "electron-builder",
     "lint": "echo \"(desktop) no lint\" && exit 0",
     "test": "echo \"(desktop) no tests\" && exit 0"
@@ -21,15 +23,27 @@
       "output": "dist-installer",
       "buildResources": "build"
     },
+    "asar": true,
+    "npmRebuild": false,
     "files": [
       "main.js",
       "preload.js",
       "splash.html",
-      "build/**"
+      "build/**",
+      "!node_modules/**/*",
+      "!staging/**/*",
+      "!scripts/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "staging",
+        "to": "app-stack"
+      }
     ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
