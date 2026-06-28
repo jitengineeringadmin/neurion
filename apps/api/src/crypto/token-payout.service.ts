@@ -42,12 +42,15 @@ export class TokenPayoutService {
 
     // convert: spend the credits now (refunded if the on-chain tx fails)
     await this.credits.spend(user.sub, credits, 'payout.request');
+    // protocol take-rate (PROTOCOL_FEE_BPS) on cash-out -> treasury; user receives NRN for the net
+    const fee = await this.credits.collectFee(credits, `payout:${user.sub}:${Date.now()}`);
+    const net = credits - fee;
 
     const payout = await this.prisma.tokenPayout.create({
       data: {
         userId: user.sub,
         walletAddress: dbUser.walletAddress,
-        amountWei: this.creditsToWei(credits).toString(),
+        amountWei: this.creditsToWei(net).toString(),
         chainId: this.config.chainId,
         status: 'PENDING',
       },

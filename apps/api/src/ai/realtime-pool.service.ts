@@ -71,8 +71,8 @@ export class RealtimePoolService {
     const ratePer1k = Number(this.config.get<string>('AI_REALTIME_REWARD_PER_1K_TOKENS') ?? '1') || 1;
     const cap = Number(this.config.get<string>('AI_REALTIME_REWARD_MAX') ?? '50') || 50;
     const reward = Math.min(cap, Math.max(1, Math.round((estTokens / 1000) * ratePer1k)));
-    await this.credits.grant(node.ownerUserId, reward, 'NODE_REALTIME_REWARD', ref);
-    this.logger.log(`realtime serve reward: ${reward} credits -> node ${nodeId} owner (${estTokens} est tokens)`);
-    return reward;
+    const net = await this.credits.rewardWithFee(node.ownerUserId, reward, 'NODE_REALTIME_REWARD', ref);
+    this.logger.log(`realtime serve reward: ${net} credits net -> node ${nodeId} owner (${estTokens} est tokens, ${reward} gross)`);
+    return net;
   }
 }

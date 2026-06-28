@@ -6,7 +6,7 @@ import 'reflect-metadata';
 import assert from 'node:assert';
 import { PrivacyClassifierService } from '../src/ai/privacy/classifier.service';
 import { maxPrivacy, allowedTrustLevels, CHAT_PRIVACY_FLOOR } from '../src/ai/privacy/privacy.util';
-import { cosine, embeddingMatches, ewma, consensus } from '../src/jobs/verification/helpers';
+import { cosine, embeddingMatches, ewma, consensus, protocolFee } from '../src/jobs/verification/helpers';
 
 let passed = 0;
 let failed = 0;
@@ -144,6 +144,14 @@ test('consensus: embedding clusters by cosine', () => {
   assert.equal(r.agreed, true);
   assert.deepEqual(r.majority.sort(), ['a', 'b']);
   assert.deepEqual(r.outliers, ['c']);
+});
+
+// ---- protocol take-rate ----
+test('protocolFee: 10% of a reward, floored; 0 when off', () => {
+  assert.equal(protocolFee(100, 1000), 10); // 10%
+  assert.equal(protocolFee(10, 1000), 1);
+  assert.equal(protocolFee(3, 1000), 0); // floor(0.3)
+  assert.equal(protocolFee(100, 0), 0); // fee disabled
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

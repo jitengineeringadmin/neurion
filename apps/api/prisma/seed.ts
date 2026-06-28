@@ -25,6 +25,8 @@ async function main(): Promise<void> {
     { email: process.env.SEED_ADMIN_EMAIL ?? 'admin@neurion.local', password: process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe!Neurion2026', role: 'SUPER_ADMIN' as const, credits: 1000 },
     { email: 'node@neurion.local', password: 'ChangeMe!Node2026', role: 'NODE_PROVIDER' as const, credits: 0 },
     { email: 'user@neurion.local', password: 'ChangeMe!User2026', role: 'USER' as const, credits: 100 },
+    // protocol treasury — collects the take-rate (PROTOCOL_FEE_BPS) + slashing proceeds
+    { email: 'treasury@neurion.local', password: process.env.SEED_TREASURY_PASSWORD ?? 'ChangeMe!Treasury2026', role: 'OPERATOR' as const, credits: 0 },
   ];
 
   for (const u of users) {

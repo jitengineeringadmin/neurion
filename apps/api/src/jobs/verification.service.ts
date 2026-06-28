@@ -111,10 +111,11 @@ export class VerificationService {
 
   private async grant(job: Job, node: ComputeNode, reward: number, optimistic: boolean): Promise<void> {
     if (reward <= 0) return;
-    await this.credits.grant(node.ownerUserId, reward, 'NODE_REWARD', `reward:${job.id}`);
+    // node owner gets the reward minus the protocol take-rate (PROTOCOL_FEE_BPS)
+    const net = await this.credits.rewardWithFee(node.ownerUserId, reward, 'NODE_REWARD', `reward:${job.id}`);
     if (optimistic) {
-      // track outstanding so a later deep-FAIL can claw back unspent cheated rewards
-      await this.prisma.computeNode.update({ where: { id: node.id }, data: { outstandingOptimisticCredits: { increment: reward } } });
+      // track outstanding (net) so a later deep-FAIL can claw back unspent cheated rewards
+      await this.prisma.computeNode.update({ where: { id: node.id }, data: { outstandingOptimisticCredits: { increment: net } } });
       await this.prisma.job.update({ where: { id: job.id }, data: { grantedOptimistically: true } });
     }
   }
