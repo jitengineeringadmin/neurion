@@ -125,6 +125,28 @@ async function loadEmbeddedPostgres() {
   return mod.default || mod;
 }
 
+function loadPgClient() {
+  const base = PACKAGED ? path.join(STACK, '_desktop', 'node_modules', 'pg') : 'pg';
+  return require(base).Client; // pg is a dependency of embedded-postgres
+}
+
+// initdb on Windows defaults the cluster to WIN1252, which cannot store emoji /
+// non-Latin1 text. Create the app database as UTF8 from template0 (allowed even
+// on a WIN1252 cluster) so chat content of any language is stored correctly.
+async function ensureUtf8Database() {
+  const Client = loadPgClient();
+  const admin = new Client({ host: 'localhost', port: PG_PORT, user: PG_USER, password: PG_PASS, database: 'postgres' });
+  await admin.connect();
+  try {
+    const { rows } = await admin.query('SELECT pg_encoding_to_char(encoding) AS enc FROM pg_database WHERE datname = $1', [PG_DB]);
+    if (rows.length === 0) {
+      await admin.query(`CREATE DATABASE "${PG_DB}" ENCODING 'UTF8' TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C'`);
+    }
+  } finally {
+    await admin.end();
+  }
+}
+
 async function startDb() {
   const EmbeddedPostgres = await loadEmbeddedPostgres();
   const dataDir = path.join(app.getPath('userData'), 'pgdata');
@@ -132,11 +154,7 @@ async function startDb() {
   const init = pg.initialise || pg.initialize;
   if (!fs.existsSync(path.join(dataDir, 'PG_VERSION'))) await init.call(pg);
   await pg.start();
-  try {
-    await pg.createDatabase(PG_DB);
-  } catch {
-    /* already exists */
-  }
+  await ensureUtf8Database();
   await waitPort('localhost', PG_PORT, 25000);
 }
 
