@@ -115,9 +115,10 @@ model ComputeNode {
   avgTokensPerSecond Float?
 
   // G1 verification / reputation
-  reputation                   Float    @default(0.5)
+  reputation                   Float    @default(0.5) // EWMA, moves ONLY on deep-verified outcomes (C1)
   reputationScore              Float    @default(0)
   verifiedJobCount             Int      @default(0)
+  unverifiedJobCount           Int      @default(0) // pass-by-trust count; drives the sampling exposure floor
   outstandingOptimisticCredits Int      @default(0)
   lifetimeUnverifiedCredits    Int      @default(0)
   lastVerifiedAt               DateTime?
@@ -253,6 +254,7 @@ enum JobStatus {
   ACCEPTED
   RUNNING
   COMPLETED
+  VERIFYING
   VERIFIED
   REWARDED
   FAILED

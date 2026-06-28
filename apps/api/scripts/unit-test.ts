@@ -6,6 +6,7 @@ import 'reflect-metadata';
 import assert from 'node:assert';
 import { PrivacyClassifierService } from '../src/ai/privacy/classifier.service';
 import { maxPrivacy, allowedTrustLevels, CHAT_PRIVACY_FLOOR } from '../src/ai/privacy/privacy.util';
+import { cosine, embeddingMatches, ewma } from '../src/jobs/verification/helpers';
 
 let passed = 0;
 let failed = 0;
@@ -80,6 +81,38 @@ test('invariant: COMMUNITY allowed <=> effective is PUBLIC', () => {
   // VERIFIED_ONLY still permits VERIFIED+ nodes
   assert.ok(allowedTrustLevels('VERIFIED_ONLY').has('VERIFIED'));
   assert.ok(allowedTrustLevels('VERIFIED_ONLY').has('INTERNAL'));
+});
+
+// ---- G1 deep-verification math (compute verification / slashing) ----
+test('cosine: identical=1, orthogonal=0, opposite=-1', () => {
+  assert.ok(Math.abs(cosine([1, 2, 3], [1, 2, 3]) - 1) < 1e-9);
+  assert.ok(Math.abs(cosine([1, 0], [0, 1])) < 1e-9);
+  assert.ok(Math.abs(cosine([1, 0], [-1, 0]) + 1) < 1e-9);
+});
+
+test('embeddingMatches: exact reference passes', () => {
+  const ref = [0.6, 0.8, 0.0];
+  const m = embeddingMatches([0.6, 0.8, 0.0], ref);
+  assert.equal(m.ok, true);
+});
+
+test('embeddingMatches: SCALED cheaper-model output is cosine-perfect but caught by norm-ratio (red-team)', () => {
+  const ref = [0.6, 0.8]; // norm 1.0
+  const scaled = ref.map((x) => x * 1.1); // same direction -> cosine 1, but norm 1.1x
+  const m = embeddingMatches(scaled, ref);
+  assert.ok(m.cos > 0.9999, 'cosine is fooled');
+  assert.equal(m.ok, false, 'but norm-ratio rejects the scaled fake');
+});
+
+test('embeddingMatches: garbage (low cosine) fails', () => {
+  const m = embeddingMatches([0.1, -0.9, 0.4], [0.6, 0.8, 0.0]);
+  assert.equal(m.ok, false);
+});
+
+test('ewma: deep-PASS raises reputation, deep-FAIL lowers it', () => {
+  assert.ok(ewma(0.5, 1) > 0.5);
+  assert.ok(ewma(0.5, 0) < 0.5);
+  assert.ok(Math.abs(ewma(0.5, 1) - 0.55) < 1e-9); // alpha 0.1
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
