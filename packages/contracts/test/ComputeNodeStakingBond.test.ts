@@ -39,11 +39,11 @@ describe('ComputeNodeStakingBond', () => {
     expect(await token.balanceOf(treasury.address)).to.equal(ethers.parseEther('30'));
   });
 
-  it('rejects slashing by a non-owner', async () => {
+  it('rejects slashing by an unauthorized caller', async () => {
     const { bond, operator, stranger } = await deploy();
     await bond.connect(operator).stake(ethers.parseEther('10'));
     await expect(bond.connect(stranger).slash(operator.address, ethers.parseEther('1'), 'x'))
-      .to.be.revertedWithCustomError(bond, 'OwnableUnauthorizedAccount');
+      .to.be.revertedWith('NOT_AUTHORITY');
   });
 
   it('rejects slashing more than the bond', async () => {

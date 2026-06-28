@@ -16,6 +16,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract ComputeNodeStakingBond is Ownable {
     IERC20 public immutable token;
     address public treasury; // destination of slashed funds
+    address public slasher; // additional slashing authority (e.g. the DisputeResolver)
     uint256 public unstakeDelay; // dispute/cooldown window in seconds
 
     mapping(address => uint256) public bondOf;
@@ -26,7 +27,13 @@ contract ComputeNodeStakingBond is Ownable {
     event Withdrawn(address indexed operator, uint256 amount);
     event Slashed(address indexed operator, uint256 amount, string reason);
     event TreasuryUpdated(address treasury);
+    event SlasherUpdated(address slasher);
     event UnstakeDelayUpdated(uint256 delay);
+
+    modifier onlyAuthority() {
+        require(msg.sender == owner() || msg.sender == slasher, "NOT_AUTHORITY");
+        _;
+    }
 
     constructor(address tokenAddress, address initialOwner, address treasury_, uint256 unstakeDelay_) Ownable(initialOwner) {
         require(tokenAddress != address(0) && treasury_ != address(0), "ZERO_ADDR");
@@ -65,11 +72,17 @@ contract ComputeNodeStakingBond is Ownable {
     }
 
     /// Slash a proven-fraudulent operator's bond (works even during cooldown).
-    function slash(address operator, uint256 amount, string calldata reason) external onlyOwner {
+    /// Callable by the owner or the configured slasher (the DisputeResolver).
+    function slash(address operator, uint256 amount, string calldata reason) external onlyAuthority {
         require(amount > 0 && amount <= bondOf[operator], "BAD_AMOUNT");
         bondOf[operator] -= amount;
         require(token.transfer(treasury, amount), "TRANSFER_FAILED");
         emit Slashed(operator, amount, reason);
+    }
+
+    function setSlasher(address slasher_) external onlyOwner {
+        slasher = slasher_;
+        emit SlasherUpdated(slasher_);
     }
 
     function setTreasury(address treasury_) external onlyOwner {
