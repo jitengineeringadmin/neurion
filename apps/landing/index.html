@@ -70,8 +70,10 @@
   .chip{border:1px solid var(--line);border-radius:12px;padding:14px 18px;font-size:13px;color:var(--muted);background:rgba(0,0,0,.2)}
   .chip b{color:var(--text)}
 
-  .dl{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
+  .dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px;margin-top:30px}
   .dl .card{display:flex;flex-direction:column;gap:14px}
+  .node-os{display:flex;gap:8px;margin-top:auto}
+  .node-os .btn{flex:1;width:auto;padding:8px 0;font-size:13px}
   .dl .meta{font-size:12px;color:var(--muted)}
   .dl .soon{opacity:.55}
   .dl .btn{width:100%;text-align:center}
@@ -166,25 +168,36 @@
   <h2 class="sec" data-i18n="dl_title">Get Neurion.</h2>
   <div class="dl">
     <div class="card">
-      <div class="ic">🖥️</div>
-      <h3 data-i18n="d1_t">Desktop app</h3>
-      <p data-i18n="d1_b">The full client: chat, agent, wallet. All included, runs offline.</p>
-      <div class="meta" data-i18n="d1_m">Windows 10/11 · ~215 MB · v1.2.0</div>
-      <a class="btn" href="/download/Neurion-Setup-1.2.0.exe" data-i18n="d1_btn">⬇ Windows (.exe)</a>
+      <div class="ic">🪟</div>
+      <h3 data-i18n="d_win_t">Windows</h3>
+      <p data-i18n="d_win_b">The full client: chat, agent, wallet. All included, runs offline.</p>
+      <div class="meta" data-i18n="d_win_m">Windows 10/11 · v1.2.0</div>
+      <a class="btn" href="/download/Neurion-Setup-1.2.0.exe" data-i18n="d_win_btn">⬇ Windows (.exe)</a>
+    </div>
+    <div class="card">
+      <div class="ic">🍎</div>
+      <h3 data-i18n="d_mac_t">macOS</h3>
+      <p data-i18n="d_mac_b">Apple Silicon build. Same client, runs offline. First open: right-click → Open.</p>
+      <div class="meta" data-i18n="d_mac_m">macOS (arm64) · v1.2.0</div>
+      <a class="btn" href="/download/Neurion-1.2.0-mac-arm64.dmg" data-i18n="d_mac_btn">⬇ macOS (.dmg)</a>
+    </div>
+    <div class="card">
+      <div class="ic">🐧</div>
+      <h3 data-i18n="d_lin_t">Linux</h3>
+      <p data-i18n="d_lin_b">Portable AppImage — runs anywhere. Chat, agent, wallet included.</p>
+      <div class="meta" data-i18n="d_lin_m">Linux x64 · v1.2.0</div>
+      <a class="btn" href="/download/Neurion-1.2.0-linux-x64.AppImage" data-i18n="d_lin_btn">⬇ Linux (.AppImage)</a>
     </div>
     <div class="card" id="node">
       <div class="ic">⚡</div>
       <h3 data-i18n="d2_t">Node agent</h3>
-      <p data-i18n="d2_b">For those who want to serve compute and earn NRN. Lightweight, command-line.</p>
-      <div class="meta" data-i18n="d2_m">Windows / Linux · requires Docker</div>
-      <a class="btn ghost" href="/download/neurion-node.zip" data-i18n="d2_btn">⬇ Node agent</a>
-    </div>
-    <div class="card soon">
-      <div class="ic">🍎</div>
-      <h3 data-i18n="d3_t">macOS &amp; Linux</h3>
-      <p data-i18n="d3_b">Native builds coming. Leave your email and we'll ping you at release.</p>
-      <div class="meta" data-i18n="d3_m">Coming soon</div>
-      <a class="btn ghost" href="mailto:info@neurionproject.org?subject=Notify%20me" data-i18n="d3_btn">Notify me</a>
+      <p data-i18n="d2_b">Serve compute and earn NRN. Lightweight, command-line.</p>
+      <div class="meta" data-i18n="d2_m">Windows · Linux · macOS</div>
+      <div class="node-os">
+        <a class="btn ghost" href="/download/neurion-node-windows-x64.zip">Windows</a>
+        <a class="btn ghost" href="/download/neurion-node-linux-x64.zip">Linux</a>
+        <a class="btn ghost" href="/download/neurion-node-macos-arm64.zip">macOS</a>
+      </div>
     </div>
   </div>
 </section>
@@ -215,7 +228,7 @@ const I18N = {
     hero_h1:"The world's AI power, <span class=\"accent\">shared.</span>",
     hero_sub:"Run AI privately on your own machine. Or put your power to work, run verified compute and earn NRN. A network where only real work gets paid.",
     hero_cta1:"⬇ Download for Windows",hero_cta2:"⚡ Become a node",
-    hero_os:"Windows available · macOS & Linux coming · no cloud account needed",
+    hero_os:"Windows · macOS · Linux · no cloud account needed",
     what_eyebrow:"What is Neurion",what_title:"Three things, one network.",
     p1_t:"Use AI",p1_b:"Chat and an agent that actually works on your files and projects — locally or routed across the network. Privacy-first routing: sensitive data stays put.",
     p2_t:"Share & earn",p2_b:"Your idle machine becomes a compute node. It runs jobs in an isolated sandbox, passes verification and earns NRN. More honest work, more reputation.",
@@ -227,9 +240,10 @@ const I18N = {
     chip1:"<b>Only verified work is paid</b> · re-exec + consensus",chip2:"<b>Anti-cheat</b> · stake + on-chain slashing",
     chip3:"<b>Privacy by design</b> · G2 classifier",chip4:"<b>Horizontal scale</b> · multi-instance",
     dl_eyebrow:"Download",dl_title:"Get Neurion.",
-    d1_t:"Desktop app",d1_b:"The full client: chat, agent, wallet. All included, runs offline.",d1_m:"Windows 10/11 · ~215 MB · v1.2.0",d1_btn:"⬇ Windows (.exe)",
-    d2_t:"Node agent",d2_b:"For those who want to serve compute and earn NRN. Lightweight, command-line.",d2_m:"Windows / Linux · requires Docker",d2_btn:"⬇ Node agent",
-    d3_t:"macOS & Linux",d3_b:"Native builds coming. Leave your email and we'll ping you at release.",d3_m:"Coming soon",d3_btn:"Notify me",
+    d_win_t:"Windows",d_win_b:"The full client: chat, agent, wallet. All included, runs offline.",d_win_m:"Windows 10/11 · v1.2.0",d_win_btn:"⬇ Windows (.exe)",
+    d_mac_t:"macOS",d_mac_b:"Apple Silicon build. Same client, runs offline. First open: right-click → Open.",d_mac_m:"macOS (arm64) · v1.2.0",d_mac_btn:"⬇ macOS (.dmg)",
+    d_lin_t:"Linux",d_lin_b:"Portable AppImage — runs anywhere. Chat, agent, wallet included.",d_lin_m:"Linux x64 · v1.2.0",d_lin_btn:"⬇ Linux (.AppImage)",
+    d2_t:"Node agent",d2_b:"Serve compute and earn NRN. Lightweight, command-line.",d2_m:"Windows · Linux · macOS",
     foot_ethos:"Built first and foremost to improve the community's life: accessible AI, shared compute, value distributed to those who create it.",
     foot_project:"Project",foot_built:"built by JIT Engineering"
   },
@@ -239,7 +253,7 @@ const I18N = {
     hero_h1:"La potenza AI del mondo, <span class=\"accent\">condivisa.</span>",
     hero_sub:"Usa l'AI in privato sul tuo computer. Oppure metti a disposizione la tua potenza, esegui calcoli verificati e guadagna NRN. Una rete dove viene pagato solo il lavoro vero.",
     hero_cta1:"⬇ Scarica per Windows",hero_cta2:"⚡ Diventa un nodo",
-    hero_os:"Windows disponibile · macOS & Linux in arrivo · nessun account cloud richiesto",
+    hero_os:"Windows · macOS · Linux · nessun account cloud richiesto",
     what_eyebrow:"Cos'è Neurion",what_title:"Tre cose in una rete.",
     p1_t:"Usa l'AI",p1_b:"Chat e un agente che lavora davvero sui tuoi file e progetti — in locale o instradato sulla rete. Routing privacy-first: i dati sensibili non escono.",
     p2_t:"Condividi & guadagna",p2_b:"La tua macchina inattiva diventa un nodo di calcolo. Esegue job in sandbox isolata, supera la verifica e guadagna NRN. Più lavori onesti, più reputazione.",
@@ -251,9 +265,10 @@ const I18N = {
     chip1:"<b>Pagato solo il verificato</b> · re-exec + consenso",chip2:"<b>Anti-baro</b> · stake + slashing on-chain",
     chip3:"<b>Privacy by design</b> · classificatore G2",chip4:"<b>Scala orizzontale</b> · multi-istanza",
     dl_eyebrow:"Scarica",dl_title:"Prendi Neurion.",
-    d1_t:"App desktop",d1_b:"Il client completo: chat, agente, wallet. Tutto incluso, gira offline.",d1_m:"Windows 10/11 · ~215 MB · v1.2.0",d1_btn:"⬇ Windows (.exe)",
-    d2_t:"Node agent",d2_b:"Per chi vuole servire calcolo e guadagnare NRN. Leggero, da riga di comando.",d2_m:"Windows / Linux · richiede Docker",d2_btn:"⬇ Node agent",
-    d3_t:"macOS & Linux",d3_b:"Build native in arrivo. Lascia la mail e ti avvisiamo al rilascio.",d3_m:"In arrivo",d3_btn:"Avvisami",
+    d_win_t:"Windows",d_win_b:"Il client completo: chat, agente, wallet. Tutto incluso, gira offline.",d_win_m:"Windows 10/11 · v1.2.0",d_win_btn:"⬇ Windows (.exe)",
+    d_mac_t:"macOS",d_mac_b:"Build Apple Silicon. Stesso client, gira offline. Primo avvio: tasto destro → Apri.",d_mac_m:"macOS (arm64) · v1.2.0",d_mac_btn:"⬇ macOS (.dmg)",
+    d_lin_t:"Linux",d_lin_b:"AppImage portabile — gira ovunque. Chat, agente, wallet inclusi.",d_lin_m:"Linux x64 · v1.2.0",d_lin_btn:"⬇ Linux (.AppImage)",
+    d2_t:"Node agent",d2_b:"Servi calcolo e guadagna NRN. Leggero, da riga di comando.",d2_m:"Windows · Linux · macOS",
     foot_ethos:"Costruito prima di tutto per migliorare la vita della comunità: AI accessibile, calcolo condiviso, valore distribuito a chi lo crea.",
     foot_project:"Progetto",foot_built:"costruito da JIT Engineering"
   }
