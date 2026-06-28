@@ -1,0 +1,127 @@
+name: Release
+
+# Cut a release: push a tag like v1.2.0 (or run manually).
+#   git tag v1.2.0 && git push origin v1.2.0
+# Builds the desktop installer + node-agent worker on Windows, Linux and macOS
+# and attaches every artifact to the GitHub Release for that tag.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ---- desktop app: native installer per OS ----------------------------------
+  desktop:
+    name: desktop installer (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: prisma generate
+        run: pnpm --filter @neurion/api exec prisma generate
+
+      - name: assemble runtime stack + build installer
+        working-directory: apps/desktop
+        env:
+          # never sign / notarize in CI (mac uses identity:null; win uses rcedit only)
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          pnpm run prepare-stack
+          pnpm exec electron-builder --publish never
+
+      - name: attach installers to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: false
+          generate_release_notes: true
+          files: |
+            apps/desktop/dist-installer/*.exe
+            apps/desktop/dist-installer/*.dmg
+            apps/desktop/dist-installer/*.AppImage
+            apps/desktop/dist-installer/*.deb
+
+      - name: upload installers as build artifacts (non-tag runs)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurion-desktop-${{ matrix.os }}
+          if-no-files-found: ignore
+          path: |
+            apps/desktop/dist-installer/*.exe
+            apps/desktop/dist-installer/*.dmg
+            apps/desktop/dist-installer/*.AppImage
+            apps/desktop/dist-installer/*.deb
+
+  # ---- node-agent: the worker binary anyone runs to earn NRN -----------------
+  node-agent:
+    name: node-agent (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            ext: '.exe'
+            asset: neurion-node-windows-x64
+          - os: ubuntu-latest
+            ext: ''
+            asset: neurion-node-linux-x64
+          - os: macos-latest
+            ext: ''
+            asset: neurion-node-macos-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: apps/node-agent/go.sum
+
+      - name: build worker + stage package files
+        working-directory: apps/node-agent
+        shell: bash
+        run: |
+          mkdir -p pkg
+          go build -trimpath -ldflags "-s -w" -o "pkg/neurion-node${{ matrix.ext }}" ./cmd/neurion-node
+          cp neurion-node.example.yaml pkg/neurion-node.example.yaml
+          cp README.md pkg/README.md
+
+      - name: zip (unix)
+        if: runner.os != 'Windows'
+        working-directory: apps/node-agent/pkg
+        run: zip -j "../${{ matrix.asset }}.zip" *
+
+      - name: zip (windows)
+        if: runner.os == 'Windows'
+        working-directory: apps/node-agent/pkg
+        shell: pwsh
+        run: Compress-Archive -Path * -DestinationPath "..\${{ matrix.asset }}.zip" -Force
+
+      - name: attach worker to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: false
+          files: apps/node-agent/${{ matrix.asset }}.zip
+
+      - name: upload worker as build artifact (non-tag runs)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: apps/node-agent/${{ matrix.asset }}.zip

@@ -55,7 +55,26 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Neurion",
       "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "Neurion-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "build/icon.png",
+      "category": "Development",
+      "maintainer": "JIT Engineering <info@neurionproject.org>",
+      "synopsis": "Neurion — distributed AI compute",
+      "artifactName": "Neurion-${version}-linux-${arch}.${ext}"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "build/icon.png",
+      "category": "public.app-category.developer-tools",
+      "identity": null,
+      "artifactName": "Neurion-${version}-mac-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "Neurion ${version}"
     }
   },
   "dependencies": {
