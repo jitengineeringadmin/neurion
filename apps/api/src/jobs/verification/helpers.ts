@@ -37,6 +37,51 @@ export function ewma(prev: number, outcome: 0 | 1, alpha = EWMA_ALPHA): number {
   return (1 - alpha) * prev + alpha * outcome;
 }
 
+export interface Replica {
+  nodeId: string;
+  result: Record<string, unknown>;
+}
+export interface Consensus {
+  agreed: boolean; // a strict majority (> K/2) agreed
+  majority: string[]; // nodeIds in the winning cluster
+  outliers: string[]; // nodeIds that disagreed (candidates for slashing)
+}
+
+/**
+ * K-replica consensus: cluster K independent results, return the strict-majority
+ * cluster and the outliers. echo = exact string equality; embedding = cosine
+ * clustering at the deep-verify tolerance. No strict majority => not agreed
+ * (escalate to the trusted L3 executor instead of paying anyone).
+ */
+export function consensus(jobType: string, replicas: readonly Replica[]): Consensus {
+  const k = replicas.length;
+  if (k === 0) return { agreed: false, majority: [], outliers: [] };
+
+  const clusters: { rep: Replica; members: string[] }[] = [];
+  const sameCluster = (a: Replica, b: Replica): boolean => {
+    if (jobType === 'echo.v1') return a.result.echo === b.result.echo;
+    if (jobType === 'embedding.v1') {
+      const va = a.result.vector as number[] | undefined;
+      const vb = b.result.vector as number[] | undefined;
+      if (!Array.isArray(va) || !Array.isArray(vb)) return false;
+      return cosine(va, vb) >= COSINE_TOLERANCE;
+    }
+    return JSON.stringify(a.result) === JSON.stringify(b.result);
+  };
+
+  for (const r of replicas) {
+    const c = clusters.find((cl) => sameCluster(cl.rep, r));
+    if (c) c.members.push(r.nodeId);
+    else clusters.push({ rep: r, members: [r.nodeId] });
+  }
+  clusters.sort((a, b) => b.members.length - a.members.length);
+  const top = clusters[0]!;
+  const agreed = top.members.length > k / 2; // strict majority
+  const majority = agreed ? top.members : [];
+  const outliers = agreed ? clusters.slice(1).flatMap((c) => c.members) : [];
+  return { agreed, majority, outliers };
+}
+
 /** Deep-compare a node's embedding output against the trusted reference. */
 export function embeddingMatches(out: readonly number[], ref: readonly number[]): { ok: boolean; cos: number; normRatio: number } {
   const cos = cosine(out, ref);

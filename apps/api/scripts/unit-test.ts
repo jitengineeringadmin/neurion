@@ -6,7 +6,7 @@ import 'reflect-metadata';
 import assert from 'node:assert';
 import { PrivacyClassifierService } from '../src/ai/privacy/classifier.service';
 import { maxPrivacy, allowedTrustLevels, CHAT_PRIVACY_FLOOR } from '../src/ai/privacy/privacy.util';
-import { cosine, embeddingMatches, ewma } from '../src/jobs/verification/helpers';
+import { cosine, embeddingMatches, ewma, consensus } from '../src/jobs/verification/helpers';
 
 let passed = 0;
 let failed = 0;
@@ -113,6 +113,37 @@ test('ewma: deep-PASS raises reputation, deep-FAIL lowers it', () => {
   assert.ok(ewma(0.5, 1) > 0.5);
   assert.ok(ewma(0.5, 0) < 0.5);
   assert.ok(Math.abs(ewma(0.5, 1) - 0.55) < 1e-9); // alpha 0.1
+});
+
+// ---- K-replica consensus ----
+const ech = (id: string, v: string) => ({ nodeId: id, result: { echo: v } });
+test('consensus: 3 identical echo -> all majority, no outliers', () => {
+  const c = consensus('echo.v1', [ech('a', 'x'), ech('b', 'x'), ech('c', 'x')]);
+  assert.equal(c.agreed, true);
+  assert.deepEqual(c.majority.sort(), ['a', 'b', 'c']);
+  assert.equal(c.outliers.length, 0);
+});
+
+test('consensus: 2 agree + 1 cheats -> majority 2, the cheat is the outlier', () => {
+  const c = consensus('echo.v1', [ech('a', 'x'), ech('b', 'x'), ech('c', 'WRONG')]);
+  assert.equal(c.agreed, true);
+  assert.deepEqual(c.majority.sort(), ['a', 'b']);
+  assert.deepEqual(c.outliers, ['c']);
+});
+
+test('consensus: all three differ -> no strict majority (escalate)', () => {
+  const c = consensus('echo.v1', [ech('a', '1'), ech('b', '2'), ech('c', '3')]);
+  assert.equal(c.agreed, false);
+});
+
+test('consensus: embedding clusters by cosine', () => {
+  const a = { nodeId: 'a', result: { vector: [0.6, 0.8] } };
+  const b = { nodeId: 'b', result: { vector: [0.6000001, 0.7999999] } }; // ~identical
+  const c = { nodeId: 'c', result: { vector: [-0.8, 0.6] } }; // orthogonal -> outlier
+  const r = consensus('embedding.v1', [a, b, c]);
+  assert.equal(r.agreed, true);
+  assert.deepEqual(r.majority.sort(), ['a', 'b']);
+  assert.deepEqual(r.outliers, ['c']);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
