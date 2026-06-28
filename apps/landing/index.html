@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Neurion — La rete di calcolo AI distribuita</title>
-<meta name="description" content="Neurion è una rete di calcolo AI permissionless: usa l'AI in privato, condividi la tua potenza ed esegui calcoli verificati guadagnando NRN. Scarica il client." />
-<meta property="og:title" content="Neurion — La rete di calcolo AI distribuita" />
-<meta property="og:description" content="Usa l'AI in privato. Condividi potenza. Guadagna NRN. Solo lavoro verificato viene pagato." />
+<title>Neurion — The distributed AI compute network</title>
+<meta name="description" content="Neurion is a permissionless AI compute network: run AI privately, share your power and run verified compute to earn NRN. Download the client." />
+<meta property="og:title" content="Neurion — The distributed AI compute network" />
+<meta property="og:description" content="Run AI privately. Share power. Earn NRN. Only verified work gets paid." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
 <style>
@@ -25,19 +25,20 @@
   .accent{color:var(--accent)}
   .glow{text-shadow:0 0 24px rgba(0,255,112,.45)}
 
-  /* nav */
   nav{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
       padding:14px 24px;max-width:1080px;margin:0 auto;backdrop-filter:blur(6px)}
   nav .logo{font-family:var(--display);font-weight:900;letter-spacing:.18em;color:var(--accent);font-size:20px}
   nav .links{display:flex;gap:26px;align-items:center;font-size:13px;color:var(--muted)}
   nav .links a:hover{color:var(--accent)}
+  .lang{display:flex;gap:4px;border:1px solid var(--line);border-radius:8px;padding:3px;font-size:12px}
+  .lang button{background:none;border:none;color:var(--muted);cursor:pointer;padding:3px 8px;border-radius:6px;font-family:var(--mono)}
+  .lang button.on{background:var(--accent);color:#021008;font-weight:700}
   .btn{display:inline-block;border-radius:10px;padding:10px 18px;font-size:14px;cursor:pointer;border:1px solid var(--accent);
        background:var(--accent);color:#021008;font-weight:700;transition:.15s}
   .btn:hover{box-shadow:0 0 22px rgba(0,255,112,.5);transform:translateY(-1px)}
   .btn.ghost{background:transparent;color:var(--accent)}
   .btn.ghost:hover{background:rgba(0,255,112,.08)}
 
-  /* hero */
   header.hero{text-align:center;padding:90px 0 70px}
   header.hero .badge{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12px;color:var(--muted);margin-bottom:26px}
   header.hero h1{font-family:var(--display);font-weight:900;font-size:clamp(40px,8vw,78px);line-height:1.02;margin:0 0 18px}
@@ -78,108 +79,109 @@
   footer a:hover{color:var(--accent)}
   footer .ethos{max-width:420px}
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
-  @media(max-width:780px){.grid3,.steps,.dl{grid-template-columns:1fr}nav .links{display:none}}
+  @media(max-width:780px){.grid3,.steps,.dl{grid-template-columns:1fr}nav .links a{display:none}}
 </style>
 </head>
 <body>
-<h2 class="sr-only">Neurion: rete di calcolo AI distribuita — usa l'AI in privato, condividi potenza, guadagna NRN, scarica il client.</h2>
+<h2 class="sr-only">Neurion: the distributed AI compute network — run AI privately, share power, earn NRN, download the client.</h2>
 <canvas id="rain"></canvas>
 
 <nav>
   <div class="logo">NEURION</div>
   <div class="links">
-    <a href="#cose">Cos'è</a>
-    <a href="#come">Come funziona</a>
-    <a href="#scarica">Scarica</a>
-    <a href="#nodo">Diventa nodo</a>
-    <a class="btn ghost" href="https://app.neurionproject.org">Apri l'app</a>
+    <a href="#what" data-i18n="nav_what">What is it</a>
+    <a href="#how" data-i18n="nav_how">How it works</a>
+    <a href="#download" data-i18n="nav_dl">Download</a>
+    <a href="#node" data-i18n="nav_node">Run a node</a>
+    <a class="btn ghost" href="https://app.neurionproject.org" data-i18n="nav_open">Open the app</a>
+    <span class="lang"><button data-lang="en" class="on">EN</button><button data-lang="it">IT</button></span>
   </div>
 </nav>
 
 <header class="hero wrap">
-  <span class="badge">Rete di calcolo AI · permissionless · pagamenti NRN su Base</span>
-  <h1 class="glow">La potenza AI<br/>del mondo, <span class="accent">condivisa.</span></h1>
-  <p class="sub">Usa l'AI in privato sul tuo computer. Oppure metti a disposizione la tua potenza, esegui calcoli <b>verificati</b> e guadagna <b>NRN</b>. Una rete dove viene pagato solo il lavoro vero.</p>
+  <span class="badge" data-i18n="hero_badge">AI compute network · permissionless · NRN payments on Base</span>
+  <h1 class="glow" data-i18n-html="hero_h1">The world's AI power, <span class="accent">shared.</span></h1>
+  <p class="sub" data-i18n="hero_sub">Run AI privately on your own machine. Or put your power to work, run verified compute and earn NRN. A network where only real work gets paid.</p>
   <div class="cta-row">
-    <a class="btn" href="#scarica">⬇ Scarica per Windows</a>
-    <a class="btn ghost" href="#nodo">⚡ Diventa un nodo</a>
+    <a class="btn" href="#download" data-i18n="hero_cta1">⬇ Download for Windows</a>
+    <a class="btn ghost" href="#node" data-i18n="hero_cta2">⚡ Become a node</a>
   </div>
-  <div class="os-note">Windows disponibile · macOS &amp; Linux in arrivo · nessun account cloud richiesto</div>
+  <div class="os-note" data-i18n="hero_os">Windows available · macOS &amp; Linux coming · no cloud account needed</div>
 </header>
 
-<section id="cose" class="wrap">
-  <div class="eyebrow">Cos'è Neurion</div>
-  <h2 class="sec">Tre cose in una rete.</h2>
+<section id="what" class="wrap">
+  <div class="eyebrow" data-i18n="what_eyebrow">What is Neurion</div>
+  <h2 class="sec" data-i18n="what_title">Three things, one network.</h2>
   <div class="grid3">
     <div class="card">
       <div class="ic">🧠</div>
-      <h3>Usa l'AI</h3>
-      <p>Chat e un agente che lavora davvero sui tuoi file e progetti — in locale o instradato sulla rete. Routing privacy-first: i dati sensibili non escono.</p>
+      <h3 data-i18n="p1_t">Use AI</h3>
+      <p data-i18n="p1_b">Chat and an agent that actually works on your files and projects — locally or routed across the network. Privacy-first routing: sensitive data stays put.</p>
     </div>
     <div class="card">
       <div class="ic">⚡</div>
-      <h3>Condividi &amp; guadagna</h3>
-      <p>La tua macchina inattiva diventa un nodo di calcolo. Esegue job in sandbox isolata, supera la verifica e guadagna NRN. Più lavori onesti, più reputazione.</p>
+      <h3 data-i18n="p2_t">Share &amp; earn</h3>
+      <p data-i18n="p2_b">Your idle machine becomes a compute node. It runs jobs in an isolated sandbox, passes verification and earns NRN. More honest work, more reputation.</p>
     </div>
     <div class="card">
       <div class="ic">🔒</div>
-      <h3>Verificato &amp; privato</h3>
-      <p>Ogni calcolo campionato è ri-eseguito e confrontato: chi bara viene <b>slashato</b>, non pagato. Privacy classificata e routing per livello di fiducia.</p>
+      <h3 data-i18n="p3_t">Verified &amp; private</h3>
+      <p data-i18n="p3_b">Every sampled computation is re-executed and compared: cheaters are slashed, not paid. Classified privacy and trust-level routing.</p>
     </div>
   </div>
 </section>
 
-<section id="come" class="trust">
+<section id="how" class="trust">
   <div class="wrap">
-    <div class="eyebrow">Come funziona</div>
-    <h2 class="sec">Dal download al guadagno.</h2>
+    <div class="eyebrow" data-i18n="how_eyebrow">How it works</div>
+    <h2 class="sec" data-i18n="how_title">From download to earning.</h2>
     <div class="steps">
       <div class="step">
-        <h3>Scarica il client</h3>
-        <p>Un'app standalone: database, AI locale e interfaccia inclusi. Nessun Docker, nessun setup cloud. Doppio click e parte.</p>
+        <h3 data-i18n="s1_t">Download the client</h3>
+        <p data-i18n="s1_b">A standalone app: database, local AI and UI included. No Docker, no cloud setup. Double-click and go.</p>
       </div>
       <div class="step">
-        <h3>Usa o metti un nodo</h3>
-        <p>Usa l'AI dall'app, oppure attiva la modalità nodo per servire calcolo alla rete dalla tua GPU/CPU.</p>
+        <h3 data-i18n="s2_t">Use it or run a node</h3>
+        <p data-i18n="s2_b">Use the AI from the app, or switch on node mode to serve compute to the network from your GPU/CPU.</p>
       </div>
       <div class="step">
-        <h3>Paga / guadagna il verificato</h3>
-        <p>Paghi solo il lavoro verificato; come nodo guadagni NRN convertibili. Lo Stato della rete è on-chain su Base.</p>
+        <h3 data-i18n="s3_t">Pay / earn the verified</h3>
+        <p data-i18n="s3_b">You only pay for verified work; as a node you earn convertible NRN. Network state settles on-chain on Base.</p>
       </div>
     </div>
     <div class="row">
-      <div class="chip"><b>Pagato solo il verificato</b> · re-exec + consenso</div>
-      <div class="chip"><b>Anti-baro</b> · stake + slashing on-chain</div>
-      <div class="chip"><b>Privacy by design</b> · classificatore G2</div>
-      <div class="chip"><b>Scala orizzontale</b> · multi-istanza</div>
+      <div class="chip" data-i18n-html="chip1"><b>Only verified work is paid</b> · re-exec + consensus</div>
+      <div class="chip" data-i18n-html="chip2"><b>Anti-cheat</b> · stake + on-chain slashing</div>
+      <div class="chip" data-i18n-html="chip3"><b>Privacy by design</b> · G2 classifier</div>
+      <div class="chip" data-i18n-html="chip4"><b>Horizontal scale</b> · multi-instance</div>
     </div>
   </div>
 </section>
 
-<section id="scarica" class="wrap">
-  <div class="eyebrow">Scarica</div>
-  <h2 class="sec">Prendi Neurion.</h2>
+<section id="download" class="wrap">
+  <div class="eyebrow" data-i18n="dl_eyebrow">Download</div>
+  <h2 class="sec" data-i18n="dl_title">Get Neurion.</h2>
   <div class="dl">
     <div class="card">
       <div class="ic">🖥️</div>
-      <h3>App desktop</h3>
-      <p>Il client completo: chat, agente, wallet. Tutto incluso, gira offline.</p>
-      <div class="meta">Windows 10/11 · ~215 MB · v1.2.0</div>
-      <a class="btn" href="/download/Neurion-Setup-1.2.0.exe">⬇ Windows (.exe)</a>
+      <h3 data-i18n="d1_t">Desktop app</h3>
+      <p data-i18n="d1_b">The full client: chat, agent, wallet. All included, runs offline.</p>
+      <div class="meta" data-i18n="d1_m">Windows 10/11 · ~215 MB · v1.2.0</div>
+      <a class="btn" href="/download/Neurion-Setup-1.2.0.exe" data-i18n="d1_btn">⬇ Windows (.exe)</a>
     </div>
-    <div class="card" id="nodo">
+    <div class="card" id="node">
       <div class="ic">⚡</div>
-      <h3>Node agent</h3>
-      <p>Per chi vuole servire calcolo e guadagnare NRN. Leggero, da riga di comando.</p>
-      <div class="meta">Windows / Linux · richiede Docker</div>
-      <a class="btn ghost" href="/download/neurion-node.zip">⬇ Node agent</a>
+      <h3 data-i18n="d2_t">Node agent</h3>
+      <p data-i18n="d2_b">For those who want to serve compute and earn NRN. Lightweight, command-line.</p>
+      <div class="meta" data-i18n="d2_m">Windows / Linux · requires Docker</div>
+      <a class="btn ghost" href="/download/neurion-node.zip" data-i18n="d2_btn">⬇ Node agent</a>
     </div>
     <div class="card soon">
       <div class="ic">🍎</div>
-      <h3>macOS &amp; Linux</h3>
-      <p>Build native in arrivo. Lascia la mail e ti avvisiamo al rilascio.</p>
-      <div class="meta">In arrivo</div>
-      <a class="btn ghost" href="mailto:info@neurionproject.org?subject=Avvisami%20macOS/Linux">Avvisami</a>
+      <h3 data-i18n="d3_t">macOS &amp; Linux</h3>
+      <p data-i18n="d3_b">Native builds coming. Leave your email and we'll ping you at release.</p>
+      <div class="meta" data-i18n="d3_m">Coming soon</div>
+      <a class="btn ghost" href="mailto:info@neurionproject.org?subject=Notify%20me" data-i18n="d3_btn">Notify me</a>
     </div>
   </div>
 </section>
@@ -188,20 +190,83 @@
   <div class="top">
     <div>
       <div class="logo">NEURION</div>
-      <p class="ethos">Costruito prima di tutto per migliorare la vita della comunità: AI accessibile, calcolo condiviso, valore distribuito a chi lo crea.</p>
+      <p class="ethos" data-i18n="foot_ethos">Built first and foremost to improve the community's life: accessible AI, shared compute, value distributed to those who create it.</p>
     </div>
     <div>
-      <div style="color:var(--text);margin-bottom:8px">Progetto</div>
-      <div><a href="#cose">Cos'è</a></div>
-      <div><a href="#come">Come funziona</a></div>
-      <div><a href="#scarica">Scarica</a></div>
+      <div style="color:var(--text);margin-bottom:8px" data-i18n="foot_project">Project</div>
+      <div><a href="#what" data-i18n="nav_what">What is it</a></div>
+      <div><a href="#how" data-i18n="nav_how">How it works</a></div>
+      <div><a href="#download" data-i18n="nav_dl">Download</a></div>
       <div><a href="mailto:info@neurionproject.org">info@neurionproject.org</a></div>
     </div>
   </div>
-  <div style="margin-top:34px;opacity:.6">© 2026 Neurion · neurionproject.org · costruito da JIT Engineering</div>
+  <div style="margin-top:34px;opacity:.6">© 2026 Neurion · neurionproject.org · <span data-i18n="foot_built">built by JIT Engineering</span></div>
 </footer>
 
 <script>
+// ---- i18n ----
+const I18N = {
+  en: {
+    nav_what:"What is it",nav_how:"How it works",nav_dl:"Download",nav_node:"Run a node",nav_open:"Open the app",
+    hero_badge:"AI compute network · permissionless · NRN payments on Base",
+    hero_h1:"The world's AI power, <span class=\"accent\">shared.</span>",
+    hero_sub:"Run AI privately on your own machine. Or put your power to work, run verified compute and earn NRN. A network where only real work gets paid.",
+    hero_cta1:"⬇ Download for Windows",hero_cta2:"⚡ Become a node",
+    hero_os:"Windows available · macOS & Linux coming · no cloud account needed",
+    what_eyebrow:"What is Neurion",what_title:"Three things, one network.",
+    p1_t:"Use AI",p1_b:"Chat and an agent that actually works on your files and projects — locally or routed across the network. Privacy-first routing: sensitive data stays put.",
+    p2_t:"Share & earn",p2_b:"Your idle machine becomes a compute node. It runs jobs in an isolated sandbox, passes verification and earns NRN. More honest work, more reputation.",
+    p3_t:"Verified & private",p3_b:"Every sampled computation is re-executed and compared: cheaters are slashed, not paid. Classified privacy and trust-level routing.",
+    how_eyebrow:"How it works",how_title:"From download to earning.",
+    s1_t:"Download the client",s1_b:"A standalone app: database, local AI and UI included. No Docker, no cloud setup. Double-click and go.",
+    s2_t:"Use it or run a node",s2_b:"Use the AI from the app, or switch on node mode to serve compute to the network from your GPU/CPU.",
+    s3_t:"Pay / earn the verified",s3_b:"You only pay for verified work; as a node you earn convertible NRN. Network state settles on-chain on Base.",
+    chip1:"<b>Only verified work is paid</b> · re-exec + consensus",chip2:"<b>Anti-cheat</b> · stake + on-chain slashing",
+    chip3:"<b>Privacy by design</b> · G2 classifier",chip4:"<b>Horizontal scale</b> · multi-instance",
+    dl_eyebrow:"Download",dl_title:"Get Neurion.",
+    d1_t:"Desktop app",d1_b:"The full client: chat, agent, wallet. All included, runs offline.",d1_m:"Windows 10/11 · ~215 MB · v1.2.0",d1_btn:"⬇ Windows (.exe)",
+    d2_t:"Node agent",d2_b:"For those who want to serve compute and earn NRN. Lightweight, command-line.",d2_m:"Windows / Linux · requires Docker",d2_btn:"⬇ Node agent",
+    d3_t:"macOS & Linux",d3_b:"Native builds coming. Leave your email and we'll ping you at release.",d3_m:"Coming soon",d3_btn:"Notify me",
+    foot_ethos:"Built first and foremost to improve the community's life: accessible AI, shared compute, value distributed to those who create it.",
+    foot_project:"Project",foot_built:"built by JIT Engineering"
+  },
+  it: {
+    nav_what:"Cos'è",nav_how:"Come funziona",nav_dl:"Scarica",nav_node:"Diventa nodo",nav_open:"Apri l'app",
+    hero_badge:"Rete di calcolo AI · permissionless · pagamenti NRN su Base",
+    hero_h1:"La potenza AI del mondo, <span class=\"accent\">condivisa.</span>",
+    hero_sub:"Usa l'AI in privato sul tuo computer. Oppure metti a disposizione la tua potenza, esegui calcoli verificati e guadagna NRN. Una rete dove viene pagato solo il lavoro vero.",
+    hero_cta1:"⬇ Scarica per Windows",hero_cta2:"⚡ Diventa un nodo",
+    hero_os:"Windows disponibile · macOS & Linux in arrivo · nessun account cloud richiesto",
+    what_eyebrow:"Cos'è Neurion",what_title:"Tre cose in una rete.",
+    p1_t:"Usa l'AI",p1_b:"Chat e un agente che lavora davvero sui tuoi file e progetti — in locale o instradato sulla rete. Routing privacy-first: i dati sensibili non escono.",
+    p2_t:"Condividi & guadagna",p2_b:"La tua macchina inattiva diventa un nodo di calcolo. Esegue job in sandbox isolata, supera la verifica e guadagna NRN. Più lavori onesti, più reputazione.",
+    p3_t:"Verificato & privato",p3_b:"Ogni calcolo campionato è ri-eseguito e confrontato: chi bara viene slashato, non pagato. Privacy classificata e routing per livello di fiducia.",
+    how_eyebrow:"Come funziona",how_title:"Dal download al guadagno.",
+    s1_t:"Scarica il client",s1_b:"Un'app standalone: database, AI locale e interfaccia inclusi. Nessun Docker, nessun setup cloud. Doppio click e parte.",
+    s2_t:"Usa o metti un nodo",s2_b:"Usa l'AI dall'app, oppure attiva la modalità nodo per servire calcolo alla rete dalla tua GPU/CPU.",
+    s3_t:"Paga / guadagna il verificato",s3_b:"Paghi solo il lavoro verificato; come nodo guadagni NRN convertibili. Lo stato della rete è on-chain su Base.",
+    chip1:"<b>Pagato solo il verificato</b> · re-exec + consenso",chip2:"<b>Anti-baro</b> · stake + slashing on-chain",
+    chip3:"<b>Privacy by design</b> · classificatore G2",chip4:"<b>Scala orizzontale</b> · multi-istanza",
+    dl_eyebrow:"Scarica",dl_title:"Prendi Neurion.",
+    d1_t:"App desktop",d1_b:"Il client completo: chat, agente, wallet. Tutto incluso, gira offline.",d1_m:"Windows 10/11 · ~215 MB · v1.2.0",d1_btn:"⬇ Windows (.exe)",
+    d2_t:"Node agent",d2_b:"Per chi vuole servire calcolo e guadagnare NRN. Leggero, da riga di comando.",d2_m:"Windows / Linux · richiede Docker",d2_btn:"⬇ Node agent",
+    d3_t:"macOS & Linux",d3_b:"Build native in arrivo. Lascia la mail e ti avvisiamo al rilascio.",d3_m:"In arrivo",d3_btn:"Avvisami",
+    foot_ethos:"Costruito prima di tutto per migliorare la vita della comunità: AI accessibile, calcolo condiviso, valore distribuito a chi lo crea.",
+    foot_project:"Progetto",foot_built:"costruito da JIT Engineering"
+  }
+};
+function setLang(lang){
+  const d=I18N[lang]||I18N.en;
+  document.documentElement.lang=lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(d[k]!=null)el.textContent=d[k];});
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{const k=el.getAttribute('data-i18n-html');if(d[k]!=null)el.innerHTML=d[k];});
+  document.querySelectorAll('.lang button').forEach(b=>b.classList.toggle('on',b.dataset.lang===lang));
+  try{localStorage.setItem('neurion_lang',lang);}catch(e){}
+}
+document.querySelectorAll('.lang button').forEach(b=>b.addEventListener('click',()=>setLang(b.dataset.lang)));
+setLang((function(){try{return localStorage.getItem('neurion_lang')||'en';}catch(e){return 'en';}})());
+
+// ---- matrix rain ----
 (function(){
   const c=document.getElementById('rain'),x=c.getContext('2d');
   let cols,drops,fs=14;
