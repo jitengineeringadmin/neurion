@@ -10,6 +10,7 @@ import { SessionsSidebar } from '../../components/SessionsSidebar';
 const TABS: [string, string][] = [
   ['/app/chat', 'Chat'],
   ['/app/agent', 'Agent'],
+  ['/app/models', 'Modelli'],
   ['/app/dashboard', 'Network'],
 ];
 const NETWORK: [string, string][] = [
@@ -31,7 +32,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   if (loading || !user) return <div style={{ padding: 40, color: theme.muted }}>Loading…</div>;
 
   const isNetwork = ['/app/dashboard', '/app/jobs', '/app/nodes', '/app/wallet', '/app/admin'].some((p) => pathname.startsWith(p));
-  const activeTab = pathname.startsWith('/app/agent') ? '/app/agent' : isNetwork ? '/app/dashboard' : '/app/chat';
+  const activeTab = pathname.startsWith('/app/agent')
+    ? '/app/agent'
+    : pathname.startsWith('/app/models')
+    ? '/app/models'
+    : isNetwork
+    ? '/app/dashboard'
+    : '/app/chat';
 
   const tab = (href: string, label: string) => {
     const active = href === activeTab;
