@@ -5,22 +5,26 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { theme } from '../../lib/ui';
 import { ThemeToggle } from '../../components/ThemeToggle';
+import { LangToggle } from '../../components/LangToggle';
 import { SessionsSidebar } from '../../components/SessionsSidebar';
+import { useT } from '../../lib/i18n';
 
+// [href, i18n key] — label resolved via t() in render (hooks can't run at module scope)
 const TABS: [string, string][] = [
-  ['/app/chat', 'Chat'],
-  ['/app/agent', 'Agent'],
-  ['/app/models', 'Modelli'],
-  ['/app/dashboard', 'Network'],
+  ['/app/chat', 'nav.tabChat'],
+  ['/app/agent', 'nav.tabAgent'],
+  ['/app/models', 'nav.tabModels'],
+  ['/app/dashboard', 'nav.tabNetwork'],
 ];
 const NETWORK: [string, string][] = [
-  ['/app/dashboard', 'Dashboard'],
-  ['/app/jobs', 'Jobs'],
-  ['/app/nodes', 'Nodes'],
-  ['/app/wallet', 'Wallet'],
+  ['/app/dashboard', 'nav.subnavDashboard'],
+  ['/app/jobs', 'nav.subnavJobs'],
+  ['/app/nodes', 'nav.subnavNodes'],
+  ['/app/wallet', 'nav.subnavWallet'],
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
+  const t = useT();
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -29,7 +33,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     if (!loading && !user) router.replace('/login');
   }, [loading, user, router]);
 
-  if (loading || !user) return <div style={{ padding: 40, color: theme.muted }}>Loading…</div>;
+  if (loading || !user) return <div style={{ padding: 40, color: theme.muted }}>{t('nav.loading')}</div>;
 
   const isNetwork = ['/app/dashboard', '/app/jobs', '/app/nodes', '/app/wallet', '/app/admin'].some((p) => pathname.startsWith(p));
   const activeTab = pathname.startsWith('/app/agent')
@@ -67,7 +71,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <header style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '10px 16px', borderBottom: `1px solid ${theme.border}` }}>
         <div className="display neon" style={{ fontSize: 18, letterSpacing: '0.1em', color: theme.accent }}>NEURION</div>
         <div style={{ display: 'flex', gap: 4, background: 'var(--surface-2)', borderRadius: 10, padding: 3 }}>
-          {TABS.map(([h, l]) => tab(h, l))}
+          {TABS.map(([h, l]) => tab(h, t(l)))}
         </div>
       </header>
 
@@ -81,11 +85,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <div style={{ fontSize: 11, color: theme.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</div>
             <div style={{ display: 'flex', gap: 6 }}>
               <ThemeToggle />
+              <LangToggle />
               <button
                 onClick={() => void logout().then(() => router.replace('/login'))}
                 style={{ background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.text, padding: '6px 8px', cursor: 'pointer', fontSize: 11 }}
               >
-                Logout
+                {t('nav.logout')}
               </button>
             </div>
           </div>
@@ -96,10 +101,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           {isNetwork && (
             <div style={{ display: 'flex', gap: 6, padding: '8px 20px', borderBottom: `1px solid ${theme.border}` }}>
               {NETWORK.map(([h, l]) => (
-                <Link key={h} href={h} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, textDecoration: 'none', color: pathname.startsWith(h) ? theme.text : theme.muted, background: pathname.startsWith(h) ? theme.surface : 'transparent' }}>{l}</Link>
+                <Link key={h} href={h} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, textDecoration: 'none', color: pathname.startsWith(h) ? theme.text : theme.muted, background: pathname.startsWith(h) ? theme.surface : 'transparent' }}>{t(l)}</Link>
               ))}
               {(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
-                <Link href="/app/admin" style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, textDecoration: 'none', color: pathname.startsWith('/app/admin') ? theme.text : theme.muted }}>Admin</Link>
+                <Link href="/app/admin" style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, textDecoration: 'none', color: pathname.startsWith('/app/admin') ? theme.text : theme.muted }}>{t('nav.adminLink')}</Link>
               )}
             </div>
           )}

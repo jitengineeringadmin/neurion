@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '../lib/api';
 import { theme, ghostButton } from '../lib/ui';
+import { useT } from '../lib/i18n';
 
 export function SessionsSidebar() {
+  const t = useT();
   const router = useRouter();
   const params = useSearchParams();
   const activeId = params.get('c');
@@ -44,7 +46,7 @@ export function SessionsSidebar() {
     load();
   }
   async function createProject(prefillName?: string) {
-    const name = prefillName || window.prompt('Nome progetto?');
+    const name = prefillName || window.prompt(t('sessions.promptProjectName'));
     if (!name) return;
     let path: string | null = null;
     const initial = projects[0]?.path;
@@ -62,7 +64,7 @@ export function SessionsSidebar() {
         /* unavailable */
       }
     }
-    if (!path) path = window.prompt('Cartella del progetto?');
+    if (!path) path = window.prompt(t('sessions.promptProjectFolder'));
     if (!path) return;
     await createProjectWithPath(name, path);
   }
@@ -71,7 +73,7 @@ export function SessionsSidebar() {
     setDragOver(false);
     const f = e.dataTransfer.files?.[0] as any;
     if (f?.path) {
-      void createProjectWithPath(f.name || 'progetto', String(f.path).replace(/\\/g, '/'));
+      void createProjectWithPath(f.name || t('sessions.defaultProjectName'), String(f.path).replace(/\\/g, '/'));
       return;
     }
     const entry = (e.dataTransfer.items?.[0] as any)?.webkitGetAsEntry?.();
@@ -86,24 +88,24 @@ export function SessionsSidebar() {
       style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 8, cursor: 'pointer', background: activeId === c.id ? theme.surface : 'transparent' }}
     >
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: activeId === c.id ? theme.text : theme.muted }}>
-        {c.title || 'Nuova chat'}
+        {c.title || t('sessions.newChatTitle')}
       </span>
       <span
         onClick={(e) => {
           e.stopPropagation();
           if (projects.length === 0) return void createProject();
           const list = projects.map((p, i) => `${i + 1}. ${p.name}`).join('\n');
-          const sel = window.prompt('Assegna a progetto (numero, vuoto = nessuno):\n' + list);
+          const sel = window.prompt(t('sessions.promptAssignToProject') + '\n' + list);
           if (sel === null) return;
           void assignProject(c.id, projects[parseInt(sel, 10) - 1]?.id ?? null);
         }}
-        title="assegna progetto"
+        title={t('sessions.assignProjectTooltip')}
         style={{ color: theme.muted, fontSize: 12 }}
       >
         📁
       </span>
-      <span onClick={(e) => { e.stopPropagation(); void pinConv(c.id, !c.pinned); }} title="pin" style={{ color: c.pinned ? theme.accent : theme.muted, fontSize: 12 }}>{c.pinned ? '★' : '☆'}</span>
-      <span onClick={(e) => { e.stopPropagation(); void delConv(c.id); }} title="elimina" style={{ color: theme.muted, fontSize: 12 }}>✕</span>
+      <span onClick={(e) => { e.stopPropagation(); void pinConv(c.id, !c.pinned); }} title={t('sessions.pinTooltip')} style={{ color: c.pinned ? theme.accent : theme.muted, fontSize: 12 }}>{c.pinned ? '★' : '☆'}</span>
+      <span onClick={(e) => { e.stopPropagation(); void delConv(c.id); }} title={t('sessions.deleteTooltip')} style={{ color: theme.muted, fontSize: 12 }}>✕</span>
     </div>
   );
 
@@ -114,15 +116,15 @@ export function SessionsSidebar() {
       onDrop={onDrop}
       style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, paddingRight: 4, borderRadius: 8, background: dragOver ? theme.surface : 'transparent' }}
     >
-      <button onClick={newSession} style={{ ...ghostButton, textAlign: 'left', marginBottom: 6 }}>＋ Nuova sessione</button>
-      <button onClick={() => void createProject()} style={{ ...ghostButton, textAlign: 'left', marginBottom: 4, fontSize: 12 }}>＋ Progetto (cartella)</button>
+      <button onClick={newSession} style={{ ...ghostButton, textAlign: 'left', marginBottom: 6 }}>＋ {t('sessions.newSessionButton')}</button>
+      <button onClick={() => void createProject()} style={{ ...ghostButton, textAlign: 'left', marginBottom: 4, fontSize: 12 }}>＋ {t('sessions.newProjectFolderButton')}</button>
       <div style={{ fontSize: 10, color: dragOver ? theme.accent : theme.muted, marginBottom: 8, textAlign: 'center' }}>
-        {dragOver ? '▼ rilascia la cartella' : 'o trascina una cartella qui'}
+        {dragOver ? t('sessions.dropFolderHint') : t('sessions.dragFolderHint')}
       </div>
 
       {pinned.length > 0 && (
         <>
-          <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '8px 0 4px' }}>Fissato</div>
+          <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '8px 0 4px' }}>{t('sessions.pinnedHeading')}</div>
           {pinned.map(Item)}
         </>
       )}
@@ -134,12 +136,12 @@ export function SessionsSidebar() {
               <span title={p.path} style={{ fontSize: 11, color: theme.accent, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📂 {p.name}</span>
               <span
                 onClick={async () => {
-                  const conv = await api<any>('/chat/conversations', { method: 'POST', body: JSON.stringify({ title: 'Nuova chat' }) });
+                  const conv = await api<any>('/chat/conversations', { method: 'POST', body: JSON.stringify({ title: t('sessions.newChatTitle') }) });
                   await api(`/chat/conversations/${conv.id}`, { method: 'PATCH', body: JSON.stringify({ projectId: p.id }) }).catch(() => undefined);
                   load();
                   open(conv.id);
                 }}
-                title="nuova sessione nel progetto"
+                title={t('sessions.newSessionInProjectTooltip')}
                 style={{ cursor: 'pointer', color: theme.muted, fontSize: 15 }}
               >
                 +
@@ -149,9 +151,9 @@ export function SessionsSidebar() {
           </div>
         );
       })}
-      <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '10px 0 4px' }}>Non raggruppato</div>
+      <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '10px 0 4px' }}>{t('sessions.ungroupedHeading')}</div>
       {conversations.filter((c) => !c.pinned && !c.projectId).map(Item)}
-      {conversations.length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 8px' }}>Nessuna sessione</div>}
+      {conversations.length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 8px' }}>{t('sessions.noSessionsEmptyState')}</div>}
     </div>
   );
 }

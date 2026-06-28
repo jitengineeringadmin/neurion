@@ -1,17 +1,19 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { MatrixRain } from './MatrixRain';
+import { useT } from '../lib/i18n';
 
-const BOOT_LINES = [
-  '> initializing neurion runtime…',
-  '> connecting compute grid…',
-  '> warming realtime pool…',
-  '> verifying nodes [OK]',
-  '> NRN ledger online [OK]',
-  '> access granted.',
+const BOOT_LINE_KEYS = [
+  'splash.bootInitializingRuntime',
+  'splash.bootConnectingGrid',
+  'splash.bootWarmingPool',
+  'splash.bootVerifyingNodes',
+  'splash.bootLedgerOnline',
+  'splash.bootAccessGranted',
 ];
 
 export function BootSplash() {
+  const t = useT();
   const [phase, setPhase] = useState<'hidden' | 'show' | 'fade'>('hidden');
   const [lines, setLines] = useState<string[]>([]);
 
@@ -20,8 +22,8 @@ export function BootSplash() {
     setPhase('show');
 
     const timers: number[] = [];
-    BOOT_LINES.forEach((l, i) => {
-      timers.push(window.setTimeout(() => setLines((p) => [...p, l]), 350 + i * 320));
+    BOOT_LINE_KEYS.forEach((k, i) => {
+      timers.push(window.setTimeout(() => setLines((p) => [...p, t(k)]), 350 + i * 320));
     });
     timers.push(window.setTimeout(() => setPhase('fade'), 2900));
     timers.push(
@@ -30,8 +32,8 @@ export function BootSplash() {
         setPhase('hidden');
       }, 3500),
     );
-    return () => timers.forEach((t) => window.clearTimeout(t));
-  }, []);
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [t]);
 
   if (phase === 'hidden') return null;
 
@@ -68,7 +70,7 @@ export function BootSplash() {
           className="display flicker neon"
           style={{ fontSize: 'clamp(40px, 9vw, 88px)', color: 'var(--accent)', letterSpacing: '0.18em' }}
         >
-          NEURION
+          {t('splash.productName')}
         </div>
         <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', fontSize: 13, minHeight: 130 }}>
           {lines.map((l, i) => (

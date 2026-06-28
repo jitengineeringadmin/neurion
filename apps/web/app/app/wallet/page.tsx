@@ -2,8 +2,10 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../../lib/api';
 import { theme, card, input, button, ghostButton } from '../../../lib/ui';
+import { useT } from '../../../lib/i18n';
 
 export default function WalletPage() {
+  const t = useT();
   const [config, setConfig] = useState<any>(null);
   const [wallet, setWallet] = useState<string | null>(null);
   const [payouts, setPayouts] = useState<any[]>([]);
@@ -21,7 +23,7 @@ export default function WalletPage() {
     setError('');
     const eth = (window as any).ethereum;
     if (!eth) {
-      setError('No EVM wallet found (install MetaMask).');
+      setError(t('wallet.errorNoWallet'));
       return;
     }
     try {
@@ -53,33 +55,36 @@ export default function WalletPage() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, marginTop: 0 }}>Wallet</h2>
+      <h2 style={{ fontSize: 20, marginTop: 0 }}>{t('wallet.pageHeading')}</h2>
 
       <div style={{ ...card, marginBottom: 16 }}>
-        <div style={{ fontSize: 13, color: theme.muted }}>NRN token</div>
+        <div style={{ fontSize: 13, color: theme.muted }}>{t('wallet.nrnTokenLabel')}</div>
         <div style={{ fontSize: 13, marginTop: 4 }}>
-          chain {config?.chainId ?? '…'} · payouts {config?.payoutsEnabled ? 'on' : 'off'} · 1 credit ={' '}
-          {config ? Number(BigInt(config.creditToNrnWei)) / 1e18 : '…'} NRN
+          {t('wallet.chainInfoLine', {
+            chainId: config?.chainId ?? t('wallet.chainIdPlaceholder'),
+            payoutsStatus: config?.payoutsEnabled ? t('wallet.chainStatusOn') : t('wallet.chainStatusOff'),
+            nrnAmount: config ? Number(BigInt(config.creditToNrnWei)) / 1e18 : t('wallet.chainIdPlaceholder'),
+          })}
         </div>
         <div style={{ fontSize: 12, color: theme.muted, marginTop: 4, wordBreak: 'break-all' }}>
-          token: {config?.tokenAddress ?? 'not deployed'}
+          {t('wallet.tokenAddressLabel', { tokenAddress: config?.tokenAddress ?? t('wallet.tokenNotDeployed') })}
         </div>
       </div>
 
       <div style={{ ...card, marginBottom: 16 }}>
         {wallet ? (
-          <div style={{ fontSize: 13 }}>
-            Linked wallet: <span style={{ fontFamily: 'monospace' }}>{wallet}</span>
+          <div style={{ fontSize: 13, fontFamily: 'monospace' }}>
+            {t('wallet.linkedWalletLabel', { address: wallet })}
           </div>
         ) : (
           <button style={ghostButton} onClick={() => void connect()}>
-            Connect wallet (SIWE)
+            {t('wallet.connectWalletButton')}
           </button>
         )}
       </div>
 
       <div style={{ ...card, marginBottom: 16 }}>
-        <div style={{ fontSize: 13, color: theme.muted, marginBottom: 8 }}>Request NRN payout</div>
+        <div style={{ fontSize: 13, color: theme.muted, marginBottom: 8 }}>{t('wallet.requestPayoutLabel')}</div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input
             style={{ ...input, width: 120 }}
@@ -88,7 +93,7 @@ export default function WalletPage() {
             onChange={(e) => setCredits(Number(e.target.value))}
           />
           <button style={button} onClick={() => void requestPayout()} disabled={!wallet}>
-            Request {credits} credits
+            {t('wallet.requestCreditsButton', { credits })}
           </button>
         </div>
       </div>
@@ -99,10 +104,12 @@ export default function WalletPage() {
         {payouts.map((p) => (
           <div key={p.id} style={{ ...card, display: 'flex', justifyContent: 'space-between' }}>
             <div style={{ fontSize: 13 }}>
-              {(Number(BigInt(p.amountWei)) / 1e18).toFixed(2)} NRN
+              {t('wallet.payoutAmount', { amount: (Number(BigInt(p.amountWei)) / 1e18).toFixed(2) })}
               <span style={{ color: theme.muted, marginLeft: 8 }}>{p.txHash ? `${p.txHash.slice(0, 12)}…` : ''}</span>
             </div>
-            <div style={{ fontSize: 13, color: p.status === 'CONFIRMED' ? theme.green : theme.muted }}>{p.status}</div>
+            <div style={{ fontSize: 13, color: p.status === 'CONFIRMED' ? theme.green : theme.muted }}>
+              {p.status === 'CONFIRMED' ? t('wallet.statusConfirmed') : t('wallet.statusValue', { status: p.status })}
+            </div>
           </div>
         ))}
       </div>

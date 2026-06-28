@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { api, streamAgent } from '../../../lib/api';
 import { theme, card, input, button, ghostButton } from '../../../lib/ui';
+import { useT } from '../../../lib/i18n';
 
 interface Step {
   kind: 'start' | 'tool_call' | 'tool_result' | 'sub_start' | 'sub_end' | 'final' | 'error' | 'approval';
@@ -10,7 +11,8 @@ interface Step {
 }
 
 export default function AgentPage() {
-  const [goal, setGoal] = useState('Check my credits and online nodes, then run an echo job with text "hello" and summarise.');
+  const t = useT();
+  const [goal, setGoal] = useState(t('agent.defaultGoal'));
   const [steps, setSteps] = useState<Step[]>([]);
   const [plan, setPlan] = useState<{ text: string; done: boolean }[] | null>(null);
   const [running, setRunning] = useState(false);
@@ -60,24 +62,24 @@ export default function AgentPage() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, marginTop: 0 }}>Agent <span style={{ color: theme.muted, fontSize: 13 }}>multi-agent · ReAct</span></h2>
+      <h2 style={{ fontSize: 20, marginTop: 0 }}>{t('agent.heading')} <span style={{ color: theme.muted, fontSize: 13 }}>{t('agent.headingSubtitle')}</span></h2>
       <div style={{ ...card, marginBottom: 16 }}>
         <textarea
           style={{ ...input, minHeight: 64, resize: 'vertical' }}
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
-          placeholder="Give the agent a goal…"
+          placeholder={t('agent.goalPlaceholder')}
         />
         <div style={{ marginTop: 10 }}>
           <button style={{ ...button, opacity: running ? 0.6 : 1 }} onClick={() => void run()} disabled={running}>
-            {running ? 'running…' : 'Run agent ▸'}
+            {running ? t('agent.runningLabel') : t('agent.runAgentButton')}
           </button>
         </div>
       </div>
 
       {plan && plan.length > 0 && (
         <div style={{ ...card, marginBottom: 14 }}>
-          <div style={{ fontSize: 12, color: theme.muted, marginBottom: 8 }}>plan</div>
+          <div style={{ fontSize: 12, color: theme.muted, marginBottom: 8 }}>{t('agent.planLabel')}</div>
           {plan.map((s, i) => (
             <div key={i} style={{ fontSize: 13, display: 'flex', gap: 8, padding: '2px 0' }}>
               <span style={{ color: s.done ? theme.green : theme.muted }}>{s.done ? '☑' : '☐'}</span>
@@ -90,12 +92,12 @@ export default function AgentPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {steps.map((s, i) => (
           <div key={i} style={{ marginLeft: s.depth * 22 }}>
-            {s.kind === 'start' && <Dim>▸ goal: {s.data.goal}</Dim>}
-            {s.kind === 'sub_start' && <div style={{ color: theme.accent, fontSize: 13 }}>↳ sub-agent: {s.data.goal}</div>}
-            {s.kind === 'sub_end' && <Dim>↳ sub-agent done</Dim>}
+            {s.kind === 'start' && <Dim>▸ {t('agent.goalPrefix')} {s.data.goal}</Dim>}
+            {s.kind === 'sub_start' && <div style={{ color: theme.accent, fontSize: 13 }}>↳ {t('agent.subAgentPrefix')} {s.data.goal}</div>}
+            {s.kind === 'sub_end' && <Dim>↳ {t('agent.subAgentDone')}</Dim>}
             {s.kind === 'approval' && (
               <div style={{ ...card, borderLeft: `2px solid ${theme.amber}`, padding: '10px 14px' }}>
-                <div style={{ color: theme.amber, fontSize: 12, marginBottom: 6 }}>⚠ approval required</div>
+                <div style={{ color: theme.amber, fontSize: 12, marginBottom: 6 }}>{t('agent.approvalRequired')}</div>
                 <div style={{ fontSize: 13, marginBottom: 8, wordBreak: 'break-word' }}>
                   <span style={{ color: theme.accent }}>{s.data.tool}</span>
                   <span style={{ color: theme.muted }}> ({JSON.stringify(s.data.args)})</span>
@@ -103,15 +105,15 @@ export default function AgentPage() {
                 {s.data.resolved === null ? (
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button style={{ ...button, padding: '6px 14px' }} onClick={() => void respond(s.data.id, true)}>
-                      Approve
+                      {t('agent.approveButton')}
                     </button>
                     <button style={ghostButton} onClick={() => void respond(s.data.id, false)}>
-                      Deny
+                      {t('agent.denyButton')}
                     </button>
                   </div>
                 ) : (
                   <div style={{ fontSize: 12, color: s.data.resolved ? theme.green : theme.red }}>
-                    {s.data.resolved ? '✓ approved' : '✗ denied'}
+                    {s.data.resolved ? t('agent.approvedStatus') : t('agent.deniedStatus')}
                   </div>
                 )}
               </div>
@@ -132,15 +134,15 @@ export default function AgentPage() {
             )}
             {s.kind === 'final' && s.depth === 0 && (
               <div style={{ ...card, borderLeft: `2px solid ${theme.green}`, marginTop: 6 }}>
-                <div style={{ color: theme.green, fontSize: 12, marginBottom: 4 }}>✓ final</div>
+                <div style={{ color: theme.green, fontSize: 12, marginBottom: 4 }}>{t('agent.finalLabel')}</div>
                 <div style={{ whiteSpace: 'pre-wrap', fontSize: 14 }}>{s.data.text}</div>
               </div>
             )}
-            {s.kind === 'final' && s.depth > 0 && <Dim>↳ sub-answer: {String(s.data.text).slice(0, 200)}</Dim>}
+            {s.kind === 'final' && s.depth > 0 && <Dim>↳ {t('agent.subAnswerPrefix')} {String(s.data.text).slice(0, 200)}</Dim>}
             {s.kind === 'error' && <div style={{ color: theme.red, fontSize: 13 }}>⚠ {s.data.message}</div>}
           </div>
         ))}
-        {running && <div style={{ color: theme.accent, fontSize: 13 }}>▌ thinking…</div>}
+        {running && <div style={{ color: theme.accent, fontSize: 13 }}>{t('agent.thinkingStatus')}</div>}
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Share_Tech_Mono, Orbitron } from 'next/font/google';
 import { AuthProvider } from '../lib/auth';
 import { ThemeProvider } from '../lib/theme';
+import { LanguageProvider } from '../lib/i18n';
 import { BootSplash } from '../components/BootSplash';
 
 const mono = Share_Tech_Mono({ weight: '400', subsets: ['latin'], variable: '--font-mono', display: 'swap' });
@@ -13,7 +14,7 @@ export const metadata = {
   description: 'Distributed AI compute network — share idle power, access AI, earn NRN.',
 };
 
-const noFlash = `(function(){try{var t=localStorage.getItem('neurion_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
+const noFlash = `(function(){try{var t=localStorage.getItem('neurion_theme')||'dark';document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('neurion_lang');if(l==='en'||l==='it')document.documentElement.setAttribute('lang',l);}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -23,10 +24,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <ThemeProvider>
-          <AuthProvider>
-            <BootSplash />
-            {children}
-          </AuthProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              <BootSplash />
+              {children}
+            </AuthProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

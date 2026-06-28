@@ -1,12 +1,14 @@
 'use client';
 import { useTheme } from '../lib/theme';
+import { useT } from '../lib/i18n';
 
 export function ThemeToggle() {
+  const t = useT();
   const { mode, toggle } = useTheme();
   return (
     <button
       onClick={toggle}
-      aria-label="toggle theme"
+      aria-label={t('themetoggle.ariaToggleTheme')}
       style={{
         background: 'transparent',
         border: '1px solid var(--border)',
@@ -18,7 +20,7 @@ export function ThemeToggle() {
         letterSpacing: '0.05em',
       }}
     >
-      {mode === 'dark' ? '☀ light' : '☾ dark'}
+      {mode === 'dark' ? `☀ ${t('themetoggle.lightLabel')}` : `☾ ${t('themetoggle.darkLabel')}`}
     </button>
   );
 }

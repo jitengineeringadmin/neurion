@@ -3,6 +3,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api, streamChat, streamAgent } from '../../../lib/api';
 import { theme, input, button } from '../../../lib/ui';
+import { useT } from '../../../lib/i18n';
 
 interface Approval { id: string; tool: string; args: any; resolved: boolean | null }
 interface Msg {
@@ -16,6 +17,7 @@ interface Msg {
 }
 
 function ChatInner() {
+  const t = useT();
   const params = useSearchParams();
   const router = useRouter();
   const cParam = params.get('c') || undefined;
@@ -86,14 +88,14 @@ function ChatInner() {
     await streamAgent(goal, {
       onEvent: (event, d) => patch(idx, (a) => {
         a.trace = a.trace ?? [];
-        if (event === 'agent.plan') a.trace.push('📋 ' + d.steps.map((s: any) => s.text).join(' · '));
+        if (event === 'agent.plan') a.trace.push(t('chat.agentTracePlan') + d.steps.map((s: any) => s.text).join(' · '));
         else if (event === 'agent.tool_call') a.trace.push(`⚙ ${d.tool} ${JSON.stringify(d.args).slice(0, 80)}`);
         else if (event === 'agent.tool_result') a.trace.push(`⟵ ${String(d.result).slice(0, 110)}`);
-        else if (event === 'agent.subagent.start') a.trace.push('↳ sub-agent: ' + d.goal);
+        else if (event === 'agent.subagent.start') a.trace.push(t('chat.agentTraceSubAgent') + d.goal);
         else if (event === 'agent.approval_request') a.approval = { id: d.id, tool: d.tool, args: d.args, resolved: null };
         else if (event === 'agent.approval_result' && a.approval) a.approval = { ...a.approval, resolved: d.approved };
         else if (event === 'agent.final') a.content = d.text;
-        else if (event === 'agent.error') a.content = `⚠️ ${d.message}`;
+        else if (event === 'agent.error') a.content = t('chat.agentErrorPrefix', { message: d.message });
       }),
     }, model || undefined, cwd);
     void refreshBalance();
@@ -122,12 +124,12 @@ function ChatInner() {
                 window.dispatchEvent(new Event('neurion:sessions-changed'));
               }
               void refreshBalance();
-            } else if (event === 'error') a.content = `⚠️ ${data.message}`;
+            } else if (event === 'error') a.content = t('chat.chatErrorPrefix', { message: data.message });
           }),
         });
       }
     } catch (e) {
-      patch(idx, (a) => (a.content = `⚠️ ${(e as Error).message}`));
+      patch(idx, (a) => (a.content = t('chat.chatErrorPrefix', { message: (e as Error).message })));
     } finally {
       setBusy(false);
     }
@@ -139,15 +141,13 @@ function ChatInner() {
     if (!cwd || busy) return;
     setAgentMode(true);
     setBusy(true);
-    const goal =
-      `Analizza la cartella del progetto: ${cwd}. Usa list_dir per elencare file e sottocartelle, leggi i file chiave con read_file, ` +
-      `poi spiegami struttura, stack tecnologico e scopo del progetto in un riassunto chiaro. Sola lettura: non creare, modificare o eseguire nulla.`;
-    setMessages((m) => [...m, { role: 'user', content: `📂 Analizza la cartella` }, { role: 'assistant', content: '', agent: true, trace: [], approval: null }]);
+    const goal = t('chat.analyzeFolderGoal', { cwd });
+    setMessages((m) => [...m, { role: 'user', content: t('chat.analyzeFolderUserMsg') }, { role: 'assistant', content: '', agent: true, trace: [], approval: null }]);
     const idx = messages.length + 1;
     try {
       await streamAgentInto(idx, goal);
     } catch (e) {
-      patch(idx, (a) => (a.content = `⚠️ ${(e as Error).message}`));
+      patch(idx, (a) => (a.content = t('chat.chatErrorPrefix', { message: (e as Error).message })));
     } finally {
       setBusy(false);
     }
@@ -156,7 +156,7 @@ function ChatInner() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 20 }}>Chat{cwd ? <span style={{ fontSize: 12, color: theme.muted, marginLeft: 10 }}>📂 {cwd}</span> : null}</h2>
+        <h2 style={{ margin: 0, fontSize: 20 }}>{t('chat.headingChat')}{cwd ? <span style={{ fontSize: 12, color: theme.muted, marginLeft: 10 }}>📂 {cwd}</span> : null}</h2>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <select value={model} onChange={(e) => pickModel(e.target.value)} style={{ ...input, width: 'auto', padding: '5px 8px', fontSize: 12 }}>
             {model && !models.includes(model) && <option value={model}>{model}</option>}
@@ -166,19 +166,19 @@ function ChatInner() {
             <button
               onClick={() => void analyzeFolder()}
               disabled={busy}
-              title={`Analizza ${cwd} con l’agent (sola lettura)`}
+              title={t('chat.analyzeFolderButtonTitle', { cwd })}
               style={{ background: 'transparent', color: theme.accent, border: `1px solid ${theme.accent}`, borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}
             >
-              📂 Analizza cartella
+              {t('chat.analyzeFolderButton')}
             </button>
           )}
-          <button onClick={() => setAgentMode((v) => !v)} style={{ background: agentMode ? theme.accent : 'transparent', color: agentMode ? 'var(--bg)' : theme.muted, border: `1px solid ${agentMode ? theme.accent : theme.border}`, borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer' }}>🤖 Agent {agentMode ? 'on' : 'off'}</button>
-          <div style={{ fontSize: 13, color: theme.muted }}>credits: <span style={{ color: theme.text }}>{balance ?? '…'}</span></div>
+          <button onClick={() => setAgentMode((v) => !v)} style={{ background: agentMode ? theme.accent : 'transparent', color: agentMode ? 'var(--bg)' : theme.muted, border: `1px solid ${agentMode ? theme.accent : theme.border}`, borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer' }}>{agentMode ? t('chat.agentToggleOn') : t('chat.agentToggleOff')}</button>
+          <div style={{ fontSize: 13, color: theme.muted }}>{t('chat.creditsLabel')} <span style={{ color: theme.text }}>{balance ?? '…'}</span></div>
         </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14, paddingRight: 8 }}>
-        {messages.length === 0 && <div style={{ color: theme.muted, fontSize: 14 }}>{agentMode ? 'Agent mode: dai un goal — pianifica, usa tool, lavora sui file (con approvazione).' : 'Ask anything. Routing, lane and credit cost are shown per answer.'}</div>}
+        {messages.length === 0 && <div style={{ color: theme.muted, fontSize: 14 }}>{agentMode ? t('chat.emptyStateAgent') : t('chat.emptyStateChat')}</div>}
         {messages.map((m, i) => (
           <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '82%', width: m.agent ? '82%' : 'auto' }}>
             {m.agent && m.trace && m.trace.length > 0 && (
@@ -188,11 +188,11 @@ function ChatInner() {
             )}
             {m.approval && m.approval.resolved === null && (
               <div style={{ border: `1px solid ${theme.amber}`, borderRadius: 10, padding: '8px 12px', marginBottom: 6 }}>
-                <div style={{ color: theme.amber, fontSize: 12, marginBottom: 6 }}>⚠ approva {m.approval.tool}?</div>
+                <div style={{ color: theme.amber, fontSize: 12, marginBottom: 6 }}>{t('chat.approvalPrompt', { tool: m.approval.tool })}</div>
                 <div style={{ fontSize: 11, color: theme.muted, marginBottom: 8, wordBreak: 'break-word' }}>{JSON.stringify(m.approval.args)}</div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button style={{ ...button, padding: '4px 12px' }} onClick={() => void respond(i, m.approval!.id, true)}>Approve</button>
-                  <button style={{ background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.text, padding: '4px 12px', fontSize: 13, cursor: 'pointer' }} onClick={() => void respond(i, m.approval!.id, false)}>Deny</button>
+                  <button style={{ ...button, padding: '4px 12px' }} onClick={() => void respond(i, m.approval!.id, true)}>{t('chat.approveButton')}</button>
+                  <button style={{ background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.text, padding: '4px 12px', fontSize: 13, cursor: 'pointer' }} onClick={() => void respond(i, m.approval!.id, false)}>{t('chat.denyButton')}</button>
                 </div>
               </div>
             )}
@@ -204,9 +204,9 @@ function ChatInner() {
             {m.badge && (
               <div style={{ fontSize: 11, color: theme.muted, marginTop: 4, display: 'flex', gap: 8 }}>
                 <span style={{ color: theme.accent }}>{m.badge.lane}</span>
-                <span>{m.badge.provider}{m.badge.labeled ? ' (mock)' : ''}</span>
+                <span>{m.badge.provider}{m.badge.labeled ? t('chat.badgeMockSuffix') : ''}</span>
                 <span>{m.badge.effectivePrivacy}</span>
-                {m.cost != null && <span>· {m.cost} cr</span>}
+                {m.cost != null && <span>{t('chat.badgeCostSuffix', { cost: m.cost })}</span>}
               </div>
             )}
           </div>
@@ -215,8 +215,8 @@ function ChatInner() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-        <input style={input} placeholder={agentMode ? 'Dai un goal all’agente…' : 'Message Neurion…'} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} />
-        <button style={{ ...button, opacity: busy ? 0.6 : 1 }} onClick={() => void send()} disabled={busy}>{agentMode ? 'Run' : 'Send'}</button>
+        <input style={input} placeholder={agentMode ? t('chat.inputPlaceholderAgent') : t('chat.inputPlaceholderChat')} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} />
+        <button style={{ ...button, opacity: busy ? 0.6 : 1 }} onClick={() => void send()} disabled={busy}>{agentMode ? t('chat.sendButtonRun') : t('chat.sendButtonSend')}</button>
       </div>
     </div>
   );

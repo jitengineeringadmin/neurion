@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../../lib/api';
 import { theme, card } from '../../../lib/ui';
+import { useT } from '../../../lib/i18n';
 
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (
@@ -13,6 +14,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function DashboardPage() {
+  const t = useT();
   const [balance, setBalance] = useState<number | null>(null);
   const [jobs, setJobs] = useState<any[]>([]);
   const [nodes, setNodes] = useState<any[]>([]);
@@ -28,13 +30,13 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, marginTop: 0 }}>Dashboard</h2>
+      <h2 style={{ fontSize: 20, marginTop: 0 }}>{t('dashboard.heading')}</h2>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <Metric label="Credits" value={balance ?? '…'} />
-        <Metric label="Jobs" value={jobs.length} />
-        <Metric label="Jobs rewarded" value={rewarded} />
-        <Metric label="Nodes" value={nodes.length} />
-        <Metric label="Nodes online" value={online} />
+        <Metric label={t('dashboard.metricCredits')} value={balance ?? '…'} />
+        <Metric label={t('dashboard.metricJobs')} value={jobs.length} />
+        <Metric label={t('dashboard.metricJobsRewarded')} value={rewarded} />
+        <Metric label={t('dashboard.metricNodes')} value={nodes.length} />
+        <Metric label={t('dashboard.metricNodesOnline')} value={online} />
       </div>
     </div>
   );

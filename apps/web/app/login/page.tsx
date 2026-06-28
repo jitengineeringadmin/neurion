@@ -5,8 +5,11 @@ import { useAuth } from '../../lib/auth';
 import { theme, card, input, button } from '../../lib/ui';
 import { MatrixRain } from '../../components/MatrixRain';
 import { ThemeToggle } from '../../components/ThemeToggle';
+import { LangToggle } from '../../components/LangToggle';
+import { useT } from '../../lib/i18n';
 
 export default function LoginPage() {
+  const t = useT();
   const { login, register } = useAuth();
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -38,12 +41,13 @@ export default function LoginPage() {
       <div style={{ position: 'absolute', inset: 0, opacity: 0.16 }}>
         <MatrixRain />
       </div>
-      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 2 }}>
+      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 2, display: 'flex', gap: 8 }}>
         <ThemeToggle />
+        <LangToggle />
       </div>
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 380, margin: '0 auto', padding: '110px 24px' }}>
       <h1 className="display neon" style={{ fontSize: 34, letterSpacing: '0.12em', color: 'var(--accent)' }}>
-        NEURION <span style={{ color: theme.text }}>AI</span>
+        NEURION <span style={{ color: theme.text }}>{t('login.brandSuffix')}</span>
       </h1>
       <div style={{ ...card, marginTop: 24 }}>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -62,22 +66,22 @@ export default function LoginPage() {
                 textTransform: 'capitalize',
               }}
             >
-              {m}
+              {m === 'login' ? t('login.tabLogin') : t('login.tabRegister')}
             </button>
           ))}
         </div>
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input style={input} placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input style={input} placeholder={t('login.emailPlaceholder')} value={email} onChange={(e) => setEmail(e.target.value)} />
           <input
             style={input}
             type="password"
-            placeholder="password"
+            placeholder={t('login.passwordPlaceholder')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
           {error && <div style={{ color: theme.red, fontSize: 13 }}>{error}</div>}
           <button type="submit" style={{ ...button, opacity: busy ? 0.6 : 1 }} disabled={busy}>
-            {busy ? '...' : mode === 'login' ? 'Login' : 'Register'}
+            {busy ? t('login.submitBusy') : mode === 'login' ? t('login.submitLogin') : t('login.submitRegister')}
           </button>
         </form>
       </div>
