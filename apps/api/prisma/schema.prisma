@@ -639,6 +639,7 @@ model TokenPayout {
 
 enum PayoutStatus {
   PENDING
+  PROCESSING
   SUBMITTED
   CONFIRMED
   FAILED

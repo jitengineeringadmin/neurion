@@ -18,6 +18,8 @@ contract ComputeRewardVault is Ownable {
         require(!paidRewardIds[rewardId], "REWARD_ALREADY_PAID");
         require(nodeOwner != address(0), "INVALID_NODE_OWNER");
         require(amount > 0, "INVALID_AMOUNT");
+        require(bytes(jobId).length <= 256, "JOBID_TOO_LONG");
+        require(token.balanceOf(address(this)) >= amount, "INSUFFICIENT_VAULT_BALANCE");
         paidRewardIds[rewardId] = true;
         require(token.transfer(nodeOwner, amount), "TRANSFER_FAILED");
         emit RewardPaid(rewardId, nodeOwner, amount, jobId);

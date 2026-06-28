@@ -3,7 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile, readdir, mkdir, stat, rm, rename } from 'node:fs/promises';
-import { dirname, join, basename, isAbsolute } from 'node:path';
+import { dirname, join, basename, isAbsolute, resolve as pathResolve, sep } from 'node:path';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
 import { JobsService } from '../jobs/jobs.service';
@@ -36,9 +38,73 @@ export class AgentToolsService {
     return String(this.config.get('AGENT_FS_ENABLED') ?? 'true') !== 'false';
   }
 
-  /** Resolve a possibly-relative path against the project working directory. */
+  /** Opt-in: confine all file/run tools to the project cwd (off by default — the
+   * agent is full-disk by design, like Claude Code, with writes approval-gated). */
+  private confineFs(): boolean {
+    return String(this.config.get('AGENT_FS_CONFINE_TO_CWD') ?? 'false') === 'true';
+  }
+
+  /** Resolve a possibly-relative path against the project cwd. When
+   * AGENT_FS_CONFINE_TO_CWD=true, reject paths that escape the project dir. */
   private resolve(ctx: ToolCtx, p: string): string {
-    return p && ctx.cwd && !isAbsolute(p) ? join(ctx.cwd, p) : p;
+    const full = p && ctx.cwd && !isAbsolute(p) ? join(ctx.cwd, p) : p;
+    if (this.confineFs() && ctx.cwd && full) {
+      const norm = pathResolve(full);
+      const base = pathResolve(ctx.cwd);
+      if (norm !== base && !norm.startsWith(base + sep)) {
+        throw new Error(`path escapes the project directory (AGENT_FS_CONFINE_TO_CWD=true): ${p}`);
+      }
+    }
+    return full;
+  }
+
+  /** True for loopback / private / link-local / CGNAT / metadata IPs (SSRF). */
+  private isPrivateIp(ip: string): boolean {
+    const m = ip.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+    if (m) {
+      const a = Number(m[1]), b = Number(m[2]);
+      return (
+        a === 0 || a === 10 || a === 127 ||
+        (a === 172 && b >= 16 && b <= 31) ||
+        (a === 192 && b === 168) ||
+        (a === 169 && b === 254) || // link-local incl. 169.254.169.254 cloud metadata
+        (a === 100 && b >= 64 && b <= 127) // CGNAT
+      );
+    }
+    const low = ip.toLowerCase();
+    return (
+      low === '::1' || low === '::' ||
+      low.startsWith('fc') || low.startsWith('fd') || low.startsWith('fe80') ||
+      low.startsWith('::ffff:127.') || low.startsWith('::ffff:10.') ||
+      low.startsWith('::ffff:169.254') || low.startsWith('::ffff:192.168.')
+    );
+  }
+
+  /** SSRF guard for web_fetch: only public http(s); block internal hosts + any
+   * hostname that resolves to a private IP. Returns an error string or null. */
+  private async assertPublicUrl(url: string): Promise<string | null> {
+    let u: URL;
+    try {
+      u = new URL(url);
+    } catch {
+      return 'error: invalid URL';
+    }
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return 'error: only http(s) URLs are allowed';
+    const host = u.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+    if (
+      host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') ||
+      host.endsWith('.internal') || host === 'metadata.google.internal'
+    ) {
+      return 'error: blocked internal host';
+    }
+    if (isIP(host)) return this.isPrivateIp(host) ? 'error: blocked private/loopback IP' : null;
+    try {
+      const addrs = await lookup(host, { all: true });
+      if (addrs.some((a) => this.isPrivateIp(a.address))) return 'error: host resolves to a private/loopback IP';
+    } catch {
+      return 'error: DNS resolution failed';
+    }
+    return null;
   }
 
   private async logAction(ctx: ToolCtx, action: string, data: Record<string, unknown>): Promise<void> {
@@ -292,19 +358,30 @@ export class AgentToolsService {
       },
       {
         name: 'web_fetch',
-        description: 'HTTP GET a URL and return the response text (read-only). Use for docs/APIs.',
+        description: 'HTTP GET a public URL and return the response text (read-only). Internal/private hosts are blocked.',
         params: { url: 'the URL to fetch' },
         run: async (args, ctx) => {
-          const url = String(args.url ?? '');
-          if (!/^https?:\/\//.test(url)) return 'error: url must start with http(s)://';
+          let url = String(args.url ?? '');
           await this.logAction(ctx, 'web_fetch', { url });
           try {
-            const ctrl = new AbortController();
-            const t = setTimeout(() => ctrl.abort(), 15000);
-            const res = await fetch(url, { signal: ctrl.signal });
-            clearTimeout(t);
-            const text = await res.text();
-            return `HTTP ${res.status}\n${text.slice(0, 50000)}`;
+            // SSRF guard: follow redirects manually, validating EVERY hop's host
+            // (a 302 to 169.254.169.254 would otherwise bypass a one-shot check).
+            for (let hop = 0; ; hop++) {
+              const blocked = await this.assertPublicUrl(url);
+              if (blocked) return blocked;
+              const ctrl = new AbortController();
+              const t = setTimeout(() => ctrl.abort(), 15000);
+              const res = await fetch(url, { signal: ctrl.signal, redirect: 'manual', headers: { 'user-agent': 'NeurionAgent/1.0' } });
+              clearTimeout(t);
+              const loc = res.headers.get('location');
+              if (res.status >= 300 && res.status < 400 && loc) {
+                if (hop >= 5) return 'error: too many redirects';
+                url = new URL(loc, url).toString();
+                continue;
+              }
+              const text = await res.text();
+              return `HTTP ${res.status}\n${text.slice(0, 50000)}`;
+            }
           } catch (e) {
             return `error: ${(e as Error).message}`;
           }

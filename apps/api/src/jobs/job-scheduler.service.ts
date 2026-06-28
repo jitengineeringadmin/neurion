@@ -47,10 +47,13 @@ export class JobScheduler implements OnModuleInit {
       return false;
     }
 
-    await this.prisma.job.update({
-      where: { id: jobId },
+    // Atomic claim: only one concurrent assign flips PENDING -> ASSIGNED, so a
+    // job is never assigned (and dispatched) twice.
+    const claim = await this.prisma.job.updateMany({
+      where: { id: jobId, status: 'PENDING' },
       data: { status: 'ASSIGNED', nodeId: node.id, assignedAt: new Date() },
     });
+    if (claim.count !== 1) return false;
     await this.prisma.jobEvent.create({ data: { jobId, type: 'assigned', data: { nodeId: node.id } } });
 
     const sent = this.gateway.send(node.id, {
@@ -65,7 +68,7 @@ export class JobScheduler implements OnModuleInit {
       },
     });
     if (!sent) {
-      await this.prisma.job.update({ where: { id: jobId }, data: { status: 'PENDING', nodeId: null } });
+      await this.prisma.job.updateMany({ where: { id: jobId, status: 'ASSIGNED' }, data: { status: 'PENDING', nodeId: null } });
       return false;
     }
     this.logger.log(`job ${jobId} assigned to node ${node.id}`);

@@ -27,20 +27,27 @@ export class JobsService {
     // charge requester up-front (G10: settle on completion is future work)
     await this.credits.spend(user.sub, cost, `job.${type}`, { idempotencyKey: undefined });
 
-    const job = await this.prisma.job.create({
-      data: {
-        workspaceId: user.workspaceId,
-        userId: user.sub,
-        type,
-        lane: 'GRID',
-        status: 'PENDING',
-        privacyLevel: privacyLevel ?? 'PUBLIC',
-        inputJson,
-        costCredits: cost,
-      },
-    });
+    let job;
+    try {
+      job = await this.prisma.job.create({
+        data: {
+          workspaceId: user.workspaceId,
+          userId: user.sub,
+          type,
+          lane: 'GRID',
+          status: 'PENDING',
+          privacyLevel: privacyLevel ?? 'PUBLIC',
+          inputJson,
+          costCredits: cost,
+        },
+      });
+    } catch (e) {
+      // creation failed after debiting — refund so credits are never silently lost
+      if (cost > 0) await this.credits.grant(user.sub, cost, `job.${type}.refund`);
+      throw e;
+    }
     await this.prisma.jobEvent.create({ data: { jobId: job.id, type: 'created' } });
-    await this.scheduler.tryAssign(job.id);
+    await this.scheduler.tryAssign(job.id).catch(() => undefined); // best-effort; job stays PENDING otherwise
     return job;
   }
 

@@ -8,6 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { createHash } from 'node:crypto';
 import { AuthService } from './auth.service';
@@ -49,6 +50,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
   async register(@Body() dto: RegisterDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const user = await this.auth.register(dto.email, dto.password, dto.displayName);
@@ -71,6 +73,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
   @Post('login')
   async login(@Body() dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const user = await this.auth.validateCredentials(dto.email, dto.password);

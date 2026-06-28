@@ -31,7 +31,8 @@ export class TokenConfigService {
       tokenSymbol: 'NRN',
       creditToNrnWei: this.creditToNrnWei,
       payoutsEnabled: this.payoutsEnabled,
-      rpcUrl: this.config.get<string>('RPC_URL') ?? null,
+      // RPC_URL intentionally NOT exposed (prevents nonce/mempool reconnaissance);
+      // clients use their own wallet provider.
     };
   }
 

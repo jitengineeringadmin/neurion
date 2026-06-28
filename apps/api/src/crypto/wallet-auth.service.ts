@@ -45,7 +45,14 @@ export class WalletAuthService {
       throw new UnauthorizedException('signature does not match address');
     }
 
-    await this.prisma.walletNonce.update({ where: { id: row.id }, data: { used: true } });
+    // Atomically consume the nonce: only the first concurrent verify flips
+    // used:false -> true, so a nonce cannot link a wallet to two accounts.
+    const claim = await this.prisma.walletNonce.updateMany({
+      where: { id: row.id, used: false },
+      data: { used: true },
+    });
+    if (claim.count !== 1) throw new UnauthorizedException('nonce already used');
+
     await this.prisma.user.update({ where: { id: userId }, data: { walletAddress: normalized } });
     return { walletAddress: normalized };
   }

@@ -10,8 +10,11 @@ export default function LoginPage() {
   const { login, register } = useAuth();
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [email, setEmail] = useState('user@neurion.local');
-  const [password, setPassword] = useState('ChangeMe!User2026');
+  // Demo credentials are only prefilled when explicitly enabled (never in a
+  // production/public deploy). Desktop users stay logged in via the refresh cookie.
+  const demo = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true';
+  const [email, setEmail] = useState(demo ? 'user@neurion.local' : '');
+  const [password, setPassword] = useState(demo ? 'ChangeMe!User2026' : '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 

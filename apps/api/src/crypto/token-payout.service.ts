@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
 import { AuditService } from '../audit/audit.service';
 import { TokenConfigService } from './token-config.service';
+import { EmissionService } from './emission.service';
 import { AuthUser } from '../common/decorators/current-user.decorator';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class TokenPayoutService {
     private readonly credits: CreditsService,
     private readonly config: TokenConfigService,
     private readonly audit: AuditService,
+    private readonly emission: EmissionService,
   ) {}
 
   private creditsToWei(credits: number): bigint {
@@ -74,39 +76,48 @@ export class TokenPayoutService {
   /** Admin: submit all PENDING payouts on-chain via the ComputeRewardVault. */
   async processPayouts(adminUserId: string) {
     if (!this.config.payoutsEnabled) throw new ForbiddenException('token payouts are disabled');
-    const pending = await this.prisma.tokenPayout.findMany({ where: { status: 'PENDING' }, take: 50 });
+    const candidates = await this.prisma.tokenPayout.findMany({ where: { status: 'PENDING' }, take: 50, select: { id: true } });
     const vault = this.config.signerVault();
     const results: Array<{ id: string; status: string; txHash?: string; error?: string }> = [];
 
-    for (const payout of pending) {
+    for (const { id } of candidates) {
+      // Atomic claim: only one concurrent run flips PENDING -> PROCESSING, so a
+      // payout is never submitted (and refunded) twice.
+      const claim = await this.prisma.tokenPayout.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'PROCESSING' } });
+      if (claim.count !== 1) continue;
+      const payout = await this.prisma.tokenPayout.findUniqueOrThrow({ where: { id } });
+
+      // G12: reserve emission before paying; defer if it would exceed the cap.
+      const amountWei = BigInt(payout.amountWei);
+      if (!(await this.emission.tryReserve(amountWei))) {
+        await this.prisma.tokenPayout.update({ where: { id }, data: { status: 'PENDING' } });
+        results.push({ id, status: 'DEFERRED_EMISSION_CAP' });
+        continue;
+      }
+
       try {
         const rewardId = ethers.id(payout.id);
         const payReward = vault.getFunction('payReward');
-        const tx = await payReward(rewardId, payout.walletAddress, BigInt(payout.amountWei), payout.id);
-        await this.prisma.tokenPayout.update({
-          where: { id: payout.id },
-          data: { status: 'SUBMITTED', txHash: tx.hash },
-        });
+        const tx = await payReward(rewardId, payout.walletAddress, amountWei, payout.id);
+        await this.prisma.tokenPayout.update({ where: { id }, data: { status: 'SUBMITTED', txHash: tx.hash } });
         await tx.wait(1);
-        await this.prisma.tokenPayout.update({ where: { id: payout.id }, data: { status: 'CONFIRMED' } });
+        await this.prisma.tokenPayout.update({ where: { id }, data: { status: 'CONFIRMED' } });
         await this.audit.log({
           action: 'token.payout.confirmed',
           actorUserId: adminUserId,
           entityType: 'TokenPayout',
-          entityId: payout.id,
+          entityId: id,
           data: { txHash: tx.hash },
         });
-        results.push({ id: payout.id, status: 'CONFIRMED', txHash: tx.hash });
+        results.push({ id, status: 'CONFIRMED', txHash: tx.hash });
       } catch (err) {
         const message = (err as Error).message;
-        await this.prisma.tokenPayout.update({
-          where: { id: payout.id },
-          data: { status: 'FAILED', errorMessage: message },
-        });
-        // refund the converted credits
-        await this.credits.grant(payout.userId, this.weiToCredits(payout.amountWei), 'payout.refund', `refund:${payout.id}`);
-        this.logger.error(`payout ${payout.id} failed: ${message}`);
-        results.push({ id: payout.id, status: 'FAILED', error: message });
+        await this.emission.release(amountWei); // give back the unminted reservation
+        await this.prisma.tokenPayout.update({ where: { id }, data: { status: 'FAILED', errorMessage: message } });
+        // refund the converted credits (idempotent per payout)
+        await this.credits.grant(payout.userId, this.weiToCredits(payout.amountWei), 'payout.refund', `refund:${id}`);
+        this.logger.error(`payout ${id} failed: ${message}`);
+        results.push({ id, status: 'FAILED', error: message });
       }
     }
     return { processed: results.length, results };
