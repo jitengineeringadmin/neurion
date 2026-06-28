@@ -6,12 +6,17 @@ import { WebSocket, WebSocketServer } from 'ws';
 import type { IncomingMessage, Server as HttpServer } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../common/redis.service';
 
 interface SocketState {
   nodeId?: string;
 }
 
 const WS_PATH = '/ws/nodes';
+const PRESENCE_CH = 'neurion:node:presence';
+const ROUTE_CH = 'neurion:node:route';
+const ALIVE_PREFIX = 'neurion:node:alive:';
+const ALIVE_TTL = 35; // seconds (> heartbeat interval 10s)
 
 /**
  * Raw WebSocket gateway for the node fleet (spec §10.5). Owns the live
@@ -23,11 +28,13 @@ const WS_PATH = '/ws/nodes';
 export class NodeGatewayService extends EventEmitter implements OnApplicationBootstrap {
   private readonly logger = new Logger(NodeGatewayService.name);
   private readonly wss = new WebSocketServer({ noServer: true });
-  private readonly sockets = new Map<string, WebSocket>();
+  private readonly sockets = new Map<string, WebSocket>(); // locally-connected nodes
+  private readonly globalOnline = new Set<string>(); // fleet-wide presence (Redis mode)
 
   constructor(
     private readonly adapterHost: HttpAdapterHost,
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
   ) {
     super();
   }
@@ -40,21 +47,80 @@ export class NodeGatewayService extends EventEmitter implements OnApplicationBoo
     });
     this.wss.on('connection', (ws: WebSocket) => this.onConnection(ws));
     this.logger.log(`node WS gateway listening on ${WS_PATH}`);
+    void this.setupRedis();
+  }
+
+  /** Multi-instance mode: subscribe to fleet presence + cross-instance routing. */
+  private async setupRedis(): Promise<void> {
+    if (!this.redis.enabled || !this.redis.sub) return;
+    await this.redis.sub.subscribe(PRESENCE_CH, ROUTE_CH);
+    this.redis.sub.on('message', (ch: string, raw: string) => {
+      try {
+        const m = JSON.parse(raw) as { type?: string; nodeId: string; message?: unknown };
+        if (ch === PRESENCE_CH) {
+          if (m.type === 'online') this.globalOnline.add(m.nodeId);
+          else if (m.type === 'offline') this.globalOnline.delete(m.nodeId);
+        } else if (ch === ROUTE_CH) {
+          const ws = this.sockets.get(m.nodeId); // deliver only if WE hold the socket
+          if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(m.message));
+        }
+      } catch {
+        /* ignore malformed */
+      }
+    });
+    await this.reconcile();
+    setInterval(() => void this.reconcile(), 15_000); // self-heal crashed instances via TTL
+    this.logger.log('node gateway: Redis presence + cross-instance routing active');
+  }
+
+  /** Rebuild the fleet-online set from the live (TTL'd) presence keys. */
+  private async reconcile(): Promise<void> {
+    const kv = this.redis.kv;
+    if (!kv) return;
+    const ids = new Set<string>();
+    let cursor = '0';
+    do {
+      const [next, keys] = await kv.scan(cursor, 'MATCH', `${ALIVE_PREFIX}*`, 'COUNT', 200);
+      cursor = next;
+      for (const k of keys) ids.add(k.slice(ALIVE_PREFIX.length));
+    } while (cursor !== '0');
+    for (const id of this.sockets.keys()) ids.add(id); // never drop our own live sockets
+    this.globalOnline.clear();
+    for (const id of ids) this.globalOnline.add(id);
+  }
+
+  private async registerPresence(nodeId: string): Promise<void> {
+    this.globalOnline.add(nodeId);
+    if (this.redis.enabled && this.redis.kv && this.redis.pub) {
+      await this.redis.kv.set(`${ALIVE_PREFIX}${nodeId}`, this.redis.instanceId, 'EX', ALIVE_TTL);
+      await this.redis.pub.publish(PRESENCE_CH, JSON.stringify({ type: 'online', nodeId }));
+    }
   }
 
   isOnline(nodeId: string): boolean {
-    return this.sockets.has(nodeId);
+    if (this.sockets.has(nodeId)) return true;
+    return this.redis.enabled && this.globalOnline.has(nodeId);
   }
 
   onlineNodeIds(): string[] {
-    return [...this.sockets.keys()];
+    if (!this.redis.enabled) return [...this.sockets.keys()];
+    const s = new Set(this.globalOnline);
+    for (const id of this.sockets.keys()) s.add(id);
+    return [...s];
   }
 
   send(nodeId: string, message: unknown): boolean {
     const ws = this.sockets.get(nodeId);
-    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-    ws.send(JSON.stringify(message));
-    return true;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(message));
+      return true;
+    }
+    // not local — if the node is online on another instance, route via Redis
+    if (this.redis.enabled && this.redis.pub && this.globalOnline.has(nodeId)) {
+      void this.redis.pub.publish(ROUTE_CH, JSON.stringify({ nodeId, message }));
+      return true;
+    }
+    return false;
   }
 
   private onConnection(ws: WebSocket): void {
@@ -137,6 +203,7 @@ export class NodeGatewayService extends EventEmitter implements OnApplicationBoo
         avgTokensPerSecond: (cap.avgTokensPerSecond as number) ?? node.avgTokensPerSecond,
       },
     });
+    await this.registerPresence(nodeId);
     ws.send(JSON.stringify({ type: 'hello.ok', nodeId }));
     this.logger.log(`node ${nodeId} online`);
     this.emit('node.online', { nodeId });
@@ -157,11 +224,17 @@ export class NodeGatewayService extends EventEmitter implements OnApplicationBoo
       },
     });
     await this.prisma.computeNode.update({ where: { id: nodeId }, data: { lastSeenAt: new Date() } });
+    if (this.redis.enabled && this.redis.kv) await this.redis.kv.set(`${ALIVE_PREFIX}${nodeId}`, this.redis.instanceId, 'EX', ALIVE_TTL);
   }
 
   private async onClose(state: SocketState): Promise<void> {
     if (!state.nodeId) return;
     this.sockets.delete(state.nodeId);
+    this.globalOnline.delete(state.nodeId);
+    if (this.redis.enabled && this.redis.kv && this.redis.pub) {
+      await this.redis.kv.del(`${ALIVE_PREFIX}${state.nodeId}`).catch(() => undefined);
+      await this.redis.pub.publish(PRESENCE_CH, JSON.stringify({ type: 'offline', nodeId: state.nodeId })).catch(() => undefined);
+    }
     await this.prisma.computeNode
       .update({ where: { id: state.nodeId }, data: { status: 'OFFLINE' } })
       .catch(() => undefined);
