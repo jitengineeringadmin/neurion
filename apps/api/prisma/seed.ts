@@ -35,9 +35,14 @@ async function main(): Promise<void> {
       create: { workspaceId: workspace.id, email: u.email, passwordHash, role: u.role },
     });
     if (u.credits > 0) {
-      await prisma.creditLedger.create({
-        data: { userId: user.id, reason: 'SEED_GRANT', amount: u.credits, balanceAfter: u.credits, idempotencyKey: `seed:${user.id}` },
-      });
+      const key = `seed:${user.id}`;
+      const existing = await prisma.creditLedger.findUnique({ where: { idempotencyKey: key } });
+      if (!existing) {
+        await prisma.creditLedger.create({
+          data: { userId: user.id, reason: 'SEED_GRANT', amount: u.credits, balanceAfter: u.credits, idempotencyKey: key },
+        });
+        await prisma.user.update({ where: { id: user.id }, data: { creditBalance: u.credits } });
+      }
     }
   }
 

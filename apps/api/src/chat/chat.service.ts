@@ -102,6 +102,7 @@ export class ChatService {
     plan: RoutePlan,
     costCredits: number,
     firstTokenMs: number | null,
+    usage?: { promptTokens: number; completionTokens: number; totalTokens: number } | null,
   ) {
     const message = await this.prisma.chatMessage.create({
       data: {
@@ -112,6 +113,7 @@ export class ChatService {
         modelUsed: plan.model,
         providerUsed: plan.provider.name,
         costCredits,
+        tokenUsage: usage ? (usage as unknown as Prisma.InputJsonValue) : undefined,
         routingDecision: {
           lane: plan.lane,
           provider: plan.provider.name,

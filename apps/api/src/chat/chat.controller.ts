@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Logger, Param, Patch, Post, Res } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { Response } from 'express';
 import { ChatService } from './chat.service';
@@ -29,6 +30,7 @@ export class ChatController {
     private readonly chat: ChatService,
     private readonly router: AiRouterService,
     private readonly credits: CreditsService,
+    private readonly config: ConfigService,
   ) {}
 
   @Post('conversations')
@@ -90,6 +92,10 @@ export class ChatController {
     const send = (event: string, data: unknown): void => {
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
+    // Backpressure: pause token production while the socket buffer is full so a
+    // slow client can't make us buffer the whole stream in memory.
+    const flush = (): Promise<void> =>
+      res.writableNeedDrain ? new Promise<void>((r) => res.once('drain', r)) : Promise.resolve();
 
     try {
       const conv = await this.chat.ensureConversation(
@@ -138,6 +144,7 @@ export class ChatController {
           if (firstTokenMs === null) firstTokenMs = Date.now() - t0;
           full += text;
           send('token', { text });
+          await flush();
         }
       } catch (streamErr) {
         // G3: real provider failed before producing output -> fall back to the
@@ -156,6 +163,7 @@ export class ChatController {
           if (firstTokenMs === null) firstTokenMs = Date.now() - t0;
           full += text;
           send('token', { text });
+          await flush();
         }
       }
 
@@ -166,8 +174,24 @@ export class ChatController {
       const effectivePlan: RoutePlan = servedByNode
         ? { ...plan, provider: usedProvider, model: usedModel }
         : { ...plan, provider: usedProvider, model: usedModel, lane: 'FALLBACK', servedTrustLevel: 'INTERNAL', responseTrusted: true, nodeId: undefined };
-      const assistant = await this.chat.addAssistantMessage(conv.id, full, effectivePlan, cost, firstTokenMs);
+      const usage = usedProvider.getUsage?.() ?? null;
+      const assistant = await this.chat.addAssistantMessage(conv.id, full, effectivePlan, cost, firstTokenMs, usage);
       await this.credits.spend(user.sub, cost, 'chat.fallback.small', { chatMessageId: assistant.id });
+
+      // Cost reconciliation: when the provider reports real token usage, true-up
+      // the up-front estimate (refund an overcharge; best-effort charge an undercharge).
+      let finalCost = cost;
+      if (usage && usage.totalTokens > 0) {
+        const perCredit = Number(this.config.get<string>('AI_TOKENS_PER_CREDIT') ?? '1000') || 1000;
+        const actual = Math.max(1, Math.ceil(usage.totalTokens / perCredit));
+        const delta = actual - cost;
+        if (delta > 0) {
+          await this.credits.spend(user.sub, delta, 'chat.reconcile', { chatMessageId: assistant.id }).catch(() => undefined);
+        } else if (delta < 0) {
+          await this.credits.grant(user.sub, -delta, 'chat.reconcile.refund', `recon:${assistant.id}`);
+        }
+        finalCost = actual;
+      }
 
       // Reward the serving node owner (earn NRN) only when the realtime node
       // actually produced the reply — never on the mock fallback.
@@ -181,12 +205,14 @@ export class ChatController {
       send('final', {
         messageId: assistant.id,
         conversationId: conv.id,
-        costCredits: cost,
+        costCredits: finalCost,
+        estCredits: cost,
+        tokenUsage: usage ?? undefined,
         firstTokenMs,
         lane: effectivePlan.lane,
         servedBy: servedByNode ? plan.nodeId : undefined,
         nodeReward,
-        balance: balance - cost,
+        balance: await this.credits.getBalance(user.sub),
       });
       res.end();
     } catch (err) {

@@ -1,11 +1,13 @@
-import { AiProvider, ChatMsg } from './ai-provider.interface';
+import { AiProvider, ChatMsg, TokenUsage } from './ai-provider.interface';
 
 /**
- * Streams from any OpenAI-compatible /chat/completions endpoint (e.g. ollama).
- * Used as the real Fallback-lane provider in dev (G3).
+ * Streams from any OpenAI-compatible /chat/completions endpoint (e.g. ollama, ds4).
+ * Used as the real Fallback-lane provider in dev (G3). Captures real token usage
+ * (stream_options.include_usage) for cost reconciliation when the backend reports it.
  */
 export class OpenAICompatibleProvider implements AiProvider {
   readonly labeled = false;
+  private usage: TokenUsage | null = null;
 
   constructor(
     private readonly baseUrl: string,
@@ -14,14 +16,19 @@ export class OpenAICompatibleProvider implements AiProvider {
     readonly name: string = 'openai_compatible',
   ) {}
 
+  getUsage(): TokenUsage | null {
+    return this.usage;
+  }
+
   async *streamChat(messages: ChatMsg[], model: string, signal?: AbortSignal): AsyncIterable<string> {
+    this.usage = null;
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify({ model, messages, stream: true }),
+      body: JSON.stringify({ model, messages, stream: true, stream_options: { include_usage: true } }),
       signal,
     });
     if (!res.ok || !res.body) {
@@ -45,7 +52,15 @@ export class OpenAICompatibleProvider implements AiProvider {
         try {
           const json = JSON.parse(payload) as {
             choices?: Array<{ delta?: { content?: string } }>;
+            usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
           };
+          if (json.usage) {
+            this.usage = {
+              promptTokens: json.usage.prompt_tokens ?? 0,
+              completionTokens: json.usage.completion_tokens ?? 0,
+              totalTokens: json.usage.total_tokens ?? 0,
+            };
+          }
           const delta = json.choices?.[0]?.delta?.content;
           if (delta) yield delta;
         } catch {

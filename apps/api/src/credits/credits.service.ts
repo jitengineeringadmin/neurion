@@ -8,11 +8,8 @@ export class CreditsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getBalance(userId: string): Promise<number> {
-    const agg = await this.prisma.creditLedger.aggregate({
-      where: { userId },
-      _sum: { amount: true },
-    });
-    return agg._sum.amount ?? 0;
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { creditBalance: true } });
+    return u?.creditBalance ?? 0;
   }
 
   async ledger(userId: string, take = 50) {
@@ -35,12 +32,17 @@ export class CreditsService {
   ): Promise<number> {
     if (amount <= 0) return this.getBalance(userId);
     return this.prisma.$transaction(async (tx) => {
-      const agg = await tx.creditLedger.aggregate({ where: { userId }, _sum: { amount: true } });
-      const balance = agg._sum.amount ?? 0;
-      if (balance < amount) {
-        throw new PaymentRequiredException(`insufficient credits: have ${balance}, need ${amount}`);
+      // Atomic conditional decrement: the WHERE re-evaluates under the row lock,
+      // so two concurrent spends can't both pass when only one can afford it.
+      const dec = await tx.user.updateMany({
+        where: { id: userId, creditBalance: { gte: amount } },
+        data: { creditBalance: { decrement: amount } },
+      });
+      if (dec.count !== 1) {
+        const have = (await tx.user.findUnique({ where: { id: userId }, select: { creditBalance: true } }))?.creditBalance ?? 0;
+        throw new PaymentRequiredException(`insufficient credits: have ${have}, need ${amount}`);
       }
-      const balanceAfter = balance - amount;
+      const balanceAfter = (await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { creditBalance: true } })).creditBalance;
       await tx.creditLedger.create({
         data: {
           userId,
@@ -56,15 +58,19 @@ export class CreditsService {
     });
   }
 
-  /** Grant credits (admin / reward). Positive entry. */
+  /** Grant credits (admin / reward). Positive entry. Idempotent per key. */
   async grant(userId: string, amount: number, reason: string, idempotencyKey?: string): Promise<number> {
     return this.prisma.$transaction(async (tx) => {
-      const agg = await tx.creditLedger.aggregate({ where: { userId }, _sum: { amount: true } });
-      const balanceAfter = (agg._sum.amount ?? 0) + amount;
-      await tx.creditLedger.create({
-        data: { userId, reason, amount, balanceAfter, idempotencyKey: idempotencyKey ?? null },
+      const user = await tx.user.update({
+        where: { id: userId },
+        data: { creditBalance: { increment: amount } },
+        select: { creditBalance: true },
       });
-      return balanceAfter;
+      // If the idempotencyKey collides, this throws and rolls back the increment.
+      await tx.creditLedger.create({
+        data: { userId, reason, amount, balanceAfter: user.creditBalance, idempotencyKey: idempotencyKey ?? null },
+      });
+      return user.creditBalance;
     });
   }
 }
