@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Neurion — La rete di calcolo AI distribuita</title>
+<meta name="description" content="Neurion è una rete di calcolo AI permissionless: usa l'AI in privato, condividi la tua potenza ed esegui calcoli verificati guadagnando NRN. Scarica il client." />
+<meta property="og:title" content="Neurion — La rete di calcolo AI distribuita" />
+<meta property="og:description" content="Usa l'AI in privato. Condividi potenza. Guadagna NRN. Solo lavoro verificato viene pagato." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#04070a; --bg2:#02040a; --surface:#0a1410; --surface2:#0f1d15;
+    --line:#16321f; --accent:#00ff70; --accent2:#16b85a; --text:#dff6e6; --muted:#7fa890;
+    --display:'Orbitron',system-ui,sans-serif; --mono:'Share Tech Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--mono);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  canvas#rain{position:fixed;inset:0;z-index:0;opacity:.14;pointer-events:none}
+  .wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 24px}
+  .display{font-family:var(--display);letter-spacing:.06em}
+  .accent{color:var(--accent)}
+  .glow{text-shadow:0 0 24px rgba(0,255,112,.45)}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
+      padding:14px 24px;max-width:1080px;margin:0 auto;backdrop-filter:blur(6px)}
+  nav .logo{font-family:var(--display);font-weight:900;letter-spacing:.18em;color:var(--accent);font-size:20px}
+  nav .links{display:flex;gap:26px;align-items:center;font-size:13px;color:var(--muted)}
+  nav .links a:hover{color:var(--accent)}
+  .btn{display:inline-block;border-radius:10px;padding:10px 18px;font-size:14px;cursor:pointer;border:1px solid var(--accent);
+       background:var(--accent);color:#021008;font-weight:700;transition:.15s}
+  .btn:hover{box-shadow:0 0 22px rgba(0,255,112,.5);transform:translateY(-1px)}
+  .btn.ghost{background:transparent;color:var(--accent)}
+  .btn.ghost:hover{background:rgba(0,255,112,.08)}
+
+  /* hero */
+  header.hero{text-align:center;padding:90px 0 70px}
+  header.hero .badge{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12px;color:var(--muted);margin-bottom:26px}
+  header.hero h1{font-family:var(--display);font-weight:900;font-size:clamp(40px,8vw,78px);line-height:1.02;margin:0 0 18px}
+  header.hero p.sub{font-size:clamp(16px,2.4vw,20px);color:var(--muted);max-width:680px;margin:0 auto 34px}
+  .cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .os-note{margin-top:14px;font-size:12px;color:var(--muted)}
+
+  section{padding:64px 0}
+  .eyebrow{font-size:12px;letter-spacing:.25em;text-transform:uppercase;color:var(--accent2);margin-bottom:10px}
+  h2.sec{font-family:var(--display);font-weight:700;font-size:clamp(26px,4vw,38px);margin:0 0 14px}
+
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px}
+  .card h3{font-family:var(--display);font-size:18px;margin:0 0 8px;letter-spacing:.04em}
+  .card .ic{font-size:26px;margin-bottom:14px}
+  .card p{color:var(--muted);font-size:14px;margin:0}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px;counter-reset:s}
+  .step{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px}
+  .step::before{counter-increment:s;content:"0" counter(s);font-family:var(--display);font-size:34px;color:var(--accent);opacity:.35;display:block;margin-bottom:8px}
+  .step h3{font-size:16px;margin:0 0 6px}
+  .step p{color:var(--muted);font-size:14px;margin:0}
+
+  .trust{background:linear-gradient(180deg,var(--surface),var(--bg2));border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .trust .row{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;margin-top:22px}
+  .chip{border:1px solid var(--line);border-radius:12px;padding:14px 18px;font-size:13px;color:var(--muted);background:rgba(0,0,0,.2)}
+  .chip b{color:var(--text)}
+
+  .dl{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
+  .dl .card{display:flex;flex-direction:column;gap:14px}
+  .dl .meta{font-size:12px;color:var(--muted)}
+  .dl .soon{opacity:.55}
+  .dl .btn{width:100%;text-align:center}
+
+  footer{border-top:1px solid var(--line);padding:48px 0 60px;color:var(--muted);font-size:13px}
+  footer .top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:24px}
+  footer .logo{font-family:var(--display);font-weight:900;letter-spacing:.18em;color:var(--accent)}
+  footer a:hover{color:var(--accent)}
+  footer .ethos{max-width:420px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+  @media(max-width:780px){.grid3,.steps,.dl{grid-template-columns:1fr}nav .links{display:none}}
+</style>
+</head>
+<body>
+<h2 class="sr-only">Neurion: rete di calcolo AI distribuita — usa l'AI in privato, condividi potenza, guadagna NRN, scarica il client.</h2>
+<canvas id="rain"></canvas>
+
+<nav>
+  <div class="logo">NEURION</div>
+  <div class="links">
+    <a href="#cose">Cos'è</a>
+    <a href="#come">Come funziona</a>
+    <a href="#scarica">Scarica</a>
+    <a href="#nodo">Diventa nodo</a>
+    <a class="btn ghost" href="https://app.neurionproject.org">Apri l'app</a>
+  </div>
+</nav>
+
+<header class="hero wrap">
+  <span class="badge">Rete di calcolo AI · permissionless · pagamenti NRN su Base</span>
+  <h1 class="glow">La potenza AI<br/>del mondo, <span class="accent">condivisa.</span></h1>
+  <p class="sub">Usa l'AI in privato sul tuo computer. Oppure metti a disposizione la tua potenza, esegui calcoli <b>verificati</b> e guadagna <b>NRN</b>. Una rete dove viene pagato solo il lavoro vero.</p>
+  <div class="cta-row">
+    <a class="btn" href="#scarica">⬇ Scarica per Windows</a>
+    <a class="btn ghost" href="#nodo">⚡ Diventa un nodo</a>
+  </div>
+  <div class="os-note">Windows disponibile · macOS &amp; Linux in arrivo · nessun account cloud richiesto</div>
+</header>
+
+<section id="cose" class="wrap">
+  <div class="eyebrow">Cos'è Neurion</div>
+  <h2 class="sec">Tre cose in una rete.</h2>
+  <div class="grid3">
+    <div class="card">
+      <div class="ic">🧠</div>
+      <h3>Usa l'AI</h3>
+      <p>Chat e un agente che lavora davvero sui tuoi file e progetti — in locale o instradato sulla rete. Routing privacy-first: i dati sensibili non escono.</p>
+    </div>
+    <div class="card">
+      <div class="ic">⚡</div>
+      <h3>Condividi &amp; guadagna</h3>
+      <p>La tua macchina inattiva diventa un nodo di calcolo. Esegue job in sandbox isolata, supera la verifica e guadagna NRN. Più lavori onesti, più reputazione.</p>
+    </div>
+    <div class="card">
+      <div class="ic">🔒</div>
+      <h3>Verificato &amp; privato</h3>
+      <p>Ogni calcolo campionato è ri-eseguito e confrontato: chi bara viene <b>slashato</b>, non pagato. Privacy classificata e routing per livello di fiducia.</p>
+    </div>
+  </div>
+</section>
+
+<section id="come" class="trust">
+  <div class="wrap">
+    <div class="eyebrow">Come funziona</div>
+    <h2 class="sec">Dal download al guadagno.</h2>
+    <div class="steps">
+      <div class="step">
+        <h3>Scarica il client</h3>
+        <p>Un'app standalone: database, AI locale e interfaccia inclusi. Nessun Docker, nessun setup cloud. Doppio click e parte.</p>
+      </div>
+      <div class="step">
+        <h3>Usa o metti un nodo</h3>
+        <p>Usa l'AI dall'app, oppure attiva la modalità nodo per servire calcolo alla rete dalla tua GPU/CPU.</p>
+      </div>
+      <div class="step">
+        <h3>Paga / guadagna il verificato</h3>
+        <p>Paghi solo il lavoro verificato; come nodo guadagni NRN convertibili. Lo Stato della rete è on-chain su Base.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="chip"><b>Pagato solo il verificato</b> · re-exec + consenso</div>
+      <div class="chip"><b>Anti-baro</b> · stake + slashing on-chain</div>
+      <div class="chip"><b>Privacy by design</b> · classificatore G2</div>
+      <div class="chip"><b>Scala orizzontale</b> · multi-istanza</div>
+    </div>
+  </div>
+</section>
+
+<section id="scarica" class="wrap">
+  <div class="eyebrow">Scarica</div>
+  <h2 class="sec">Prendi Neurion.</h2>
+  <div class="dl">
+    <div class="card">
+      <div class="ic">🖥️</div>
+      <h3>App desktop</h3>
+      <p>Il client completo: chat, agente, wallet. Tutto incluso, gira offline.</p>
+      <div class="meta">Windows 10/11 · ~215 MB · v1.2.0</div>
+      <a class="btn" href="/download/Neurion-Setup-1.2.0.exe">⬇ Windows (.exe)</a>
+    </div>
+    <div class="card" id="nodo">
+      <div class="ic">⚡</div>
+      <h3>Node agent</h3>
+      <p>Per chi vuole servire calcolo e guadagnare NRN. Leggero, da riga di comando.</p>
+      <div class="meta">Windows / Linux · richiede Docker</div>
+      <a class="btn ghost" href="/download/neurion-node.zip">⬇ Node agent</a>
+    </div>
+    <div class="card soon">
+      <div class="ic">🍎</div>
+      <h3>macOS &amp; Linux</h3>
+      <p>Build native in arrivo. Lascia la mail e ti avvisiamo al rilascio.</p>
+      <div class="meta">In arrivo</div>
+      <a class="btn ghost" href="mailto:info@neurionproject.org?subject=Avvisami%20macOS/Linux">Avvisami</a>
+    </div>
+  </div>
+</section>
+
+<footer class="wrap">
+  <div class="top">
+    <div>
+      <div class="logo">NEURION</div>
+      <p class="ethos">Costruito prima di tutto per migliorare la vita della comunità: AI accessibile, calcolo condiviso, valore distribuito a chi lo crea.</p>
+    </div>
+    <div>
+      <div style="color:var(--text);margin-bottom:8px">Progetto</div>
+      <div><a href="#cose">Cos'è</a></div>
+      <div><a href="#come">Come funziona</a></div>
+      <div><a href="#scarica">Scarica</a></div>
+      <div><a href="mailto:info@neurionproject.org">info@neurionproject.org</a></div>
+    </div>
+  </div>
+  <div style="margin-top:34px;opacity:.6">© 2026 Neurion · neurionproject.org · costruito da JIT Engineering</div>
+</footer>
+
+<script>
+(function(){
+  const c=document.getElementById('rain'),x=c.getContext('2d');
+  let cols,drops,fs=14;
+  const chars='NEURION01アイウエオカキ$#@%リ計算';
+  function init(){c.width=innerWidth;c.height=innerHeight;cols=Math.floor(c.width/fs);drops=Array(cols).fill(1);}
+  init();addEventListener('resize',init);
+  function draw(){
+    x.fillStyle='rgba(4,7,10,.08)';x.fillRect(0,0,c.width,c.height);
+    x.fillStyle='#00ff70';x.font=fs+'px monospace';
+    for(let i=0;i<drops.length;i++){
+      const t=chars[Math.floor(Math.random()*chars.length)];
+      x.fillText(t,i*fs,drops[i]*fs);
+      if(drops[i]*fs>c.height&&Math.random()>.975)drops[i]=0;
+      drops[i]++;
+    }
+  }
+  setInterval(draw,55);
+})();
+</script>
+</body>
+</html>
