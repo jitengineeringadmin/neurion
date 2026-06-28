@@ -14,6 +14,7 @@ corepack enable >/dev/null 2>&1 || true
 corepack prepare pnpm@8.12.1 --activate
 export PNPM_HOME="${PNPM_HOME:-/root/.local/share/pnpm}"; export PATH="$PNPM_HOME:$PATH"
 export ELECTRON_SKIP_BINARY_DOWNLOAD=1   # never pull the electron binary on a server
+export CI=true                            # pnpm: non-interactive, auto-confirm purges
 
 echo "### [2/8] postgres role + database (isolated)"
 DBPASS_FILE=$APP/.dbpass
@@ -56,9 +57,14 @@ EOF
   echo "    generated new secrets + admin password (saved to $APP/.adminpw)"
 fi
 set -a; . "$ENV"; set +a
+# NODE_ENV stays 'production' (from the env file) so `next build` produces a
+# production build. devDependencies (nest, tsx) are still installed below via
+# --prod=false, which is independent of NODE_ENV.
 
 echo "### [4/8] install api + web deps (filtered — no electron/hardhat)"
-pnpm install --frozen-lockfile --filter @neurion/api... --filter @neurion/web...
+# clean any prior (possibly prod-only) trees so the install never prompts to purge
+find /opt/neurion -name node_modules -type d -prune -exec rm -rf {} + 2>/dev/null || true
+pnpm install --frozen-lockfile --prod=false --filter @neurion/api... --filter @neurion/web...
 
 echo "### [5/8] prisma generate + migrate deploy"
 pnpm --filter @neurion/api exec prisma generate
