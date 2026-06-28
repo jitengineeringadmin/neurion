@@ -9,6 +9,7 @@ import {
   ewma,
   HIGH_VALUE_THRESHOLD,
   PROBATION_DEEP_PASSES,
+  RETRO_AUDIT_WINDOW,
   SAMPLE_BASE,
   SAMPLE_FLOOR,
 } from './verification/helpers';
@@ -155,7 +156,44 @@ export class VerificationService {
     await this.prisma.job.update({ where: { id: job.id }, data: { status: 'FAILED', errorMessage: `verification failed: ${reason}` } });
     await this.prisma.jobEvent.create({ data: { jobId: job.id, type: 'verification.failed', message: reason, data: detail } });
     this.logger.warn(`job ${job.id} SLASHED node ${node.id} (${reason}) — suspended + clawback ${clawback} + user refund`);
-    // NEXT SLICE: retro-audit the node's last 50 unsampled jobs (re-exec) for deeper clawback.
+    // Stake is forfeited (already spent at registration; never refunded for a fraudulent node).
+    await this.retroAudit(node).catch((e) => this.logger.error(`retro-audit failed: ${(e as Error).message}`));
+  }
+
+  /** On a proven fraud, re-execute the node's recent UNSAMPLED (pass-by-trust) jobs
+   * against the trusted reference and claw back any that don't match. */
+  private async retroAudit(node: ComputeNode): Promise<void> {
+    const jobs = await this.prisma.job.findMany({
+      where: { nodeId: node.id, grantedOptimistically: true, status: { in: ['VERIFIED', 'REWARDED'] } },
+      orderBy: { verifiedAt: 'desc' },
+      take: RETRO_AUDIT_WINDOW,
+    });
+    let clawed = 0;
+    let frauds = 0;
+    for (const j of jobs) {
+      const ref = await this.executor.reference(j.type, j.inputJson);
+      if (ref === null) continue; // can't re-verify this type here
+      const deep = this.deepCompare(j.type, (j.outputJson ?? {}) as WorkerOutput, ref);
+      if (deep.ok) continue;
+      frauds++;
+      const reward = j.rewardCredits ?? 0;
+      if (reward > 0) {
+        const bal = await this.credits.getBalance(node.ownerUserId);
+        const take = Math.min(bal, reward);
+        if (take > 0) await this.credits.spend(node.ownerUserId, take, 'NODE_REWARD_CLAWBACK', { jobId: j.id, idempotencyKey: `clawback:${j.id}` }).catch(() => undefined);
+        clawed += reward;
+      }
+      if (j.costCredits > 0) await this.credits.grant(j.userId, j.costCredits, 'USER_REFUND', `refund:${j.id}`).catch(() => undefined);
+      await this.prisma.job.update({ where: { id: j.id }, data: { status: 'FAILED', errorMessage: 'retro-audit: re-exec mismatch' } }).catch(() => undefined);
+      await this.prisma.jobVerification
+        .upsert({
+          where: { jobId: j.id },
+          update: { outcome: 'FAIL', method: 'REEXEC', sampled: true, resolvedAt: new Date(), detail: { retroAudit: true, ...(deep.detail as object) } },
+          create: { jobId: j.id, jobType: j.type, sanityPassed: true, sampled: true, method: 'REEXEC', outcome: 'FAIL', resolvedAt: new Date(), detail: { retroAudit: true } },
+        })
+        .catch(() => undefined);
+    }
+    if (frauds > 0) this.logger.warn(`retro-audit node ${node.id}: ${frauds} fraudulent prior job(s), ${clawed} credits clawed back`);
   }
 
   async handleCompleted(jobId: string, output: WorkerOutput): Promise<void> {
@@ -228,6 +266,11 @@ export class VerificationService {
         ...(graduate ? { lifecycleState: 'ACTIVE' as const } : {}),
       },
     });
+    // Graduation refunds the registration stake (the node proved honest over PROBATION).
+    if (graduate && node.stakeCredits > 0 && !node.stakeRefunded) {
+      await this.credits.grant(node.ownerUserId, node.stakeCredits, 'NODE_STAKE_REFUND', `stakerefund:${node.id}`).catch(() => undefined);
+      await this.prisma.computeNode.update({ where: { id: node.id }, data: { stakeRefunded: true } }).catch(() => undefined);
+    }
     await this.finalize(jobId, reward, 1, true);
   }
 }

@@ -126,11 +126,13 @@ model ComputeNode {
   successfulJobs               Int      @default(0)
   failedJobs                   Int      @default(0)
 
-  // G5 sybil
+  // G5 sybil + stake
   registrationIp      String?
   subnet24Hash        String?
   hardwareFingerprint String?
   stakeChallengeId    String?  @unique
+  stakeCredits        Int      @default(0) // bond locked at registration; refunded on graduation, forfeited on pre-graduation fraud
+  stakeRefunded       Boolean  @default(false)
 
   lastSeenAt DateTime?
   createdAt  DateTime  @default(now())
