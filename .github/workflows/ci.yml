@@ -29,6 +29,8 @@ jobs:
         run: |
           pnpm --filter @neurion/api build
           pnpm --filter @neurion/web build
+      - name: unit tests
+        run: pnpm --filter @neurion/api test:unit
 
   contracts:
     name: contracts (compile + test)
