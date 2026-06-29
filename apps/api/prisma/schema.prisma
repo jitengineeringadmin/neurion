@@ -68,29 +68,35 @@ model User {
 // Community forum
 // ============================================================================
 
-enum ForumCategory {
-  GENERAL
-  NODES
-  SUPPORT
-  IDEAS
-  ANNOUNCEMENTS
+// Board sections, grouped (id is a stable slug). Seeded, not user-created.
+model ForumSection {
+  id          String        @id
+  group       String
+  name        String
+  description String
+  icon        String
+  order       Int           @default(0)
+  threads     ForumThread[]
+
+  @@index([group, order])
 }
 
 model ForumThread {
-  id             String        @id @default(cuid())
+  id             String   @id @default(cuid())
   authorId       String
-  category       ForumCategory @default(GENERAL)
+  sectionId      String
   title          String
   body           String
-  pinned         Boolean       @default(false)
-  locked         Boolean       @default(false)
-  createdAt      DateTime      @default(now())
-  lastActivityAt DateTime      @default(now())
+  pinned         Boolean  @default(false)
+  locked         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  lastActivityAt DateTime @default(now())
 
-  author User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  posts  ForumPost[]
+  author  User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  section ForumSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  posts   ForumPost[]
 
-  @@index([category, lastActivityAt])
+  @@index([sectionId, lastActivityAt])
   @@index([authorId])
 }
 

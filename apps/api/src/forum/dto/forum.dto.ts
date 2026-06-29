@@ -1,9 +1,10 @@
-import { IsBoolean, IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { ForumCategory } from '@prisma/client';
+import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateThreadDto {
-  @IsEnum(ForumCategory)
-  category!: ForumCategory;
+  @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  sectionId!: string;
 
   @IsString()
   @MinLength(3)

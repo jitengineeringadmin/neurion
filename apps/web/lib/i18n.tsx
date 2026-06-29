@@ -223,6 +223,9 @@ const en: Dict = {
   "forum.participate": "Join the discussion",
   "forum.publicSubtitle": "Read what the community is discussing. Log in to post and reply.",
   "forum.loginToReply": "Want to reply?",
+  "forum.allSections": "All sections",
+  "forum.messages": "messages",
+  "forum.latest": "Latest topics",
 };
 
 const it: Dict = {
@@ -443,6 +446,9 @@ const it: Dict = {
   "forum.participate": "Partecipa",
   "forum.publicSubtitle": "Leggi cosa discute la community. Accedi per scrivere e rispondere.",
   "forum.loginToReply": "Vuoi rispondere?",
+  "forum.allSections": "Tutte le sezioni",
+  "forum.messages": "messaggi",
+  "forum.latest": "Ultimi topic",
 };
 
 const dict: Record<Lang, Dict> = { en, it };

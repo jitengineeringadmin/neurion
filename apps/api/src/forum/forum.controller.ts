@@ -1,6 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ForumCategory } from '@prisma/client';
 import { ForumService } from './forum.service';
 import { CreateThreadDto, ReplyDto, ModerateDto } from './dto/forum.dto';
 import { Public } from '../common/decorators/public.decorator';
@@ -11,13 +10,21 @@ export class ForumController {
   constructor(private readonly forum: ForumService) {}
 
   @Public()
+  @Get('sections')
+  sections() {
+    return this.forum.sections();
+  }
+
+  @Public()
+  @Get('latest')
+  latest() {
+    return this.forum.latest();
+  }
+
+  @Public()
   @Get('threads')
-  list(@Query('category') category?: string) {
-    const cat =
-      category && (Object.values(ForumCategory) as string[]).includes(category)
-        ? (category as ForumCategory)
-        : undefined;
-    return this.forum.listThreads(cat);
+  list(@Query('section') section?: string) {
+    return this.forum.listThreads(section || undefined);
   }
 
   @Public()
