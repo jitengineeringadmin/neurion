@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jit-engineering/neurion/node-agent/internal/config"
+	"github.com/neurionproject/node-agent/internal/config"
 )
 
 func httpJSON(method, url string, body any, token string, out any) error {

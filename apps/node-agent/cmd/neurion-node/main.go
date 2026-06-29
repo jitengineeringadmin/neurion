@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jit-engineering/neurion/node-agent/internal/agent"
-	"github.com/jit-engineering/neurion/node-agent/internal/config"
+	"github.com/neurionproject/node-agent/internal/agent"
+	"github.com/neurionproject/node-agent/internal/config"
 )
 
 const version = "0.1.0"

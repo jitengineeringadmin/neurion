@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/jit-engineering/neurion/node-agent/internal/config"
+	"github.com/neurionproject/node-agent/internal/config"
 )
 
 // workerImages maps a job type to its allowlisted container image (G15).
@@ -47,7 +47,7 @@ func DetectCapabilities(cfg *config.Config) map[string]any {
 	_, dockerErr := exec.LookPath("docker")
 	_, nvidiaErr := exec.LookPath("nvidia-smi")
 	loaded := realtimeModels(cfg)
-	return map[string]any{
+	caps := map[string]any{
 		"modes":           advertisedModes(cfg, loaded),
 		"os":              runtime.GOOS,
 		"arch":            runtime.GOARCH,
@@ -56,6 +56,28 @@ func DetectCapabilities(cfg *config.Config) map[string]any {
 		"nvidiaAvailable": nvidiaErr == nil,
 		"loadedModels":    loaded,
 	}
+	if m := cpuModelName(); m != "" {
+		caps["cpuModel"] = m
+	}
+	if r := totalRAMMb(); r > 0 {
+		caps["ramMb"] = r
+	}
+	if vendor, model, mem := gpuStaticInfo(); vendor != "" {
+		caps["gpuVendor"] = vendor
+		caps["gpuModel"] = model
+		if mem > 0 {
+			caps["gpuMemoryMb"] = mem
+		}
+	}
+	// Warmup benchmark: advertise measured speed when this node can actually serve.
+	if len(loaded) > 0 {
+		if ft, tps, ok := benchmarkRealtime(cfg, loaded[0]); ok {
+			caps["avgFirstTokenMs"] = ft
+			caps["avgTokensPerSecond"] = tps
+			log.Printf("benchmark %s: first-token %dms, %.1f tok/s", loaded[0], ft, tps)
+		}
+	}
+	return caps
 }
 
 // realtimeModels returns the model ids this node serves over the realtime lane.
@@ -178,10 +200,18 @@ func (a *Agent) heartbeatLoop() {
 	t := time.NewTicker(10 * time.Second)
 	defer t.Stop()
 	for range t.C {
+		metrics := map[string]any{
+			"cpuLoad":   sampleCPULoad(),
+			"ramUsedMb": usedRAMMb(),
+		}
+		if load, temp, ok := gpuLoadTemp(); ok {
+			metrics["gpuLoad"] = load
+			metrics["gpuTempC"] = temp
+		}
 		if err := a.send(map[string]any{
 			"type":    "node.heartbeat",
 			"nodeId":  a.cfg.Node.NodeID,
-			"metrics": map[string]any{"cpuLoad": 0, "ramUsedMb": 0},
+			"metrics": metrics,
 		}); err != nil {
 			return
 		}

@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 
 	"fyne.io/systray"
-	"github.com/jit-engineering/neurion/node-agent/internal/agent"
-	"github.com/jit-engineering/neurion/node-agent/internal/config"
+	"github.com/neurionproject/node-agent/internal/agent"
+	"github.com/neurionproject/node-agent/internal/config"
 )
 
 //go:embed icon.ico

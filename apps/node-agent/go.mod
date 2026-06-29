@@ -1,4 +1,4 @@
-module github.com/jit-engineering/neurion/node-agent
+module github.com/neurionproject/node-agent
 
 go 1.22
 
