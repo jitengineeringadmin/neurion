@@ -40,6 +40,15 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}, ret
   return (text ? JSON.parse(text) : {}) as T;
 }
 
+// Unauthenticated GET for public endpoints (no Bearer, no refresh) — used by the
+// public landing-adjacent pages (network dashboard, etc.).
+export async function publicApi<T = unknown>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}/api${path}`, { headers: { 'Content-Type': 'application/json' } });
+  const text = await res.text();
+  if (!res.ok) throw new Error(text || res.statusText);
+  return (text ? JSON.parse(text) : {}) as T;
+}
+
 export interface SseHandlers {
   onEvent: (event: string, data: any) => void;
 }

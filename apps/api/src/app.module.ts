@@ -19,6 +19,7 @@ import { ComplianceModule } from './compliance/compliance.module';
 import { AgentModule } from './agent/agent.module';
 import { ProjectsModule } from './projects/projects.module';
 import { ForumModule } from './forum/forum.module';
+import { NetworkModule } from './network/network.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
@@ -47,6 +48,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     AgentModule,
     ProjectsModule,
     ForumModule,
+    NetworkModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
