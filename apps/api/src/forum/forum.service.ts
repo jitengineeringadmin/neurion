@@ -12,7 +12,7 @@ export class ForumService {
 
   /** Board home: every section (grouped, ordered) with thread/message counts + last post. */
   async sections() {
-    const sections = await this.prisma.forumSection.findMany({ orderBy: [{ group: 'asc' }, { order: 'asc' }] });
+    const sections = await this.prisma.forumSection.findMany({ orderBy: { order: 'asc' } });
     const threads = await this.prisma.forumThread.findMany({
       orderBy: { lastActivityAt: 'desc' },
       include: { author: { select: { displayName: true, email: true } }, _count: { select: { posts: true } } },
