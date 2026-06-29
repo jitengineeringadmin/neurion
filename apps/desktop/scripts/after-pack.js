@@ -22,8 +22,8 @@ exports.default = async function afterPack(context) {
     'version-string': {
       ProductName: 'Neurion',
       FileDescription: 'Neurion — distributed AI compute',
-      CompanyName: 'JIT Engineering',
-      LegalCopyright: '© 2026 JIT Engineering',
+      CompanyName: 'Neurion',
+      LegalCopyright: '© 2026 Neurion',
       OriginalFilename: exeName,
     },
   });

@@ -18,7 +18,7 @@
     "rcedit": "^4.0.1"
   },
   "build": {
-    "appId": "engineering.jit.neurion",
+    "appId": "org.neurionproject.desktop",
     "productName": "Neurion",
     "directories": {
       "output": "dist-installer",
@@ -62,7 +62,7 @@
       "target": ["AppImage", "deb"],
       "icon": "build/icon.png",
       "category": "Development",
-      "maintainer": "JIT Engineering <info@neurionproject.org>",
+      "maintainer": "Neurion <info@neurionproject.org>",
       "synopsis": "Neurion — distributed AI compute",
       "artifactName": "Neurion-${version}-linux-${arch}.${ext}"
     },

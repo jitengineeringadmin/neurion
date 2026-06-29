@@ -1,6 +1,6 @@
 # Neurion Gaps G5–G15 — Resolutions
 
-**Status:** decided (2026-06-25) · **Spec ref:** `NEURION_SPEC_Codex_IT_EN_v1.1.md` · **Owner:** JIT / Giacomo Rossi
+**Status:** decided (2026-06-25) · **Spec ref:** `NEURION_SPEC_Codex_IT_EN_v1.1.md` · **Owner:** Giacomo Rossi
 
 Resolves gaps G5–G15 via per-gap solver + adversarial review + finalize (33 agents). G1/G2 in separate docs ([verification-g1.md](verification-g1.md), [privacy-g2.md](privacy-g2.md)); G3/G4 in memory.
 
@@ -1161,7 +1161,7 @@ export class ChatEstimateController {
 
 **Known limitations:** (medium) `estSeconds` for binary jobs (ocr/transcription/image) is byte-size-guessed and can be off 2–3× — a UX quote only; the GRID lane decision is correct regardless. (low) `chars/4` underestimates CJK/code-heavy prompts, but only ever misroutes toward GRID (fail-safe-up); revisit with a per-script divisor post-MVP. (low) thresholds are env-global, not per-model — fine for single-VPS MVP, needs per-model thresholds at scale. (low) `PREAUTH_MAX_CREDITS=500` can under-hold a genuinely huge legitimate job by design; the G1 verification flow still gates NRN payout, so platform exposure is bounded — only the user's hold is capped.
 
-Relevant file: `C:\Users\Giacomo\Desktop\Jitengineering\Projects\Neurion\NEURION_SPEC_Codex_IT_EN_v1.1.md`.
+Relevant file: `NEURION_SPEC_Codex_IT_EN_v1.1.md`.
 
 ---
 

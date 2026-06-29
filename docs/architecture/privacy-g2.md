@@ -1,6 +1,6 @@
 # G2 — Prompt Privacy / Confidential Routing
 
-**Status:** decided (2026-06-24) · **Spec ref:** `NEURION_SPEC_Codex_IT_EN_v1.1.md` §3.1, §9.3 (L760), §11.3, §14.4 · **Owner:** JIT / Giacomo Rossi
+**Status:** decided (2026-06-24) · **Spec ref:** `NEURION_SPEC_Codex_IT_EN_v1.1.md` §3.1, §9.3 (L760), §11.3, §14.4 · **Owner:** Giacomo Rossi
 
 Resolves gap **G2**: in the FAST lane the user's raw prompt + streamed response is sent to a warm node to run inference. If that node is COMMUNITY (a stranger's PC/GPU), the operator is the inference endpoint and can read, log, retain, exfiltrate, and tamper. The spec let PUBLIC chat route to community nodes with no confidentiality control — a GDPR (Art. 9 / Art. 25), MiCAR and AI-Act gap. Decided via diverse-prior panel (privacy-legal / product-latency / security-arch) + red-team + adversarial review (caught 3 blockers + 3 high).
 

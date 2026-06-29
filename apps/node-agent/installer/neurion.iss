@@ -4,7 +4,7 @@
 
 #define AppName "Neurion Node"
 #define AppVersion "0.1.0"
-#define Publisher "JIT Engineering"
+#define Publisher "Neurion"
 
 [Setup]
 AppName={#AppName}

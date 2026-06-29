@@ -6,7 +6,7 @@ sandbox (G15), and proxies realtime chat to a local OpenAI-compatible model.
 
 ## Build
 
-Requires Go 1.22+ (not bundled in the JIT toolchain — install separately).
+Requires Go 1.22+ (not bundled — install separately).
 
 ```bash
 cd apps/node-agent

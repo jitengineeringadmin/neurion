@@ -4,7 +4,7 @@
 
 **Version:** 1.2  
 **Date:** 2026-06-25  
-**Owner:** JIT Engineering / Giacomo Rossi  
+**Owner:** Giacomo Rossi  
 **Project:** `neurion`  
 **Primary language:** IT + EN  
 **Execution target:** usable MVP, not presentation demo
@@ -261,7 +261,7 @@ La Fallback Lane evita che l’utente resti bloccato.
 Quando Fast Lane o Grid Lane non sono disponibili, Neurion usa:
 
 ```txt
-- nodo interno JIT/Neurion
+- nodo interno Neurion
 - VPS/GPU dedicata
 - provider OpenAI-compatible configurabile
 - modello locale centralizzato
@@ -275,7 +275,7 @@ Fallback Lane prevents the user from getting stuck.
 When Fast Lane or Grid Lane is unavailable, Neurion uses:
 
 ```txt
-- internal JIT/Neurion node
+- internal Neurion node
 - dedicated VPS/GPU
 - configurable OpenAI-compatible provider
 - centralized local model
@@ -475,7 +475,7 @@ CASP integration: provider abstraction only
 
 ---
 
-# 7. Local Development Paths — JIT Workflow
+# 7. Local Development Paths — Dev Workflow
 
 ## 7.1 Local path
 
@@ -1484,7 +1484,7 @@ ENTERPRISE_ONLY:
   enterprise nodes only.
 
 INTERNAL_ONLY:
-  JIT/Neurion internal nodes only.
+  Neurion internal nodes only.
 ```
 
 ---

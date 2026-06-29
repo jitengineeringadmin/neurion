@@ -1,6 +1,6 @@
 # G1 — Distributed Compute Verification
 
-**Status:** decided (2026-06-24) · **Spec ref:** `NEURION_SPEC_Codex_IT_EN_v1.1.md` §8, §14, §15 · **Owner:** JIT / Giacomo Rossi
+**Status:** decided (2026-06-24) · **Spec ref:** `NEURION_SPEC_Codex_IT_EN_v1.1.md` §8, §14, §15 · **Owner:** Giacomo Rossi
 
 Resolves gap **G1**: prove a COMMUNITY node actually performed the assigned AI compute honestly before paying reward (credits + NRN). Decided via diverse-prior panel (fraud / UX / ops) + red-team + adversarial build review.
 
