@@ -189,6 +189,12 @@ const en: Dict = {
   "auth.changePasswordSubmit": "Change password",
   "auth.pwChanged": "Password changed.",
   "auth.pwChangeFail": "Could not change password.",
+  "auth.dangerZone": "Danger zone",
+  "auth.deleteAccount": "Delete account",
+  "auth.deleteWarn": "This permanently deletes your account and all your data (chats, forum posts, credits). This cannot be undone. Enter your password to confirm.",
+  "auth.deleteConfirm": "Delete my account",
+  "auth.cancel": "Cancel",
+  "auth.deleteFail": "Could not delete account.",
   "nav.tabForum": "Forum",
   "forum.title": "Community forum",
   "forum.subtitle": "Ask, share, propose. Built with the community.",
@@ -214,6 +220,9 @@ const en: Dict = {
   "forum.catSupport": "Support",
   "forum.catIdeas": "Ideas",
   "forum.catAnnouncements": "Announcements",
+  "forum.participate": "Join the discussion",
+  "forum.publicSubtitle": "Read what the community is discussing. Log in to post and reply.",
+  "forum.loginToReply": "Want to reply?",
 };
 
 const it: Dict = {
@@ -400,6 +409,12 @@ const it: Dict = {
   "auth.changePasswordSubmit": "Cambia password",
   "auth.pwChanged": "Password cambiata.",
   "auth.pwChangeFail": "Impossibile cambiare la password.",
+  "auth.dangerZone": "Zona pericolosa",
+  "auth.deleteAccount": "Elimina account",
+  "auth.deleteWarn": "Elimina definitivamente il tuo account e tutti i tuoi dati (chat, post del forum, crediti). Non è reversibile. Inserisci la password per confermare.",
+  "auth.deleteConfirm": "Elimina il mio account",
+  "auth.cancel": "Annulla",
+  "auth.deleteFail": "Impossibile eliminare l'account.",
   "nav.tabForum": "Forum",
   "forum.title": "Forum della community",
   "forum.subtitle": "Chiedi, condividi, proponi. Costruito con la community.",
@@ -425,6 +440,9 @@ const it: Dict = {
   "forum.catSupport": "Supporto",
   "forum.catIdeas": "Idee",
   "forum.catAnnouncements": "Annunci",
+  "forum.participate": "Partecipa",
+  "forum.publicSubtitle": "Leggi cosa discute la community. Accedi per scrivere e rispondere.",
+  "forum.loginToReply": "Vuoi rispondere?",
 };
 
 const dict: Record<Lang, Dict> = { en, it };

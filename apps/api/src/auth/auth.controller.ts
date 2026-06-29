@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Post,
   Req,
@@ -21,6 +22,7 @@ import {
   ResetPasswordDto,
   VerifyEmailDto,
   ChangePasswordDto,
+  DeleteAccountDto,
 } from './dto/auth.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
@@ -174,6 +176,13 @@ export class AuthController {
   @Post('change-password')
   async changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
     await this.auth.changePassword(user.sub, dto.oldPassword, dto.newPassword);
+    return { ok: true };
+  }
+
+  @Delete('account')
+  async deleteAccount(@CurrentUser() user: AuthUser, @Body() dto: DeleteAccountDto, @Res({ passthrough: true }) res: Response) {
+    await this.auth.deleteAccount(user.sub, dto.password);
+    this.clearRefreshCookie(res);
     return { ok: true };
   }
 

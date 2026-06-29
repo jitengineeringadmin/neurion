@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api';
+import { useAuth } from '../../../lib/auth';
 import { theme, card, input, button } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
 
@@ -8,7 +10,13 @@ interface Me { email: string; emailVerified: boolean }
 
 export default function AccountPage() {
   const t = useT();
+  const router = useRouter();
+  const { logout } = useAuth();
   const [me, setMe] = useState<Me | null>(null);
+  const [delOpen, setDelOpen] = useState(false);
+  const [delPw, setDelPw] = useState('');
+  const [delBusy, setDelBusy] = useState(false);
+  const [delErr, setDelErr] = useState('');
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [newPw2, setNewPw2] = useState('');
@@ -38,6 +46,21 @@ export default function AccountPage() {
 
   async function resend() {
     try { await api('/auth/resend-verification', { method: 'POST' }); setResent(true); } catch { /* ignore */ }
+  }
+
+  async function deleteAccount(e: React.FormEvent) {
+    e.preventDefault();
+    setDelErr('');
+    if (!delPw) return;
+    setDelBusy(true);
+    try {
+      await api('/auth/account', { method: 'DELETE', body: JSON.stringify({ password: delPw }) });
+      await logout().catch(() => undefined);
+      router.replace('/');
+    } catch (e2) {
+      setDelErr((e2 as Error).message || t('auth.deleteFail'));
+      setDelBusy(false);
+    }
   }
 
   return (
@@ -73,6 +96,29 @@ export default function AccountPage() {
             {busy ? t('login.submitBusy') : t('auth.changePasswordSubmit')}
           </button>
         </form>
+      </div>
+
+      <div style={{ ...card, marginTop: 16, border: '1px solid #e0533d44' }}>
+        <h3 style={{ margin: '0 0 8px', fontSize: 15, color: '#e0533d' }}>{t('auth.dangerZone')}</h3>
+        {!delOpen ? (
+          <button onClick={() => setDelOpen(true)} style={{ background: 'transparent', border: '1px solid #e0533d', color: '#e0533d', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13 }}>
+            {t('auth.deleteAccount')}
+          </button>
+        ) : (
+          <form onSubmit={deleteAccount} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ margin: 0, fontSize: 13, color: theme.muted }}>{t('auth.deleteWarn')}</p>
+            <input style={input} type="password" placeholder={t('auth.currentPassword')} value={delPw} onChange={(e) => setDelPw(e.target.value)} required />
+            {delErr && <div style={{ color: '#e0533d', fontSize: 13 }}>{delErr}</div>}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="submit" disabled={delBusy} style={{ background: '#e0533d', border: 'none', color: '#fff', borderRadius: 8, padding: '7px 16px', cursor: 'pointer', fontSize: 13, opacity: delBusy ? 0.6 : 1 }}>
+                {delBusy ? t('login.submitBusy') : t('auth.deleteConfirm')}
+              </button>
+              <button type="button" onClick={() => { setDelOpen(false); setDelPw(''); setDelErr(''); }} style={{ background: 'transparent', border: `1px solid ${theme.border}`, color: theme.text, borderRadius: 8, padding: '7px 16px', cursor: 'pointer', fontSize: 13 }}>
+                {t('auth.cancel')}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

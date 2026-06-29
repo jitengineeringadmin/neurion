@@ -47,6 +47,13 @@ export class VerifyEmailDto {
   token!: string;
 }
 
+export class DeleteAccountDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(128)
+  password!: string;
+}
+
 export class ChangePasswordDto {
   @IsString()
   @MinLength(1)

@@ -127,6 +127,31 @@ export class AuthService {
     return true;
   }
 
+  /** GDPR self-erasure: verify password, then delete the account + all its data. */
+  async deleteAccount(userId: string, password: string): Promise<void> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (!user.passwordHash || !(await argon2.verify(user.passwordHash, password))) {
+      throw new UnauthorizedException('password is incorrect');
+    }
+    await this.purgeUserData(userId);
+    // forum threads/posts + auth tokens cascade via onDelete: Cascade
+    await this.prisma.user.delete({ where: { id: userId } });
+  }
+
+  private async purgeUserData(userId: string): Promise<void> {
+    const p = this.prisma;
+    const convs = await p.chatConversation.findMany({ where: { userId }, select: { id: true } });
+    const convIds = convs.map((c) => c.id);
+    if (convIds.length) await p.chatMessage.deleteMany({ where: { conversationId: { in: convIds } } }).catch(() => undefined);
+    await p.chatConversation.deleteMany({ where: { userId } }).catch(() => undefined);
+    // flat userId-owned rows that don't cascade from User
+    const tables = ['refreshToken', 'creditLedger', 'tokenPayout', 'complianceRecord', 'ownerReputation', 'registrationChallenge', 'attachment', 'project', 'agentMemory', 'realtimeSession'] as const;
+    for (const t of tables) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (p as any)[t].deleteMany({ where: { userId } }).catch(() => undefined);
+    }
+  }
+
   async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<void> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     if (!user.passwordHash || !(await argon2.verify(user.passwordHash, oldPassword))) {
