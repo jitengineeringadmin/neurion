@@ -10,7 +10,13 @@ import * as argon2 from 'argon2';
 import { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RefreshTokenService } from './refresh-token.service';
+import { AuthTokenService } from './auth-token.service';
+import { MailService } from '../mail/mail.service';
+import { welcomeEmail, verifyEmail, resetPasswordEmail, passwordChangedEmail } from '../mail/templates';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
+
+const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1h
 
 const DEFAULT_WORKSPACE_SLUG = 'neurion-local';
 
@@ -20,6 +26,7 @@ export interface PublicUser {
   displayName: string | null;
   role: User['role'];
   workspaceId: string;
+  emailVerified: boolean;
 }
 
 @Injectable()
@@ -29,10 +36,12 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly refreshTokens: RefreshTokenService,
+    private readonly authTokens: AuthTokenService,
+    private readonly mail: MailService,
   ) {}
 
   private toPublic(u: User): PublicUser {
-    return { id: u.id, email: u.email, displayName: u.displayName, role: u.role, workspaceId: u.workspaceId };
+    return { id: u.id, email: u.email, displayName: u.displayName, role: u.role, workspaceId: u.workspaceId, emailVerified: u.emailVerified };
   }
 
   private async signAccessToken(u: User): Promise<string> {
@@ -61,7 +70,71 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: { email, passwordHash, displayName: displayName ?? null, workspaceId },
     });
+    // welcome + email verification (best-effort, never blocks registration)
+    void this.sendWelcome(user.id, user.email);
     return this.toPublic(user);
+  }
+
+  private async sendWelcome(userId: string, email: string): Promise<void> {
+    try {
+      const appUrl = this.mail.appUrl();
+      let verifyUrl: string | null = null;
+      if (this.mail.enabled) {
+        const raw = await this.authTokens.issue(userId, 'EMAIL_VERIFY', EMAIL_VERIFY_TTL_MS);
+        verifyUrl = `${appUrl}/verify?token=${raw}`;
+      }
+      await this.mail.send(email, welcomeEmail(appUrl, verifyUrl));
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  async resendVerification(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (user.emailVerified) return;
+    const appUrl = this.mail.appUrl();
+    const raw = await this.authTokens.issue(userId, 'EMAIL_VERIFY', EMAIL_VERIFY_TTL_MS);
+    await this.mail.send(user.email, verifyEmail(appUrl, `${appUrl}/verify?token=${raw}`));
+  }
+
+  async verifyEmail(rawToken: string): Promise<boolean> {
+    const userId = await this.authTokens.consume(rawToken, 'EMAIL_VERIFY');
+    if (!userId) return false;
+    await this.prisma.user.update({ where: { id: userId }, data: { emailVerified: true, emailVerifiedAt: new Date() } });
+    return true;
+  }
+
+  /** Always resolves the same way (no account enumeration). */
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user || user.status !== 'ACTIVE') return;
+    const appUrl = this.mail.appUrl();
+    const raw = await this.authTokens.issue(user.id, 'PASSWORD_RESET', PASSWORD_RESET_TTL_MS);
+    await this.mail.send(user.email, resetPasswordEmail(appUrl, `${appUrl}/reset?token=${raw}`));
+  }
+
+  async resetPassword(rawToken: string, newPassword: string): Promise<boolean> {
+    const userId = await this.authTokens.consume(rawToken, 'PASSWORD_RESET');
+    if (!userId) return false;
+    const passwordHash = await argon2.hash(newPassword);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    await this.mail.send(user.email, passwordChangedEmail(this.mail.appUrl()));
+    return true;
+  }
+
+  async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (!user.passwordHash || !(await argon2.verify(user.passwordHash, oldPassword))) {
+      throw new UnauthorizedException('current password is incorrect');
+    }
+    const passwordHash = await argon2.hash(newPassword);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    await this.mail.send(user.email, passwordChangedEmail(this.mail.appUrl()));
   }
 
   async validateCredentials(email: string, password: string): Promise<User> {

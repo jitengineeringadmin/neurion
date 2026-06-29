@@ -44,6 +44,8 @@ model User {
   kycStatus     KycStatus  @default(KYC_NOT_REQUIRED)
   payoutHold    Boolean    @default(false) // G5: compliance soft-hold
   creditBalance Int        @default(0) // denormalized = SUM(creditLedger.amount); kept in sync atomically
+  emailVerified   Boolean   @default(false)
+  emailVerifiedAt DateTime?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -55,8 +57,29 @@ model User {
   tokenPayouts           TokenPayout[]
   ownerReputation        OwnerReputation?        @relation("OwnerRepUser") // G5
   refreshTokens          RefreshToken[]          // G6
+  authTokens             AuthToken[]             // email verify + password reset
   attachments            Attachment[]            // G7
   registrationChallenges RegistrationChallenge[] // G5
+}
+
+// Single-use tokens for email verification + password reset (hash stored, raw emailed).
+model AuthToken {
+  id        String        @id @default(cuid())
+  userId    String
+  purpose   AuthTokenPurpose
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum AuthTokenPurpose {
+  EMAIL_VERIFY
+  PASSWORD_RESET
 }
 
 enum UserRole {

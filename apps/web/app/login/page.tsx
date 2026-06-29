@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { theme, card, input, button } from '../../lib/ui';
@@ -84,6 +85,11 @@ export default function LoginPage() {
             {busy ? t('login.submitBusy') : mode === 'login' ? t('login.submitLogin') : t('login.submitRegister')}
           </button>
         </form>
+        {mode === 'login' && (
+          <div style={{ marginTop: 12, textAlign: 'center' }}>
+            <Link href="/forgot" style={{ color: theme.muted, fontSize: 12, textDecoration: 'none' }}>{t('auth.forgotLink')}</Link>
+          </div>
+        )}
       </div>
       </div>
     </main>

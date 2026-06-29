@@ -5,6 +5,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './common/redis.service';
+import { MailModule } from './mail/mail.module';
 import { HealthModule } from './health/health.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
@@ -31,6 +32,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     }),
     PrismaModule,
     RedisModule,
+    MailModule,
     AuditModule,
     CreditsModule,
     HealthModule,

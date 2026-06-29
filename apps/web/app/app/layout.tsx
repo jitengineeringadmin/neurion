@@ -82,7 +82,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <SessionsSidebar />
           </Suspense>
           <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 10, marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <div style={{ fontSize: 11, color: theme.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</div>
+            <Link href="/app/account" title="Account" style={{ fontSize: 11, color: theme.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none' }}>{user.email}</Link>
             <div style={{ display: 'flex', gap: 6 }}>
               <ThemeToggle />
               <LangToggle />

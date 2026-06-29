@@ -14,7 +14,14 @@ import { createHash } from 'node:crypto';
 import { AuthService } from './auth.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { AuditService } from '../audit/audit.service';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
+import {
+  LoginDto,
+  RegisterDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyEmailDto,
+  ChangePasswordDto,
+} from './dto/auth.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 
@@ -129,6 +136,44 @@ export class AuthController {
     const raw = (req.cookies as Record<string, string> | undefined)?.[REFRESH_COOKIE];
     if (raw) await this.refreshTokens.revokeByRaw(raw);
     this.clearRefreshCookie(res);
+    return { ok: true };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 4, ttl: 60_000 } })
+  @Post('forgot-password')
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.auth.requestPasswordReset(dto.email);
+    return { ok: true }; // always ok — no account enumeration
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  @Post('reset-password')
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    const ok = await this.auth.resetPassword(dto.token, dto.password);
+    if (!ok) throw new UnauthorizedException('invalid or expired reset link');
+    return { ok: true };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('verify-email')
+  async verifyEmail(@Body() dto: VerifyEmailDto) {
+    const ok = await this.auth.verifyEmail(dto.token);
+    if (!ok) throw new UnauthorizedException('invalid or expired verification link');
+    return { ok: true };
+  }
+
+  @Post('resend-verification')
+  async resendVerification(@CurrentUser() user: AuthUser) {
+    await this.auth.resendVerification(user.sub);
+    return { ok: true };
+  }
+
+  @Post('change-password')
+  async changePassword(@CurrentUser() user: AuthUser, @Body() dto: ChangePasswordDto) {
+    await this.auth.changePassword(user.sub, dto.oldPassword, dto.newPassword);
     return { ok: true };
   }
 
