@@ -46,6 +46,52 @@ function parseEnv() {
 }
 const ENV = parseEnv();
 
+// Startup strings follow the OS language (app.getLocale → en/it; anything else
+// falls back to English). Resolved at app-ready time (getLocale needs ready).
+const STRINGS = {
+  en: {
+    boot: 'Starting…',
+    dbFirst: 'First launch — preparing the local database (this can take a minute)…',
+    db: 'Starting local database…',
+    prep: 'Updating database…',
+    api: 'Starting engine…',
+    web: 'Starting interface…',
+    almost: 'Almost ready…',
+    error: 'Startup error: ',
+    openBrowser: 'Open in browser',
+    quit: 'Quit',
+    edit: 'Edit',
+    view: 'View',
+    window: 'Window',
+    about: 'About Neurion',
+    aboutDetail: 'Distributed AI compute + agent. v1.3.2',
+    pickFolder: 'Select the project folder',
+    failTitle: 'Neurion won’t start',
+    failBody: 'The local engine did not respond. Fully close Neurion and reopen it.<br/>If it persists, restart your PC or reinstall.',
+  },
+  it: {
+    boot: 'Avvio…',
+    dbFirst: 'Primo avvio — preparazione del database locale (può richiedere un minuto)…',
+    db: 'Avvio database locale…',
+    prep: 'Aggiornamento database…',
+    api: 'Avvio motore…',
+    web: 'Avvio interfaccia…',
+    almost: 'Quasi pronto…',
+    error: 'Errore di avvio: ',
+    openBrowser: 'Apri nel browser',
+    quit: 'Esci',
+    edit: 'Modifica',
+    view: 'Vista',
+    window: 'Finestra',
+    about: 'Informazioni su Neurion',
+    aboutDetail: 'Calcolo AI distribuito + agente. v1.3.2',
+    pickFolder: 'Seleziona la cartella del progetto',
+    failTitle: 'Neurion non si avvia',
+    failBody: 'Il motore locale non ha risposto. Chiudi completamente Neurion e riaprilo.<br/>Se persiste, riavvia il PC o reinstalla.',
+  },
+};
+let T = STRINGS.en;
+
 const sh = (cmd, args, opts = {}) => spawn(cmd, args, { shell: true, windowsHide: true, ...opts });
 
 function waitPort(host, port, timeoutMs) {
@@ -162,32 +208,39 @@ async function startStack() {
   // children + tooling all use the embedded DB
   ENV.DATABASE_URL = DB_URL;
 
+  // first run = no Postgres cluster yet (the slow initdb path) — drives both the
+  // splash message and whether we seed.
+  const dataDir = path.join(app.getPath('userData'), 'pgdata');
+  const firstRun = !fs.existsSync(path.join(dataDir, 'PG_VERSION'));
+
   // 1) embedded Postgres (no Docker)
-  setStatus('avvio database integrato…');
+  setStatus(firstRun ? T.dbFirst : T.db);
   await startDb();
 
-  // 2) migrate + seed (idempotent)
-  setStatus('preparo il database…');
+  // 2) migrate always (schema can change between versions); seed only on first
+  //    run — it is idempotent but spawning it every launch just slows startup.
+  setStatus(T.prep);
   if (PACKAGED) {
     await nodeRun([path.join(API_DIR, 'node_modules', 'prisma', 'build', 'index.js'), 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
-    await nodeRun([path.join(API_DIR, 'prisma', 'seed.js')], { cwd: API_DIR, env: ENV });
+    if (firstRun) await nodeRun([path.join(API_DIR, 'prisma', 'seed.js')], { cwd: API_DIR, env: ENV });
   } else {
     await run('npx', ['prisma', 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
-    await run('npx', ['tsx', path.join('prisma', 'seed.ts')], { cwd: API_DIR, env: ENV });
+    if (firstRun) await run('npx', ['tsx', path.join('prisma', 'seed.ts')], { cwd: API_DIR, env: ENV });
   }
 
   // 3) API
-  setStatus('avvio API…');
+  setStatus(T.api);
   const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV });
   children.push(api);
   await waitHttp(API_HEALTH, 30000);
 
   // 4) web
-  setStatus('avvio interfaccia…');
+  setStatus(T.web);
   const nextBin = path.join(WEB_DIR, 'node_modules', 'next', 'dist', 'bin', 'next');
   const web = nodeSpawn([nextBin, 'start', '-p', '3091'], { cwd: WEB_DIR, env: ENV });
   children.push(web);
   await waitHttp(WEB_URL, 40000);
+  setStatus(T.almost);
 }
 
 function createSplash() {
@@ -226,7 +279,7 @@ function createMainWindow() {
       mainWindow.loadURL(
         'data:text/html;charset=utf-8,' +
           encodeURIComponent(
-            `<body style="background:#04070a;color:#dff6e6;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center"><div><h2 style="color:#00ff70">Neurion non si avvia</h2><p style="color:#7fa890">Il motore locale non ha risposto. Chiudi completamente Neurion e riaprilo.<br/>Se persiste, riavvia il PC o reinstalla.</p></div></body>`,
+            `<body style="background:#04070a;color:#dff6e6;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center"><div><h2 style="color:#00ff70">${T.failTitle}</h2><p style="color:#7fa890">${T.failBody}</p></div></body>`,
           ),
       );
       if (splash && !splash.isDestroyed()) splash.destroy();
@@ -248,23 +301,23 @@ function buildMenu() {
     {
       label: 'Neurion',
       submenu: [
-        { label: 'About Neurion', click: () => dialog.showMessageBox(mainWindow, { title: 'Neurion', message: 'Neurion desktop', detail: 'Distributed AI compute + agent. v1.2.0' }) },
+        { label: T.about, click: () => dialog.showMessageBox(mainWindow, { title: 'Neurion', message: 'Neurion desktop', detail: T.aboutDetail }) },
         { type: 'separator' },
-        { label: 'Apri nel browser', click: () => shell.openExternal(WEB_URL) },
+        { label: T.openBrowser, click: () => shell.openExternal(WEB_URL) },
         { type: 'separator' },
-        { role: 'quit', label: 'Esci' },
+        { role: 'quit', label: T.quit },
       ],
     },
-    { label: 'Modifica', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
-    { label: 'Vista', submenu: [{ role: 'reload' }, { role: 'forceReload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' }] },
-    { label: 'Finestra', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { role: 'close' }] },
+    { label: T.edit, submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
+    { label: T.view, submenu: [{ role: 'reload' }, { role: 'forceReload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' }] },
+    { label: T.window, submenu: [{ role: 'minimize' }, { role: 'zoom' }, { role: 'close' }] },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 ipcMain.handle('pick-folder', async (_e, initial) => {
   const res = await dialog.showOpenDialog(mainWindow, {
-    title: 'Seleziona la cartella del progetto',
+    title: T.pickFolder,
     properties: ['openDirectory', 'createDirectory'],
     defaultPath: initial || undefined,
   });
@@ -285,6 +338,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
+    T = STRINGS[(app.getLocale() || 'en').slice(0, 2)] || STRINGS.en;
     buildMenu();
     createSplash();
     try {
