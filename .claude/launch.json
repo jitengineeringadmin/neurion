@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@neurion/web", "start"],
       "port": 3091
+    },
+    {
+      "name": "landing",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["-y", "serve", "apps/landing", "-l", "4173"],
+      "port": 4173
     }
   ]
 }

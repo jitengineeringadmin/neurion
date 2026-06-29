@@ -84,7 +84,18 @@
   footer a:hover{color:var(--accent)}
   footer .ethos{max-width:420px}
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
-  @media(max-width:780px){.grid3,.steps,.dl{grid-template-columns:1fr}nav .links a{display:none}}
+  .navtoggle{display:none;background:none;border:1px solid var(--line);border-radius:8px;color:var(--accent);font-size:20px;line-height:1;padding:5px 11px;cursor:pointer}
+  @media(max-width:780px){
+    .grid3,.steps,.dl{grid-template-columns:1fr}
+    .navtoggle{display:block}
+    nav .links{display:none;position:absolute;top:100%;right:24px;left:24px;flex-direction:column;align-items:stretch;gap:6px;
+               background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:8px;box-shadow:0 12px 40px rgba(0,0,0,.55)}
+    nav.open .links{display:flex}
+    nav .links a{padding:9px 8px;border-radius:8px}
+    nav .links a:hover{background:rgba(0,255,112,.08)}
+    nav .links .btn.ghost{text-align:center}
+    nav .links .lang-select{width:100%}
+  }
   .lang-select{background:var(--surface);color:var(--accent);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12px;font-family:var(--mono);cursor:pointer}
 </style>
 </head>
@@ -94,7 +105,8 @@
 
 <nav>
   <div class="logo">NEURION</div>
-  <div class="links">
+  <button class="navtoggle" id="navToggle" aria-label="Menu" aria-expanded="false">☰</button>
+  <div class="links" id="navLinks">
     <a href="#what" data-i18n="nav_what">What is it</a>
     <a href="#how" data-i18n="nav_how">How it works</a>
     <a href="#download" data-i18n="nav_dl">Download</a>
@@ -554,6 +566,10 @@ function setLang(lang){
   try{localStorage.setItem('neurion_lang',lang);}catch(e){}
 }
 (function(){var s=document.getElementById('langSel'); if(s) s.addEventListener('change',function(e){setLang(e.target.value);});})();
+(function(){var t=document.getElementById('navToggle'),n=document.querySelector('nav'),l=document.getElementById('navLinks');
+  if(!t||!n)return;
+  t.addEventListener('click',function(){var o=n.classList.toggle('open');t.setAttribute('aria-expanded',o?'true':'false');});
+  if(l)l.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){n.classList.remove('open');t.setAttribute('aria-expanded','false');});});})();
 setLang((function(){try{return localStorage.getItem('neurion_lang')||'en';}catch(e){return 'en';}})());
 
 // ---- matrix rain ----
