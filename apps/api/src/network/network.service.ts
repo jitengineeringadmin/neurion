@@ -1,5 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+
+export interface HistoryPoint {
+  t: number;
+  nodesOnline: number;
+  jobsInFlight: number;
+  jobsCompletedTotal: number;
+  tps: number | null;
+}
 
 export interface ModelCount {
   model: string;
@@ -86,10 +94,42 @@ function toRecord(rows: Array<Record<string, unknown> & { _count: number }>, key
 }
 
 @Injectable()
-export class NetworkService {
+export class NetworkService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
   private cache: { at: number; data: NetworkStats } | null = null;
+
+  // In-memory time-series ring buffer (single-instance prod): no table, no
+  // migration. Resets on restart — fine for a live status page. ~12h at 2min.
+  private readonly HISTORY_CAP = 360;
+  private history: HistoryPoint[] = [];
+  private timer: ReturnType<typeof setInterval> | null = null;
+
+  onModuleInit(): void {
+    void this.snapshot();
+    this.timer = setInterval(() => void this.snapshot(), 120_000);
+    if (typeof this.timer.unref === 'function') this.timer.unref();
+  }
+
+  private async snapshot(): Promise<void> {
+    try {
+      const s = await this.stats();
+      this.history.push({
+        t: Date.now(),
+        nodesOnline: s.overview.nodesOnline,
+        jobsInFlight: s.overview.jobsInFlight,
+        jobsCompletedTotal: s.overview.jobsCompletedTotal,
+        tps: s.performance.avgTokensPerSecond,
+      });
+      if (this.history.length > this.HISTORY_CAP) this.history = this.history.slice(-this.HISTORY_CAP);
+    } catch {
+      /* a transient DB hiccup must not kill the timer */
+    }
+  }
+
+  getHistory(): HistoryPoint[] {
+    return this.history;
+  }
 
   // Public, unauthenticated endpoint -> short server-side cache so it is
   // flood-resistant and never hammers the DB faster than the data changes.

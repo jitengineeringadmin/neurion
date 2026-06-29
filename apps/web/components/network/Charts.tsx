@@ -135,6 +135,48 @@ export function Progress({ pct, label, value }: { pct: number; label: string; va
   );
 }
 
+export interface SparkPoint {
+  t: number;
+  value: number;
+}
+
+export function Sparkline({ points, label, height = 70, format }: { points: SparkPoint[]; label?: string; height?: number; format?: (v: number) => string }) {
+  const w = 100;
+  const valid = points.filter((p) => p.value != null);
+  if (valid.length < 2) {
+    return (
+      <div>
+        {label ? <div style={{ fontSize: 13, color: theme.text, marginBottom: 6 }}>{label}</div> : null}
+        <div style={{ color: theme.muted, fontSize: 13, height, display: 'flex', alignItems: 'center' }}>—</div>
+      </div>
+    );
+  }
+  const vals = valid.map((p) => p.value);
+  const max = Math.max(...vals);
+  const min = Math.min(...vals);
+  const range = max - min || 1;
+  const n = valid.length;
+  const x = (i: number) => (i / (n - 1)) * w;
+  const y = (v: number) => height - ((v - min) / range) * (height - 8) - 4;
+  const line = valid.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(2)},${y(p.value).toFixed(2)}`).join(' ');
+  const area = `${line} L${w},${height} L0,${height} Z`;
+  const last = valid[valid.length - 1].value;
+  return (
+    <div>
+      {label ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+          <span style={{ color: theme.text }}>{label}</span>
+          <span style={{ color: theme.muted, fontVariantNumeric: 'tabular-nums' }}>{format ? format(last) : last}</span>
+        </div>
+      ) : null}
+      <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" width="100%" height={height} style={{ display: 'block' }} role="img" aria-label={label ?? 'trend'}>
+        <path d={area} fill={theme.accent} opacity={0.12} />
+        <path d={line} fill="none" stroke={theme.accent} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+      </svg>
+    </div>
+  );
+}
+
 export function ComingSoon({ title, note }: { title: string; note: string }) {
   return (
     <Card style={{ opacity: 0.7, borderStyle: 'dashed' }}>

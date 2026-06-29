@@ -6,7 +6,15 @@ import { theme, button } from '../../lib/ui';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { LangToggle } from '../../components/LangToggle';
 import { useT } from '../../lib/i18n';
-import { Section, Grid, Card, Stat, Donut, BarList, Progress, ComingSoon, PALETTE, type Slice } from '../../components/network/Charts';
+import { Section, Grid, Card, Stat, Donut, BarList, Progress, Sparkline, ComingSoon, PALETTE, type Slice } from '../../components/network/Charts';
+
+interface HistoryPoint {
+  t: number;
+  nodesOnline: number;
+  jobsInFlight: number;
+  jobsCompletedTotal: number;
+  tps: number | null;
+}
 
 interface NetworkStats {
   generatedAt: string;
@@ -67,11 +75,12 @@ function toSlices(rec: Record<string, number>, labeller: (k: string) => string):
 export default function NetworkPage() {
   const t = useT();
   const [stats, setStats] = useState<NetworkStats | null>(null);
+  const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    const load = () =>
+    const load = () => {
       publicApi<NetworkStats>('/network/stats')
         .then((s) => {
           if (alive) {
@@ -82,6 +91,12 @@ export default function NetworkPage() {
         .catch(() => {
           if (alive) setError(true);
         });
+      publicApi<HistoryPoint[]>('/network/history')
+        .then((h) => {
+          if (alive) setHistory(h);
+        })
+        .catch(() => undefined);
+    };
     load();
     const id = setInterval(load, 10_000);
     return () => {
@@ -206,6 +221,14 @@ export default function NetworkPage() {
                   <ComingSoon title={t('network.gpuLoad')} note={t('network.perfComingSoon')} />
                 </Grid>
               )}
+            </Section>
+
+            <Section title={t('network.secHistory')}>
+              <Grid min={240}>
+                <Card><Sparkline label={t('network.histOnline')} points={history.map((h) => ({ t: h.t, value: h.nodesOnline }))} /></Card>
+                <Card><Sparkline label={t('network.histJobs')} points={history.map((h) => ({ t: h.t, value: h.jobsCompletedTotal }))} /></Card>
+                <Card><Sparkline label={t('network.histTps')} points={history.map((h) => ({ t: h.t, value: h.tps ?? 0 }))} format={(v) => v.toFixed(1)} /></Card>
+              </Grid>
             </Section>
           </>
         ) : null}

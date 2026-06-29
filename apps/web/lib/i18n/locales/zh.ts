@@ -282,5 +282,10 @@ const dict: Record<string, string> = {
   "network.tr_verified": "已验证",
   "network.tr_enterprise": "企业",
   "network.tr_internal": "内部",
+
+  "network.secHistory": "历史（最近12小时）",
+  "network.histOnline": "在线节点",
+  "network.histJobs": "已完成任务",
+  "network.histTps": "令牌/秒",
 };
 export default dict;

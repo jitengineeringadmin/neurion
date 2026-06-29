@@ -282,5 +282,10 @@ const dict: Record<string, string> = {
   "network.tr_verified": "Verificado",
   "network.tr_enterprise": "Empresa",
   "network.tr_internal": "Interno",
+
+  "network.secHistory": "Historial (últimas 12h)",
+  "network.histOnline": "Nodos en línea",
+  "network.histJobs": "Trabajos completados",
+  "network.histTps": "Tokens / s",
 };
 export default dict;

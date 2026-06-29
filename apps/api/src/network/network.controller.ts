@@ -14,4 +14,10 @@ export class NetworkController {
   stats() {
     return this.network.stats();
   }
+
+  @Get('history')
+  @Header('Cache-Control', 'public, max-age=30')
+  history() {
+    return this.network.getHistory();
+  }
 }
