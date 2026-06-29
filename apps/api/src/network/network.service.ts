@@ -33,6 +33,7 @@ export interface NetworkStats {
     byStatus: Record<string, number>;
     byTrust: Record<string, number>;
     byOs: Record<string, number>;
+    byRegion: Record<string, number>;
     gpuNodes: number;
     cpuOnlyNodes: number;
     dockerNodes: number;
@@ -164,6 +165,7 @@ export class NetworkService implements OnModuleInit {
       byStatusRaw,
       byTrustRaw,
       byOsRaw,
+      byRegionRaw,
       byTypeRaw,
       verifPass,
       verifTotal,
@@ -189,6 +191,7 @@ export class NetworkService implements OnModuleInit {
       p.computeNode.groupBy({ by: ['status'], _count: true }),
       p.computeNode.groupBy({ by: ['trustLevel'], _count: true }),
       p.computeNode.groupBy({ by: ['os'], _count: true }),
+      p.computeNode.groupBy({ by: ['regionCode'], _count: true }),
       p.job.groupBy({ by: ['type'], _count: true }),
       p.jobVerification.count({ where: { sampled: true, outcome: 'PASS' } }),
       p.jobVerification.count({ where: { sampled: true, outcome: { in: ['PASS', 'FAIL'] } } }),
@@ -243,6 +246,7 @@ export class NetworkService implements OnModuleInit {
         byStatus: toRecord(byStatusRaw as never, 'status'),
         byTrust: toRecord(byTrustRaw as never, 'trustLevel'),
         byOs: toRecord(byOsRaw as never, 'os'),
+        byRegion: toRecord(byRegionRaw as never, 'regionCode'),
         gpuNodes,
         cpuOnlyNodes: Math.max(0, nodesTotal - gpuNodes),
         dockerNodes,

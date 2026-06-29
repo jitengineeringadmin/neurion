@@ -287,5 +287,8 @@ const dict: Record<string, string> = {
   "network.histOnline": "Nodos en línea",
   "network.histJobs": "Trabajos completados",
   "network.histTps": "Tokens / s",
+
+  "network.secGeo": "Distribución geográfica",
+  "network.byRegion": "Nodos por región",
 };
 export default dict;

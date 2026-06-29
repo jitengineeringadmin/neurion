@@ -5,7 +5,7 @@ import { publicApi } from '../../lib/api';
 import { theme, button } from '../../lib/ui';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { LangToggle } from '../../components/LangToggle';
-import { useT } from '../../lib/i18n';
+import { useT, useLang } from '../../lib/i18n';
 import { Section, Grid, Card, Stat, Donut, BarList, Progress, Sparkline, ComingSoon, PALETTE, type Slice } from '../../components/network/Charts';
 
 interface HistoryPoint {
@@ -31,6 +31,7 @@ interface NetworkStats {
     byStatus: Record<string, number>;
     byTrust: Record<string, number>;
     byOs: Record<string, number>;
+    byRegion: Record<string, number>;
     gpuNodes: number;
     cpuOnlyNodes: number;
     dockerNodes: number;
@@ -74,6 +75,7 @@ function toSlices(rec: Record<string, number>, labeller: (k: string) => string):
 
 export default function NetworkPage() {
   const t = useT();
+  const { lang } = useLang();
   const [stats, setStats] = useState<NetworkStats | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [error, setError] = useState(false);
@@ -108,6 +110,13 @@ export default function NetworkPage() {
   const stLabel = (k: string) => t(`network.st_${k.toLowerCase()}`);
   const trLabel = (k: string) => t(`network.tr_${k.toLowerCase()}`);
   const osLabel = (k: string) => (k === 'unknown' ? t('network.unknown') : k.charAt(0).toUpperCase() + k.slice(1));
+  let regionNames: Intl.DisplayNames | null = null;
+  try {
+    regionNames = new Intl.DisplayNames([lang], { type: 'region' });
+  } catch {
+    regionNames = null;
+  }
+  const regionLabel = (k: string) => (k === 'unknown' ? t('network.unknown') : regionNames?.of(k) ?? k);
 
   return (
     <main style={{ minHeight: '100vh' }}>
@@ -172,6 +181,12 @@ export default function NetworkPage() {
                   <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.muted, marginBottom: 12 }}>{t('network.models')}</div>
                   <BarList items={stats.composition.models.map((m) => ({ label: m.model, value: m.nodes }))} />
                 </Card>
+              </Grid>
+            </Section>
+
+            <Section title={t('network.secGeo')}>
+              <Grid min={280}>
+                <Card><div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.muted, marginBottom: 12 }}>{t('network.byRegion')}</div><Donut data={toSlices(stats.composition.byRegion, regionLabel)} centerLabel={t('network.nodes')} /></Card>
               </Grid>
             </Section>
 

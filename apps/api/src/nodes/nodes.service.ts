@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
 import { AuthUser } from '../common/decorators/current-user.decorator';
+import { countryFromIp } from '../common/geoip';
 
 @Injectable()
 export class NodesService {
@@ -14,7 +15,7 @@ export class NodesService {
   ) {}
 
   /** Returns the node plus the raw nodeKey — shown ONCE, only its hash is stored. */
-  async register(user: AuthUser, name: string, supportedJobTypes: string[] = ['echo.v1']) {
+  async register(user: AuthUser, name: string, supportedJobTypes: string[] = ['echo.v1'], ip?: string) {
     const cap = Number(this.config.get('NODE_MAX_PER_OWNER') ?? 20) || 20;
     const stake = Number(this.config.get('NODE_STAKE_CREDITS') ?? 0) || 0;
 
@@ -52,6 +53,8 @@ export class NodesService {
           supportedJobTypes,
           supportedModes: ['grid'],
           stakeCredits: stake,
+          registrationIp: ip ?? null,
+          regionCode: countryFromIp(ip),
         },
       });
       return { nodeId: node.id, nodeKey, node };

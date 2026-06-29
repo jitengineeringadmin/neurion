@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Ip, Param, Post } from '@nestjs/common';
 import { IsArray, IsOptional, IsString, MaxLength } from 'class-validator';
 import { NodesService } from './nodes.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
@@ -19,8 +19,8 @@ export class NodesController {
   constructor(private readonly nodes: NodesService) {}
 
   @Post('register')
-  register(@CurrentUser() user: AuthUser, @Body() dto: RegisterNodeDto) {
-    return this.nodes.register(user, dto.name, dto.supportedJobTypes);
+  register(@CurrentUser() user: AuthUser, @Body() dto: RegisterNodeDto, @Ip() ip: string) {
+    return this.nodes.register(user, dto.name, dto.supportedJobTypes, ip);
   }
 
   @Get()

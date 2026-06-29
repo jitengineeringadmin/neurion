@@ -287,5 +287,8 @@ const dict: Record<string, string> = {
   "network.histOnline": "在线节点",
   "network.histJobs": "已完成任务",
   "network.histTps": "令牌/秒",
+
+  "network.secGeo": "地理分布",
+  "network.byRegion": "按地区分布的节点",
 };
 export default dict;
