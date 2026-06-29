@@ -14,6 +14,7 @@ const TABS: [string, string][] = [
   ['/app/chat', 'nav.tabChat'],
   ['/app/agent', 'nav.tabAgent'],
   ['/app/models', 'nav.tabModels'],
+  ['/app/forum', 'nav.tabForum'],
   ['/app/dashboard', 'nav.tabNetwork'],
 ];
 const NETWORK: [string, string][] = [
@@ -40,6 +41,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     ? '/app/agent'
     : pathname.startsWith('/app/models')
     ? '/app/models'
+    : pathname.startsWith('/app/forum')
+    ? '/app/forum'
     : isNetwork
     ? '/app/dashboard'
     : '/app/chat';

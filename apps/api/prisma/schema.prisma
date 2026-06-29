@@ -60,6 +60,52 @@ model User {
   authTokens             AuthToken[]             // email verify + password reset
   attachments            Attachment[]            // G7
   registrationChallenges RegistrationChallenge[] // G5
+  forumThreads           ForumThread[]           // community forum
+  forumPosts             ForumPost[]             // community forum
+}
+
+// ============================================================================
+// Community forum
+// ============================================================================
+
+enum ForumCategory {
+  GENERAL
+  NODES
+  SUPPORT
+  IDEAS
+  ANNOUNCEMENTS
+}
+
+model ForumThread {
+  id             String        @id @default(cuid())
+  authorId       String
+  category       ForumCategory @default(GENERAL)
+  title          String
+  body           String
+  pinned         Boolean       @default(false)
+  locked         Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  lastActivityAt DateTime      @default(now())
+
+  author User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  posts  ForumPost[]
+
+  @@index([category, lastActivityAt])
+  @@index([authorId])
+}
+
+model ForumPost {
+  id        String   @id @default(cuid())
+  threadId  String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  thread ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([authorId])
 }
 
 // Single-use tokens for email verification + password reset (hash stored, raw emailed).
