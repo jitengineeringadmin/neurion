@@ -215,6 +215,24 @@ function createMainWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
   });
   mainWindow.loadURL(WEB_URL);
+  // The web server may take a moment after this point; retry instead of showing
+  // a black window, and fall back to a readable error page (never a dead URL).
+  let loadTries = 0;
+  mainWindow.webContents.on('did-fail-load', (_e, code) => {
+    if (code === -3) return; // aborted (a newer navigation superseded this one)
+    if (++loadTries <= 25) {
+      setTimeout(() => mainWindow && !mainWindow.isDestroyed() && mainWindow.loadURL(WEB_URL), 1000);
+    } else {
+      mainWindow.loadURL(
+        'data:text/html;charset=utf-8,' +
+          encodeURIComponent(
+            `<body style="background:#04070a;color:#dff6e6;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center"><div><h2 style="color:#00ff70">Neurion non si avvia</h2><p style="color:#7fa890">Il motore locale non ha risposto. Chiudi completamente Neurion e riaprilo.<br/>Se persiste, riavvia il PC o reinstalla.</p></div></body>`,
+          ),
+      );
+      if (splash && !splash.isDestroyed()) splash.destroy();
+      mainWindow.show();
+    }
+  });
   mainWindow.once('ready-to-show', () => {
     if (splash && !splash.isDestroyed()) splash.destroy();
     mainWindow.show();
@@ -253,16 +271,30 @@ ipcMain.handle('pick-folder', async (_e, initial) => {
   return { path: res.canceled || !res.filePaths[0] ? null : res.filePaths[0].replace(/\\/g, '/') };
 });
 
-app.whenReady().then(async () => {
-  buildMenu();
-  createSplash();
-  try {
-    await startStack();
-  } catch (e) {
-    setStatus('errore avvio: ' + (e && e.message ? e.message : e));
-  }
-  createMainWindow();
-});
+// Single instance: a second launch must not spin up a second embedded stack
+// (it would fight for ports 5433/8091/3091 and leave one window black). Focus
+// the existing window instead.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+
+  app.whenReady().then(async () => {
+    buildMenu();
+    createSplash();
+    try {
+      await startStack();
+    } catch (e) {
+      setStatus('errore avvio: ' + (e && e.message ? e.message : e));
+    }
+    createMainWindow();
+  });
+}
 
 function killChildren() {
   for (const c of children) {
