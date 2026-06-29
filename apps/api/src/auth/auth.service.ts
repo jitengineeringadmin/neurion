@@ -24,6 +24,7 @@ export interface PublicUser {
   id: string;
   email: string;
   displayName: string | null;
+  avatarUrl: string | null;
   role: User['role'];
   workspaceId: string;
   emailVerified: boolean;
@@ -41,7 +42,15 @@ export class AuthService {
   ) {}
 
   private toPublic(u: User): PublicUser {
-    return { id: u.id, email: u.email, displayName: u.displayName, role: u.role, workspaceId: u.workspaceId, emailVerified: u.emailVerified };
+    return { id: u.id, email: u.email, displayName: u.displayName, avatarUrl: u.avatarUrl, role: u.role, workspaceId: u.workspaceId, emailVerified: u.emailVerified };
+  }
+
+  async updateProfile(userId: string, data: { displayName?: string | null; avatarUrl?: string | null }): Promise<PublicUser> {
+    const patch: { displayName?: string | null; avatarUrl?: string | null } = {};
+    if (data.displayName !== undefined) patch.displayName = data.displayName?.trim() || null;
+    if (data.avatarUrl !== undefined) patch.avatarUrl = data.avatarUrl?.trim() || null;
+    const user = await this.prisma.user.update({ where: { id: userId }, data: patch });
+    return this.toPublic(user);
   }
 
   private async signAccessToken(u: User): Promise<string> {

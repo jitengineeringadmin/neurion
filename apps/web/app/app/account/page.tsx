@@ -5,14 +5,19 @@ import { api } from '../../../lib/api';
 import { useAuth } from '../../../lib/auth';
 import { theme, card, input, button } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
+import { Avatar } from '../../../components/Avatar';
 
-interface Me { email: string; emailVerified: boolean }
+interface Me { email: string; emailVerified: boolean; displayName: string | null; avatarUrl: string | null }
 
 export default function AccountPage() {
   const t = useT();
   const router = useRouter();
   const { logout } = useAuth();
   const [me, setMe] = useState<Me | null>(null);
+  const [dispName, setDispName] = useState('');
+  const [avatar, setAvatar] = useState('');
+  const [profBusy, setProfBusy] = useState(false);
+  const [profMsg, setProfMsg] = useState('');
   const [delOpen, setDelOpen] = useState(false);
   const [delPw, setDelPw] = useState('');
   const [delBusy, setDelBusy] = useState(false);
@@ -25,7 +30,19 @@ export default function AccountPage() {
   const [err, setErr] = useState('');
   const [resent, setResent] = useState(false);
 
-  useEffect(() => { void api<Me>('/auth/me').then(setMe).catch(() => undefined); }, []);
+  useEffect(() => {
+    void api<Me>('/auth/me').then((m) => { setMe(m); setDispName(m.displayName ?? ''); setAvatar(m.avatarUrl ?? ''); }).catch(() => undefined);
+  }, []);
+
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setProfMsg(''); setProfBusy(true);
+    try {
+      const m = await api<Me>('/auth/profile', { method: 'PATCH', body: JSON.stringify({ displayName: dispName, avatarUrl: avatar }) });
+      setMe(m); setProfMsg(t('auth.profileSaved'));
+    } catch { setProfMsg(t('auth.pwChangeFail')); }
+    finally { setProfBusy(false); }
+  }
 
   async function changePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -74,6 +91,19 @@ export default function AccountPage() {
             : <span style={{ color: theme.amber ?? '#e0a33d' }}>● {t('auth.emailUnverified')}</span>}
         </p>
       )}
+
+      <form onSubmit={saveProfile} style={{ ...card, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <h3 style={{ margin: '0 0 2px', fontSize: 15 }}>{t('auth.profileTitle')}</h3>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+          <Avatar name={dispName || me?.email || '?'} url={avatar || null} size={56} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input style={input} placeholder={t('auth.displayName')} value={dispName} maxLength={40} onChange={(e) => setDispName(e.target.value)} />
+            <input style={input} placeholder={t('auth.avatarUrl')} value={avatar} maxLength={500} onChange={(e) => setAvatar(e.target.value)} />
+          </div>
+        </div>
+        {profMsg && <div style={{ color: theme.accent, fontSize: 13 }}>{profMsg}</div>}
+        <div><button type="submit" disabled={profBusy} style={{ ...button, opacity: profBusy ? 0.6 : 1 }}>{profBusy ? t('login.submitBusy') : t('auth.saveProfile')}</button></div>
+      </form>
 
       {me && !me.emailVerified && (
         <div style={{ ...card, marginBottom: 16 }}>

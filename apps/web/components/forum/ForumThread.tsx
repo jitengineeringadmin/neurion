@@ -6,8 +6,9 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { theme, card, input, button } from '../../lib/ui';
 import { useT } from '../../lib/i18n';
+import { Avatar } from '../Avatar';
 
-interface Author { id: string; name: string }
+interface Author { id: string; name: string; avatarUrl: string | null }
 interface Post { id: string; body: string; createdAt: string; author: Author }
 interface Thread {
   id: string; section: { id: string; name: string; icon: string }; title: string; body: string;
@@ -42,8 +43,11 @@ export function ForumThread({ canPost, backHref, loginHref }: { canPost: boolean
   if (!th) return <div style={{ color: theme.muted, padding: 20 }}>…</div>;
   const canDelThread = canPost && (th.author.id === user?.id || isMod);
   const meta = (a: Author, date: string) => (
-    <div style={{ fontSize: 12, color: theme.muted, marginBottom: 6 }}>
-      <b style={{ color: theme.accent }}>{a.name}</b> · {new Date(date).toLocaleString()}
+    <div style={{ display: 'flex', gap: 9, alignItems: 'center', marginBottom: 8 }}>
+      <Avatar name={a.name} url={a.avatarUrl} size={32} />
+      <div style={{ fontSize: 12, color: theme.muted }}>
+        <b style={{ color: theme.accent }}>{a.name}</b> · {new Date(date).toLocaleString()}
+      </div>
     </div>
   );
 

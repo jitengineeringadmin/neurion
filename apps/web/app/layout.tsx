@@ -23,7 +23,7 @@ export const viewport = {
   themeColor: '#04070a',
 };
 
-const noFlash = `(function(){try{var t=localStorage.getItem('neurion_theme')||'dark';document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('neurion_lang');if(l==='en'||l==='it')document.documentElement.setAttribute('lang',l);}catch(e){}})();`;
+const noFlash = `(function(){try{var t=localStorage.getItem('neurion_theme')||'dark';document.documentElement.setAttribute('data-theme',t);var l=localStorage.getItem('neurion_lang');if(l&&['en','it','fr','de','es','ru','zh'].indexOf(l)>=0)document.documentElement.setAttribute('lang',l);}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

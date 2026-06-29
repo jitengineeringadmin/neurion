@@ -47,6 +47,18 @@ export class VerifyEmailDto {
   token!: string;
 }
 
+export class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  displayName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  avatarUrl?: string;
+}
+
 export class DeleteAccountDto {
   @IsString()
   @MinLength(1)

@@ -38,6 +38,7 @@ model User {
   email         String     @unique
   passwordHash  String?
   displayName   String?
+  avatarUrl     String?
   role          UserRole   @default(USER)
   status        UserStatus @default(ACTIVE)
   walletAddress String?

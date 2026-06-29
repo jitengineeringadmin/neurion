@@ -15,14 +15,14 @@ export class ForumService {
     const sections = await this.prisma.forumSection.findMany({ orderBy: { order: 'asc' } });
     const threads = await this.prisma.forumThread.findMany({
       orderBy: { lastActivityAt: 'desc' },
-      include: { author: { select: { displayName: true, email: true } }, _count: { select: { posts: true } } },
+      include: { author: { select: { displayName: true, email: true, avatarUrl: true } }, _count: { select: { posts: true } } },
     });
-    const stat = new Map<string, { threads: number; posts: number; last: { threadId: string; title: string; author: string; at: Date } | null }>();
+    const stat = new Map<string, { threads: number; posts: number; last: { threadId: string; title: string; author: string; authorAvatar: string | null; at: Date } | null }>();
     for (const th of threads) {
       const s = stat.get(th.sectionId) ?? { threads: 0, posts: 0, last: null };
       s.threads += 1;
       s.posts += th._count.posts;
-      if (!s.last) s.last = { threadId: th.id, title: th.title, author: handle(th.author), at: th.lastActivityAt }; // ordered desc -> first is newest
+      if (!s.last) s.last = { threadId: th.id, title: th.title, author: handle(th.author), authorAvatar: th.author.avatarUrl, at: th.lastActivityAt }; // ordered desc -> first is newest
       stat.set(th.sectionId, s);
     }
     return sections.map((sec) => {
@@ -46,7 +46,7 @@ export class ForumService {
       orderBy: { lastActivityAt: 'desc' },
       take: limit,
       include: {
-        author: { select: { displayName: true, email: true } },
+        author: { select: { displayName: true, email: true, avatarUrl: true } },
         section: { select: { id: true, name: true, icon: true } },
         _count: { select: { posts: true } },
       },
@@ -56,6 +56,7 @@ export class ForumService {
       title: th.title,
       replies: th._count.posts,
       author: handle(th.author),
+      authorAvatar: th.author.avatarUrl,
       lastActivityAt: th.lastActivityAt,
       section: th.section,
     }));
@@ -67,7 +68,7 @@ export class ForumService {
       orderBy: [{ pinned: 'desc' }, { lastActivityAt: 'desc' }],
       take: 100,
       include: {
-        author: { select: { id: true, displayName: true, email: true } },
+        author: { select: { id: true, displayName: true, email: true, avatarUrl: true } },
         section: { select: { id: true, name: true, icon: true } },
         _count: { select: { posts: true } },
       },
@@ -80,7 +81,7 @@ export class ForumService {
       locked: t.locked,
       createdAt: t.createdAt,
       lastActivityAt: t.lastActivityAt,
-      author: { id: t.author.id, name: handle(t.author) },
+      author: { id: t.author.id, name: handle(t.author), avatarUrl: t.author.avatarUrl },
       replies: t._count.posts,
     }));
   }
@@ -98,11 +99,11 @@ export class ForumService {
     const t = await this.prisma.forumThread.findUnique({
       where: { id },
       include: {
-        author: { select: { id: true, displayName: true, email: true } },
+        author: { select: { id: true, displayName: true, email: true, avatarUrl: true } },
         section: { select: { id: true, name: true, icon: true } },
         posts: {
           orderBy: { createdAt: 'asc' },
-          include: { author: { select: { id: true, displayName: true, email: true } } },
+          include: { author: { select: { id: true, displayName: true, email: true, avatarUrl: true } } },
         },
       },
     });
@@ -115,12 +116,12 @@ export class ForumService {
       pinned: t.pinned,
       locked: t.locked,
       createdAt: t.createdAt,
-      author: { id: t.author.id, name: handle(t.author) },
+      author: { id: t.author.id, name: handle(t.author), avatarUrl: t.author.avatarUrl },
       posts: t.posts.map((p) => ({
         id: p.id,
         body: p.body,
         createdAt: p.createdAt,
-        author: { id: p.author.id, name: handle(p.author) },
+        author: { id: p.author.id, name: handle(p.author), avatarUrl: p.author.avatarUrl },
       })),
     };
   }

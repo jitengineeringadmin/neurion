@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Patch,
   Post,
   Req,
   Res,
@@ -23,6 +24,7 @@ import {
   VerifyEmailDto,
   ChangePasswordDto,
   DeleteAccountDto,
+  UpdateProfileDto,
 } from './dto/auth.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
@@ -184,6 +186,11 @@ export class AuthController {
     await this.auth.deleteAccount(user.sub, dto.password);
     this.clearRefreshCookie(res);
     return { ok: true };
+  }
+
+  @Patch('profile')
+  async updateProfile(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) {
+    return this.auth.updateProfile(user.sub, dto);
   }
 
   @Get('me')
