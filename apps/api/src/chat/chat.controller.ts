@@ -115,6 +115,38 @@ export class ChatController {
       // user-chosen model overrides the default for real (non-mock) providers.
       const chosenModel = dto.preferredModel && plan.provider.name !== 'mock' ? dto.preferredModel : plan.model;
 
+      // Soft-disabled online inference: when no real engine is reachable (mock
+      // fallback) and this deploy runs without a server engine, return a clear
+      // "use the app / run a node" notice instead of a fake mock answer — free.
+      if (this.config.get<string>('AI_ONLINE_NO_ENGINE') === 'true' && plan.provider.name === 'mock') {
+        await this.chat.addUserMessage(conv.id, dto.message);
+        send('routing', {
+          lane: 'FALLBACK',
+          provider: 'none',
+          model: null,
+          labeled: false,
+          effectivePrivacy: plan.effectivePrivacy,
+          routeReason: 'NO_ONLINE_ENGINE',
+          estCredits: 0,
+        });
+        const notice =
+          "⚙ Online AI isn't running here. Neurion runs the model on YOUR machine — download the desktop app to chat locally and privately, or run a node to power the network. (Neurion fa girare il modello sul TUO computer: scarica l'app desktop o avvia un nodo.)";
+        send('token', { text: notice });
+        const assistant = await this.chat.addAssistantMessage(conv.id, notice, plan, 0, 0, null);
+        send('final', {
+          messageId: assistant.id,
+          conversationId: conv.id,
+          costCredits: 0,
+          estCredits: 0,
+          tokenUsage: null,
+          firstTokenMs: 0,
+          lane: 'FALLBACK',
+          nodeReward: 0,
+          balance: await this.credits.getBalance(user.sub),
+        });
+        return res.end();
+      }
+
       const balance = await this.credits.getBalance(user.sub);
       if (balance < cost) {
         send('error', { message: 'insufficient credits', balance, cost });
