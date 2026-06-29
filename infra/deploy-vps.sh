@@ -109,7 +109,8 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now neurion-api neurion-web
+systemctl enable neurion-api neurion-web
+systemctl restart neurion-api neurion-web   # restart (not just start) so new build + env load
 sleep 4
 systemctl --no-pager --lines=0 status neurion-api neurion-web || true
 
@@ -163,5 +164,12 @@ server {
 EOF
 ln -sf /etc/nginx/sites-available/neurionproject /etc/nginx/sites-enabled/neurionproject
 nginx -t && systemctl reload nginx && echo "    nginx reloaded"
+
+# The vhost rewrite above drops certbot's SSL block — re-apply HTTPS if a cert exists.
+if [ -d /etc/letsencrypt/live/neurionproject.org ]; then
+  echo "    re-applying HTTPS (certbot)"
+  certbot --nginx --reinstall -d neurionproject.org -d www.neurionproject.org --redirect -n >/dev/null 2>&1 || true
+  systemctl reload nginx || true
+fi
 
 echo "### DONE"
