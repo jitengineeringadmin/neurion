@@ -122,7 +122,8 @@ server {
     server_name neurionproject.org www.neurionproject.org;
     root /var/www/neurion;
     index index.html;
-    add_header X-Content-Type-Options nosniff;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     client_max_body_size 25m;
 
     # API (SSE-safe: no buffering, long read timeout)
@@ -147,19 +148,21 @@ server {
         proxy_read_timeout 600s;
     }
 
-    # Next.js web app (everything that isn't the static landing)
-    location /_next/        { proxy_pass http://127.0.0.1:3091; proxy_set_header Host $host; }
-    location /login         { proxy_pass http://127.0.0.1:3091; proxy_set_header Host $host; }
-    location /app           { proxy_pass http://127.0.0.1:3091; proxy_set_header Host $host; }
-    location = /manifest.webmanifest { proxy_pass http://127.0.0.1:3091; }
-    location = /sw.js               { proxy_pass http://127.0.0.1:3091; }
-    location = /icon-192.png        { proxy_pass http://127.0.0.1:3091; }
-    location = /icon-512.png        { proxy_pass http://127.0.0.1:3091; }
-    location = /apple-touch-icon.png { proxy_pass http://127.0.0.1:3091; }
+    # static marketing landing: ONLY the root + its favicon + installer downloads
+    location = /            { try_files /index.html =404; }
+    location = /favicon.png { }
+    location /download/     { autoindex off; }
 
-    # static landing + downloads
-    location /download/ { autoindex off; }
-    location /          { try_files $uri $uri/ /index.html; }
+    # everything else is the Next.js web app (login, forgot, reset, verify,
+    # app/*, _next, manifest, sw, icons …) — proxy-all so new routes just work.
+    location / {
+        proxy_pass http://127.0.0.1:3091;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 EOF
 ln -sf /etc/nginx/sites-available/neurionproject /etc/nginx/sites-enabled/neurionproject

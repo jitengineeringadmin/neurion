@@ -6,6 +6,10 @@ import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  // Behind nginx: trust the first proxy hop so req.ip is the real client IP
+  // (from X-Forwarded-For). Without this the rate limiter keys every request on
+  // the nginx loopback — a single shared bucket that one client could exhaust.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.setGlobalPrefix('api');
   app.use(cookieParser());
   app.useGlobalPipes(
