@@ -20,6 +20,7 @@ import { AgentModule } from './agent/agent.module';
 import { ProjectsModule } from './projects/projects.module';
 import { ForumModule } from './forum/forum.module';
 import { NetworkModule } from './network/network.module';
+import { AppConfigModule } from './app-config/app-config.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
@@ -49,6 +50,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     ProjectsModule,
     ForumModule,
     NetworkModule,
+    AppConfigModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

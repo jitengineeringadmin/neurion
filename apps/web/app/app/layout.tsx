@@ -1,8 +1,9 @@
 'use client';
-import { ReactNode, Suspense, useEffect } from 'react';
+import { ReactNode, Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
+import { publicApi } from '../../lib/api';
 import { theme } from '../../lib/ui';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { LangToggle } from '../../components/LangToggle';
@@ -29,10 +30,25 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [restricted, setRestricted] = useState(false);
+
+  useEffect(() => {
+    publicApi<{ restricted: boolean }>('/config')
+      .then((c) => setRestricted(!!c.restricted))
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [loading, user, router]);
+
+  // Online build (no local AI engine): only account + forum are usable; send
+  // chat/agent/compute routes back to the account page.
+  useEffect(() => {
+    if (loading || !user || !restricted) return;
+    const ok = pathname.startsWith('/app/account') || pathname.startsWith('/app/forum');
+    if (!ok) router.replace('/app/account');
+  }, [loading, user, restricted, pathname, router]);
 
   if (loading || !user) return <div style={{ padding: 40, color: theme.muted }}>{t('nav.loading')}</div>;
 
@@ -74,7 +90,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <header style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '10px 16px', borderBottom: `1px solid ${theme.border}` }}>
         <div className="display neon" style={{ fontSize: 18, letterSpacing: '0.1em', color: theme.accent }}>NEURION</div>
         <div style={{ display: 'flex', gap: 4, background: 'var(--surface-2)', borderRadius: 10, padding: 3 }}>
-          {TABS.map(([h, l]) => tab(h, t(l)))}
+          {(restricted ? TABS.filter(([h]) => h === '/app/forum') : TABS).map(([h, l]) => tab(h, t(l)))}
         </div>
       </header>
 
