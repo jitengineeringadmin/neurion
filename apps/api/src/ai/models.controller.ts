@@ -5,7 +5,24 @@ import { ProviderResolverService } from './provider-resolver.service';
 
 interface PullDto {
   name?: string;
+  quant?: string;
 }
+
+// Quantization variants the picker offers. The tag is appended to an ollama base
+// name (e.g. qwen2.5:7b + q4_K_M -> qwen2.5:7b-q4_K_M). '' = whatever ollama ships
+// by default (usually Q4_K_M). These tags exist for the qwen/llama/gemma families;
+// if a specific model lacks one, the pull surfaces ollama's error to the user.
+const QUANT_LEVELS: Array<{ tag: string; hint: string }> = [
+  { tag: '', hint: 'default · balanced (~Q4)' },
+  { tag: 'q4_K_M', hint: 'smallest, fastest, least memory' },
+  { tag: 'q5_K_M', hint: 'balanced quality/size' },
+  { tag: 'q6_K', hint: 'higher quality, bigger' },
+  { tag: 'q8_0', hint: 'near-full quality, large' },
+  { tag: 'fp16', hint: 'full precision, very large' },
+];
+const QUANT_TAGS = new Set(QUANT_LEVELS.map((q) => q.tag).filter(Boolean));
+// ollama model name: family[/...][:tag] — letters, digits, . _ - / :
+const NAME_RE = /^[a-zA-Z0-9][\w.\/-]*(:[\w.-]+)?$/;
 
 // Curated models, grouped for an LM-Studio-style picker. `name` is the ollama tag.
 const RECOMMENDED = [
@@ -64,7 +81,7 @@ export class ModelsController {
 
   @Get('models/recommended')
   recommended() {
-    return { recommended: RECOMMENDED };
+    return { recommended: RECOMMENDED, quants: QUANT_LEVELS };
   }
 
   /** Models already downloaded locally + whether the local engine is reachable. */
@@ -90,11 +107,18 @@ export class ModelsController {
     res.flushHeaders?.();
     const send = (event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
-    const name = (dto.name ?? '').trim();
-    if (!name) {
-      send('error', { message: 'model name required' });
+    const base = (dto.name ?? '').trim();
+    if (!base || !NAME_RE.test(base)) {
+      send('error', { message: 'invalid model name' });
       return void res.end();
     }
+    const quant = (dto.quant ?? '').trim();
+    if (quant && !QUANT_TAGS.has(quant)) {
+      send('error', { message: `unsupported quantization: ${quant}` });
+      return void res.end();
+    }
+    // Append the quant as an ollama tag suffix on the base tag (qwen2.5:7b -> qwen2.5:7b-q4_K_M).
+    const name = quant ? `${base}-${quant}` : base;
     try {
       const r = await fetch(`${this.ollamaBase()}/api/pull`, {
         method: 'POST',

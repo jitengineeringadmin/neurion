@@ -6,6 +6,7 @@ import { useT } from '../../../lib/i18n';
 
 interface Installed { name: string; sizeBytes: number | null }
 interface Reco { name: string; label: string; size: string; note: string; group: string }
+interface Quant { tag: string; hint: string }
 interface Pulling { name: string; percent: number | null; status: string }
 interface NodeApi {
   status: () => Promise<{ running: boolean; registered: boolean; available: boolean }>;
@@ -20,6 +21,8 @@ export default function ModelsPage() {
   const [engine, setEngine] = useState<'up' | 'down' | '…'>('…');
   const [installed, setInstalled] = useState<Installed[]>([]);
   const [reco, setReco] = useState<Reco[]>([]);
+  const [quants, setQuants] = useState<Quant[]>([{ tag: '', hint: '' }]);
+  const [quant, setQuant] = useState('');
   const [pulling, setPulling] = useState<Pulling | null>(null);
   const [def, setDef] = useState<string>('');
   const [sel, setSel] = useState('');
@@ -39,16 +42,19 @@ export default function ModelsPage() {
   };
   useEffect(() => {
     void load();
-    void api<{ recommended: Reco[] }>('/ai/models/recommended').then((r) => setReco(r.recommended)).catch(() => undefined);
+    void api<{ recommended: Reco[]; quants?: Quant[] }>('/ai/models/recommended')
+      .then((r) => { setReco(r.recommended); if (r.quants?.length) setQuants(r.quants); })
+      .catch(() => undefined);
     if (typeof window !== 'undefined') setDef(localStorage.getItem('neurion_model') || '');
   }, []);
 
-  async function download(name: string) {
+  async function download(base: string, q: string) {
     if (pulling) return;
     setErr('');
+    const name = q ? `${base}-${q}` : base;
     setPulling({ name, percent: 0, status: t('models.statusStarting') });
     try {
-      await streamSSE('/ai/models/pull', { name }, {
+      await streamSSE('/ai/models/pull', { name: base, quant: q }, {
         onEvent: (event, d) => {
           if (event === 'progress') setPulling({ name, percent: d.percent ?? null, status: d.status ?? '' });
           else if (event === 'done') { void load(); setPulling(null); }
@@ -144,23 +150,39 @@ export default function ModelsPage() {
                 </optgroup>
               ))}
             </select>
-            {selModel && (
+            {selModel && (() => {
+              const target = quant ? `${selModel.name}-${quant}` : selModel.name;
+              const targetInstalled = quant ? installed.some((m) => m.name === target) : has(selModel.name);
+              const selQuant = quants.find((q) => q.tag === quant);
+              return (
               <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <b style={{ fontSize: 15 }}>{selModel.label}</b>
-                  <span style={{ fontSize: 11, color: theme.muted }}>{selModel.size}</span>
+                  <span style={{ fontSize: 11, color: theme.muted }}>{selModel.size}{quant ? ' · ' + t('models.quantSizeVaries') : ''}</span>
                 </div>
                 <div style={{ fontSize: 12, color: theme.muted, margin: '4px 0 12px' }}>{selModel.note}</div>
-                {has(selModel.name) ? (
+                {quants.length > 1 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ fontSize: 12, color: theme.muted, display: 'block', marginBottom: 4 }}>{t('models.quantLabel')}</label>
+                    <select value={quant} onChange={(e) => setQuant(e.target.value)} style={{ ...input, cursor: 'pointer' }}>
+                      {quants.map((q) => (
+                        <option key={q.tag || 'default'} value={q.tag}>{(q.tag || t('models.quantDefault')) + (q.hint ? ' — ' + q.hint : '')}</option>
+                      ))}
+                    </select>
+                    <div style={{ fontSize: 11, color: theme.muted, marginTop: 4 }}>{t('models.quantHelp')}</div>
+                  </div>
+                )}
+                {targetInstalled ? (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span style={{ fontSize: 12, color: theme.accent }}>✓ {t('models.installedBadge')}</span>
-                    {def !== selModel.name && <button onClick={() => makeDefault(selModel.name)} style={ghost}>{t('models.useAsDefault')}</button>}
+                    <span style={{ fontSize: 12, color: theme.accent }}>✓ {t('models.installedBadge')}{quant ? ` (${quant})` : ''}</span>
+                    {def !== target && <button onClick={() => makeDefault(target)} style={ghost}>{t('models.useAsDefault')}</button>}
                   </div>
                 ) : (
-                  <button onClick={() => void download(selModel.name)} disabled={!!pulling || engine !== 'up'} style={{ ...button, padding: '6px 14px', opacity: pulling || engine !== 'up' ? 0.5 : 1 }}>⬇ {t('models.downloadButton')}</button>
+                  <button onClick={() => void download(selModel.name, quant)} disabled={!!pulling || engine !== 'up'} style={{ ...button, padding: '6px 14px', opacity: pulling || engine !== 'up' ? 0.5 : 1 }}>⬇ {t('models.downloadButton')}{selQuant && quant ? ` · ${quant}` : ''}</button>
                 )}
               </div>
-            )}
+              );
+            })()}
           </div>
         );
       })()}

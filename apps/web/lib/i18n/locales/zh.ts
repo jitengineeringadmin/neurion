@@ -313,5 +313,10 @@ const dict: Record<string, string> = {
   "agent.useNetwork": "使用网络",
   "agent.useLocal": "使用本地",
   "agent.computeFallback": "网络节点失败——已切换到你的本地模型",
+
+  "models.quantLabel": "量化",
+  "models.quantDefault": "默认",
+  "models.quantSizeVaries": "大小不一",
+  "models.quantHelp": "越低越轻量、越快、内存占用越小；越高质量越好，但下载体积更大。",
 };
 export default dict;

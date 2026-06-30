@@ -313,5 +313,10 @@ const dict: Record<string, string> = {
   "agent.useNetwork": "Usar red",
   "agent.useLocal": "Usar local",
   "agent.computeFallback": "el nodo de la red falló — se cambió a tu modelo local",
+
+  "models.quantLabel": "Cuantización",
+  "models.quantDefault": "Predeterminado",
+  "models.quantSizeVaries": "el tamaño varía",
+  "models.quantHelp": "Menor = más ligero, más rápido, menos memoria. Mayor = mejor calidad, descarga más grande.",
 };
 export default dict;
