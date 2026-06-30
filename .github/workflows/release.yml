@@ -129,3 +129,25 @@ jobs:
         with:
           name: ${{ matrix.asset }}
           path: apps/node-agent/${{ matrix.asset }}.zip
+
+      # Windows-only: a friendly one-click installer (tray GUI + node) instead of
+      # a raw zip. The tray connects to production and serves the local ollama
+      # models. (The Linux systray needs C/X11 libs, so mac/linux keep the zip.)
+      - name: build Windows tray + installer (Inno Setup)
+        if: runner.os == 'Windows'
+        working-directory: apps/node-agent
+        shell: bash
+        run: |
+          mkdir -p bin
+          go build -trimpath -ldflags "-s -w" -o bin/neurion-node.exe ./cmd/neurion-node
+          go build -trimpath -ldflags "-s -w -H windowsgui" -o bin/neurion-tray.exe ./cmd/neurion-tray
+          choco install innosetup -y --no-progress
+          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" installer/neurion.iss
+          ls -la installer/Output
+
+      - name: attach Windows installer to release
+        if: ${{ runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: false
+          files: apps/node-agent/installer/Output/NeurionNodeSetup.exe
