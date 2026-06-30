@@ -8,6 +8,7 @@ import { AuthUser } from '../common/decorators/current-user.decorator';
 const JOB_SPEND: Record<string, number> = {
   'echo.v1': 1,
   'embedding.v1': 5,
+  'image.v1': 25, // text-to-image on a GRID node (Phase 2)
 };
 const ENABLED_TYPES = new Set(Object.keys(JOB_SPEND)); // G4: only MVP workers
 

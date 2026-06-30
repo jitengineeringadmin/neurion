@@ -17,6 +17,7 @@ import {
 export const JOB_REWARD: Record<string, number> = {
   'echo.v1': 1,
   'embedding.v1': 3,
+  'image.v1': 8,
 };
 
 interface WorkerOutput {
@@ -57,6 +58,15 @@ export class VerificationService {
         if (!Array.isArray(v) || v.length === 0) return { ok: false, reason: 'bad vector' };
         if (v.some((x) => !Number.isFinite(x))) return { ok: false, reason: 'NaN/Inf' };
         if (v.every((x) => x === 0)) return { ok: false, reason: 'zero vector' };
+        return { ok: true };
+      }
+      case 'image.v1': {
+        // Non-deterministic: can't re-execute. Sanity = a real PNG came back.
+        // (deepCompare has no reference -> handleCompleted's ref===null path marks
+        // it provisional: paid optimistically, never NRN-eligible.)
+        const img = result.image as string | undefined;
+        if (typeof img !== 'string' || img.length < 100) return { ok: false, reason: 'no image' };
+        if (!img.startsWith('iVBORw0KGgo')) return { ok: false, reason: 'not a PNG' }; // base64 of the PNG magic
         return { ok: true };
       }
       default:

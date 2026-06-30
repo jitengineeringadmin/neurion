@@ -17,5 +17,12 @@ build() {
 build echo-worker      neurion/echo-worker:0.1.0
 build embedding-worker neurion/embedding-worker:0.1.0 || echo "embedding-worker build skipped/failed (model deps) — echo is enough for GRID e2e"
 
+# image-worker is Python (no tsc) and heavy (torch + SD-Turbo baked, ~6 GB) — opt-in.
+if [ "${BUILD_IMAGE_WORKER:-false}" = "true" ]; then
+  echo "### building neurion/image-worker:0.1.0 (torch + SD-Turbo, this is large/slow)"
+  ( cd "$ROOT/apps/workers/image-worker" && docker build -t neurion/image-worker:0.1.0 . ) \
+    || echo "image-worker build failed (torch/model deps)"
+fi
+
 echo "### images:"
-docker images | grep -E "neurion/(echo|embedding)-worker" || echo "none"
+docker images | grep -E "neurion/(echo|embedding|image)-worker" || echo "none"

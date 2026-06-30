@@ -26,6 +26,40 @@ import (
 var workerImages = map[string]string{
 	"echo.v1":      "neurion/echo-worker:0.1.0",
 	"embedding.v1": "neurion/embedding-worker:0.1.0",
+	"image.v1":     "neurion/image-worker:0.1.0",
+}
+
+// jobResources is the per-job-type sandbox resource class. Light jobs run in the
+// tight default box; heavy ML jobs (image gen) need more memory, more CPUs, longer
+// time, and a writable rootfs (torch/diffusers write cache + temp files, which a
+// read-only rootfs would block).
+type jobResources struct {
+	memory     string
+	cpus       string
+	readOnly   bool
+	timeoutSec int // 0 = use the node config's MaxJobSeconds
+}
+
+func resourcesFor(jobType string) jobResources {
+	switch jobType {
+	case "image.v1":
+		return jobResources{memory: "8192m", cpus: "4", readOnly: false, timeoutSec: 600}
+	default:
+		return jobResources{memory: "2048m", cpus: "1", readOnly: true, timeoutSec: 0}
+	}
+}
+
+// SupportedJobTypes is the list a node advertises at registration. Heavy ML jobs
+// (image.v1) are advertised only when Docker is available AND the worker image is
+// present locally, so a node never claims a job it would fail at runtime.
+func SupportedJobTypes() []string {
+	types := []string{"echo.v1", "embedding.v1"}
+	if _, err := exec.LookPath("docker"); err == nil {
+		if exec.Command("docker", "image", "inspect", workerImages["image.v1"]).Run() == nil {
+			types = append(types, "image.v1")
+		}
+	}
+	return types
 }
 
 type Agent struct {
@@ -295,28 +329,37 @@ func (a *Agent) runGridJob(job map[string]any) {
 	}
 	_ = a.send(map[string]any{"type": "job.started", "jobId": jobID})
 
-	timeout := a.cfg.Node.Limits.MaxJobSeconds
+	res := resourcesFor(jobType)
+	timeout := res.timeoutSec
+	if timeout == 0 {
+		timeout = a.cfg.Node.Limits.MaxJobSeconds
+	}
 	if timeout == 0 {
 		timeout = 300
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	// G15: hardened sandbox — no network, dropped caps, read-only rootfs,
-	// pid/memory/cpu limits, no privilege escalation. Only allowlisted images run.
+	// G15: hardened sandbox — no network, dropped caps, pid/memory/cpu limits, no
+	// privilege escalation. Only allowlisted images run. Read-only rootfs for light
+	// jobs; heavy ML jobs (image gen) need a writable rootfs for torch/HF caches.
 	args := []string{
 		"run", "--rm",
 		"--network", "none",
 		"--cap-drop", "ALL",
 		"--security-opt", "no-new-privileges",
-		"--read-only",
 		"--pids-limit", "256",
-		"--memory", "2048m",
-		"--cpus", "1",
-		"-v", dir + ":/job",
+		"--memory", res.memory,
+		"--cpus", res.cpus,
+	}
+	if res.readOnly {
+		args = append(args, "--read-only")
+	}
+	args = append(args,
+		"-v", dir+":/job",
 		image,
 		"--input", "/job/input.json", "--output", "/job/output.json",
-	}
+	)
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

@@ -113,7 +113,7 @@ func cmdRegister(args []string) {
 		NodeID  string `json:"nodeId"`
 		NodeKey string `json:"nodeKey"`
 	}
-	body := map[string]any{"name": *name, "supportedJobTypes": []string{"echo.v1", "embedding.v1"}}
+	body := map[string]any{"name": *name, "supportedJobTypes": agent.SupportedJobTypes()}
 	if err := httpJSON("POST", *api+"/api/nodes/register", body, login.AccessToken, &reg); err != nil {
 		log.Fatal(err)
 	}

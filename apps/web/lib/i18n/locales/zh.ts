@@ -337,5 +337,12 @@ const dict: Record<string, string> = {
   "image.genNote": "在 CPU 上这可能需要几分钟。",
   "image.download": "下载",
   "image.errFailed": "生成失败",
+
+  "image.compute": "算力",
+  "image.modeLocal": "本地（我的电脑）",
+  "image.modeNetwork": "网络（节点）",
+  "image.networkNote": "由网络节点生成（消耗积分）",
+  "image.queued": "排队中…",
+  "image.networkStatus": "网络：",
 };
 export default dict;

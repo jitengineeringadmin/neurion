@@ -50,7 +50,7 @@ func Register(apiURL, email, password, name string) (*config.Config, error) {
 		NodeID  string `json:"nodeId"`
 		NodeKey string `json:"nodeKey"`
 	}
-	body := map[string]any{"name": name, "supportedJobTypes": []string{"echo.v1", "embedding.v1"}}
+	body := map[string]any{"name": name, "supportedJobTypes": SupportedJobTypes()}
 	if err := httpJSON("POST", apiURL+"/api/nodes/register", body, login.AccessToken, &reg); err != nil {
 		return nil, err
 	}

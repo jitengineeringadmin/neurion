@@ -337,5 +337,12 @@ const dict: Record<string, string> = {
   "image.genNote": "Auf der CPU kann das einige Minuten dauern.",
   "image.download": "Herunterladen",
   "image.errFailed": "Erzeugung fehlgeschlagen",
+
+  "image.compute": "Rechenleistung",
+  "image.modeLocal": "Lokal (mein PC)",
+  "image.modeNetwork": "Netzwerk (Nodes)",
+  "image.networkNote": "Ein Netzwerk-Node generiert es (kostet Credits)",
+  "image.queued": "in Warteschlange…",
+  "image.networkStatus": "Netzwerk:",
 };
 export default dict;

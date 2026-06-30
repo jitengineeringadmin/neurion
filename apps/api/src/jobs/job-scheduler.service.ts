@@ -6,6 +6,7 @@ import { VerificationService } from './verification.service';
 const WORKER_IMAGE: Record<string, string> = {
   'echo.v1': 'neurion/echo-worker:0.1.0',
   'embedding.v1': 'neurion/embedding-worker:0.1.0',
+  'image.v1': 'neurion/image-worker:0.1.0',
 };
 
 /** Grid scheduler: assigns PENDING jobs to online nodes and drives the lifecycle
