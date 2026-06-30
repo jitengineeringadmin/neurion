@@ -302,5 +302,16 @@ const dict: Record<string, string> = {
   "models.nodePass": "пароль",
   "models.nodeNeedsEngine": "Сначала загрузите модель (локальный движок должен быть запущен).",
   "models.nodeUnavailable": "Узел недоступен в этой сборке.",
+
+  "agent.compute": "Вычисления",
+  "agent.modeAsk": "Спрашивать",
+  "agent.modeAuto": "Auto",
+  "agent.modeLocal": "Локально (мой PC)",
+  "agent.modeNetwork": "Только сеть",
+  "agent.netModel": "сетевая модель",
+  "agent.computeAsk": "Сетевой узел может запустить {model} (расходует кредиты). Использовать?",
+  "agent.useNetwork": "Использовать сеть",
+  "agent.useLocal": "Использовать локально",
+  "agent.computeFallback": "сбой сетевого узла — переключено на вашу локальную модель",
 };
 export default dict;

@@ -1,5 +1,8 @@
 // Neurion Node — system tray app. Start/stop the node, see status, open the
-// dashboard. Auto-registers on first start using the node-owner credentials.
+// dashboard. Connects to the PRODUCTION network and serves the local ollama
+// models over the realtime lane to earn NRN. On first start it reads the owner's
+// neurionproject.org credentials from credentials.txt (it writes a template and
+// opens it if missing), registers once, then deletes the password file.
 //
 // Build (no console window):
 //   go build -ldflags "-H windowsgui" -o bin/neurion-tray.exe ./cmd/neurion-tray
@@ -8,9 +11,12 @@ package main
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"fyne.io/systray"
 	"github.com/neurionproject/node-agent/internal/agent"
@@ -21,10 +27,9 @@ import (
 var iconData []byte
 
 const (
-	defaultAPI = "http://localhost:8091"
-	defaultWeb = "http://localhost:3091"
-	ownerEmail = "node@neurion.local"
-	ownerPass  = "ChangeMe!Node2026"
+	defaultAPI = "https://neurionproject.org"
+	defaultWeb = "https://neurionproject.org/app"
+	ollamaBase = "http://127.0.0.1:11434/v1"
 )
 
 var (
@@ -32,35 +37,92 @@ var (
 	running bool
 )
 
-func configPath() string {
+func apiURL() string {
+	if v := os.Getenv("NEURION_API"); v != "" {
+		return v
+	}
+	return defaultAPI
+}
+
+func neurionDir() string {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		dir = "."
 	}
 	d := filepath.Join(dir, "Neurion")
 	_ = os.MkdirAll(d, 0o755)
-	return filepath.Join(d, "neurion-node.yaml")
+	return d
+}
+func configPath() string { return filepath.Join(neurionDir(), "neurion-node.yaml") }
+func credsPath() string  { return filepath.Join(neurionDir(), "credentials.txt") }
+
+// readCreds pulls email/password from the env or credentials.txt.
+func readCreds() (email, pass string) {
+	email, pass = os.Getenv("NEURION_EMAIL"), os.Getenv("NEURION_PASSWORD")
+	if email != "" && pass != "" {
+		return
+	}
+	b, err := os.ReadFile(credsPath())
+	if err != nil {
+		return
+	}
+	for _, l := range strings.Split(strings.ReplaceAll(string(b), "\r\n", "\n"), "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" || strings.HasPrefix(l, "#") {
+			continue
+		}
+		low := strings.ToLower(l)
+		if strings.HasPrefix(low, "email:") {
+			email = strings.TrimSpace(l[len("email:"):])
+		} else if strings.HasPrefix(low, "password:") {
+			pass = strings.TrimSpace(l[len("password:"):])
+		}
+	}
+	return
+}
+
+func writeCredsTemplate() {
+	tmpl := "# Neurion Node — sign in with your neurionproject.org account.\n" +
+		"# Fill these in, save this file, then click \"Start node\" in the tray.\n" +
+		"email: \npassword: \n"
+	_ = os.WriteFile(credsPath(), []byte(tmpl), 0o600)
 }
 
 func loadOrRegister() (*config.Config, error) {
-	path := configPath()
-	if cfg, err := config.Load(path); err == nil && cfg.Node.NodeID != "" {
+	if cfg, err := config.Load(configPath()); err == nil && cfg.Node.NodeID != "" {
 		return cfg, nil
+	}
+	email, pass := readCreds()
+	if email == "" || pass == "" {
+		writeCredsTemplate()
+		open(credsPath())
+		return nil, fmt.Errorf("fill credentials.txt")
 	}
 	name, _ := os.Hostname()
 	if name == "" {
 		name = "neurion-node"
 	}
-	cfg, err := agent.Register(defaultAPI, ownerEmail, ownerPass, name)
+	cfg, err := agent.Register(apiURL(), email, pass, name)
 	if err != nil {
 		return nil, err
 	}
-	_ = cfg.Save(path)
+	// serve realtime chat from the local ollama models
+	cfg.Realtime = config.Realtime{Enabled: true, Provider: "openai_compatible", BaseURL: ollamaBase}
+	cfg.Node.Modes = []string{"grid", "realtime"}
+	_ = cfg.Save(configPath())
+	_ = os.Remove(credsPath()) // the password is no longer needed after registration
 	return cfg, nil
 }
 
 func open(target string) {
-	_ = exec.Command("cmd", "/c", "start", "", target).Start()
+	switch runtime.GOOS {
+	case "windows":
+		_ = exec.Command("cmd", "/c", "start", "", target).Start()
+	case "darwin":
+		_ = exec.Command("open", target).Start()
+	default:
+		_ = exec.Command("xdg-open", target).Start()
+	}
 }
 
 func main() {
@@ -81,14 +143,14 @@ func onReady() {
 	mStop.Disable()
 	systray.AddSeparator()
 	mWeb := systray.AddMenuItem("Open dashboard", "open the Neurion web app")
-	mCfg := systray.AddMenuItem("Edit config", "open neurion-node.yaml")
+	mCreds := systray.AddMenuItem("Set credentials", "edit credentials.txt (your neurionproject.org account)")
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit", "stop and exit")
 
 	setRunning := func(on bool) {
 		running = on
 		if on {
-			mStatus.SetTitle("● running")
+			mStatus.SetTitle("● sharing — earning NRN")
 			mStart.Disable()
 			mStop.Enable()
 		} else {
@@ -105,7 +167,7 @@ func onReady() {
 		mStatus.SetTitle("● connecting…")
 		cfg, err := loadOrRegister()
 		if err != nil {
-			mStatus.SetTitle("● error: register failed")
+			mStatus.SetTitle("● " + err.Error())
 			return
 		}
 		var ctx context.Context
@@ -128,8 +190,11 @@ func onReady() {
 			stop()
 		case <-mWeb.ClickedCh:
 			open(defaultWeb)
-		case <-mCfg.ClickedCh:
-			_ = exec.Command("notepad", configPath()).Start()
+		case <-mCreds.ClickedCh:
+			if _, err := os.Stat(credsPath()); err != nil {
+				writeCredsTemplate()
+			}
+			open(credsPath())
 		case <-mQuit.ClickedCh:
 			stop()
 			systray.Quit()

@@ -1,5 +1,5 @@
 import { Body, Controller, Post, Res } from '@nestjs/common';
-import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Response } from 'express';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
 import { AgentApprovalService } from './agent-approval.service';
@@ -17,6 +17,15 @@ class RunAgentDto {
   @IsOptional()
   @IsString()
   cwd?: string;
+
+  @IsOptional()
+  @IsIn(['ask', 'auto', 'local', 'network'])
+  computeMode?: 'ask' | 'auto' | 'local' | 'network';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  networkModel?: string;
 }
 
 class ApproveDto {
@@ -47,7 +56,15 @@ export class AgentController {
 
     try {
       emit('agent.start', { goal: dto.goal, model: dto.model ?? null, cwd: dto.cwd ?? null });
-      const answer = await this.orchestrator.run(dto.goal, { user, emit, depth: 0, model: dto.model, cwd: dto.cwd });
+      const answer = await this.orchestrator.run(dto.goal, {
+        user,
+        emit,
+        depth: 0,
+        model: dto.model,
+        cwd: dto.cwd,
+        computeMode: dto.computeMode,
+        networkModel: dto.networkModel,
+      });
       emit('agent.done', { answer });
     } catch (err) {
       emit('agent.error', { message: (err as Error).message });

@@ -70,14 +70,39 @@ func DetectCapabilities(cfg *config.Config) map[string]any {
 		}
 	}
 	// Warmup benchmark: advertise measured speed when this node can actually serve.
-	if len(loaded) > 0 {
-		if ft, tps, ok := benchmarkRealtime(cfg, loaded[0]); ok {
+	// Pick a text/chat model — benchmarking a large vision model (llava…) just
+	// stalls startup and rarely streams plain tokens.
+	if m := firstChatModel(loaded); m != "" {
+		if ft, tps, ok := benchmarkRealtime(cfg, m); ok {
 			caps["avgFirstTokenMs"] = ft
 			caps["avgTokensPerSecond"] = tps
-			log.Printf("benchmark %s: first-token %dms, %.1f tok/s", loaded[0], ft, tps)
+			log.Printf("benchmark %s: first-token %dms, %.1f tok/s", m, ft, tps)
 		}
 	}
 	return caps
+}
+
+// firstChatModel returns the first model that isn't a known vision/multimodal one
+// (a poor, slow benchmark target), falling back to the first model.
+func firstChatModel(loaded []string) string {
+	if len(loaded) == 0 {
+		return ""
+	}
+	vision := []string{"llava", "bakllava", "vision", "minicpm-v", "moondream", "llama3.2-vision"}
+	for _, m := range loaded {
+		lm := strings.ToLower(m)
+		skip := false
+		for _, v := range vision {
+			if strings.Contains(lm, v) {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			return m
+		}
+	}
+	return loaded[0]
 }
 
 // realtimeModels returns the model ids this node serves over the realtime lane.

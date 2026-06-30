@@ -17,6 +17,6 @@ import { ModelsController } from './models.controller';
     RealtimePoolService,
     AiRouterService,
   ],
-  exports: [AiRouterService, EstimatorService, ProviderResolverService],
+  exports: [AiRouterService, EstimatorService, ProviderResolverService, RealtimePoolService],
 })
 export class AiModule {}

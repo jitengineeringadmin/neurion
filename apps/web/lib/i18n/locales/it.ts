@@ -296,5 +296,16 @@ const dict: Record<string, string> = {
   "models.nodePass": "password",
   "models.nodeNeedsEngine": "Scarica prima un modello (il motore locale deve essere in esecuzione).",
   "models.nodeUnavailable": "Nodo non disponibile in questa build.",
+
+  "agent.compute": "Calcolo",
+  "agent.modeAsk": "Chiedi",
+  "agent.modeAuto": "Auto",
+  "agent.modeLocal": "Locale (il mio PC)",
+  "agent.modeNetwork": "Solo rete",
+  "agent.netModel": "modello di rete",
+  "agent.computeAsk": "Un nodo di rete può eseguire {model} (consuma crediti). Usarlo?",
+  "agent.useNetwork": "Usa la rete",
+  "agent.useLocal": "Usa il locale",
+  "agent.computeFallback": "nodo di rete non riuscito — passato al tuo modello locale",
 };
 export default dict;

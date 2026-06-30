@@ -302,5 +302,16 @@ const dict: Record<string, string> = {
   "models.nodePass": "密码",
   "models.nodeNeedsEngine": "请先下载一个模型（本地引擎必须正在运行）。",
   "models.nodeUnavailable": "此版本不支持节点功能。",
+
+  "agent.compute": "算力",
+  "agent.modeAsk": "询问",
+  "agent.modeAuto": "Auto",
+  "agent.modeLocal": "本地（我的 PC）",
+  "agent.modeNetwork": "仅网络",
+  "agent.netModel": "网络模型",
+  "agent.computeAsk": "网络节点可运行 {model}（消耗积分）。是否使用？",
+  "agent.useNetwork": "使用网络",
+  "agent.useLocal": "使用本地",
+  "agent.computeFallback": "网络节点失败——已切换到你的本地模型",
 };
 export default dict;

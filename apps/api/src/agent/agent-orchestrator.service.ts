@@ -1,12 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
+import { JobPrivacyLevel } from '@prisma/client';
 import { ProviderResolverService } from '../ai/provider-resolver.service';
-import { ChatMsg } from '../ai/providers/ai-provider.interface';
+import { RealtimePoolService, WarmMatch } from '../ai/realtime-pool.service';
+import { CreditsService } from '../credits/credits.service';
+import { AiProvider, ChatMsg } from '../ai/providers/ai-provider.interface';
 import { AgentToolsService } from './agent-tools.service';
 import { AgentApprovalService } from './agent-approval.service';
 import { AgentMemoryService } from './agent-memory.service';
-import { AgentAction, AgentTool, ToolCtx } from './agent.types';
+import { AgentAction, AgentTool, ComputeMode, ToolCtx } from './agent.types';
 
 const MAX_STEPS = 6;
 const MAX_DEPTH = 2;
@@ -26,7 +29,72 @@ export class AgentOrchestratorService {
     private readonly config: ConfigService,
     private readonly approvals: AgentApprovalService,
     private readonly memory: AgentMemoryService,
+    private readonly pool: RealtimePoolService,
+    private readonly credits: CreditsService,
   ) {}
+
+  // Resolve where the LLM brain runs for this run, per the user-chosen mode.
+  // Sets ctx.provider / resolvedModel / isNetwork / nodeId. Returns ok:false only
+  // when the user forced "network" but no node is available.
+  private async resolveCompute(ctx: ToolCtx): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const local = await this.resolver.resolveFallback();
+    const localModel = ctx.model || this.config.get<string>('AI_AGENT_MODEL') || local.model;
+    const mode: ComputeMode = ctx.computeMode || 'ask';
+    const netModel = ctx.networkModel || this.config.get<string>('AI_AGENT_NETWORK_MODEL') || localModel;
+    const setLocal = () => {
+      ctx.provider = local.provider;
+      ctx.resolvedModel = localModel;
+      ctx.isNetwork = false;
+      ctx.nodeId = undefined;
+    };
+    const setNet = (w: WarmMatch) => {
+      ctx.provider = w.provider;
+      ctx.resolvedModel = w.model;
+      ctx.isNetwork = true;
+      ctx.nodeId = w.nodeId;
+    };
+
+    if (mode === 'local') {
+      setLocal();
+      return { ok: true };
+    }
+    const warm = await this.pool.findWarm(netModel, 'PUBLIC' as JobPrivacyLevel).catch(() => null);
+
+    if (mode === 'network') {
+      if (!warm) return { ok: false, reason: `no online node serving ${netModel}` };
+      setNet(warm);
+      return { ok: true };
+    }
+    if (mode === 'auto') {
+      const bal = await this.credits.getBalance(ctx.user.sub).catch(() => 0);
+      if (warm && bal > 0) setNet(warm);
+      else setLocal();
+      return { ok: true };
+    }
+    // ask: if a node exists, let the user decide (reuses the approval channel)
+    if (!warm) {
+      setLocal();
+      return { ok: true };
+    }
+    const id = randomUUID();
+    const pending = this.approvals.wait(id);
+    ctx.emit('agent.compute_request', { id, model: warm.model, nodeId: warm.nodeId });
+    if (await pending) setNet(warm);
+    else setLocal();
+    return { ok: true };
+  }
+
+  // Charge the user + reward the node for the network LLM tokens used this run.
+  private async meterNetwork(ctx: ToolCtx): Promise<void> {
+    if (!ctx.isNetwork || !ctx.nodeId || !ctx.meter || ctx.meter.networkChars <= 0) return;
+    const ref = `agent:${ctx.user.sub}:${randomUUID()}`;
+    const estTokens = Math.ceil(ctx.meter.networkChars / 4);
+    const ratePer1k = Number(this.config.get<string>('AI_REALTIME_REWARD_PER_1K_TOKENS') ?? '1') || 1;
+    const cost = Math.max(1, Math.round((estTokens / 1000) * ratePer1k));
+    await this.credits.spend(ctx.user.sub, cost, 'AGENT_NETWORK', { idempotencyKey: ref }).catch(() => undefined);
+    await this.pool.rewardServe(ctx.nodeId, ctx.meter.networkChars, ref).catch(() => undefined);
+    ctx.emit('agent.compute_billed', { credits: cost, nodeId: ctx.nodeId });
+  }
 
   private requireApproval(): boolean {
     return String(this.config.get('AGENT_REQUIRE_APPROVAL') ?? 'true') !== 'false';
@@ -86,12 +154,30 @@ export class AgentOrchestratorService {
     ].join('\n') + cwdBlock + memBlock;
   }
 
-  private async callLLM(messages: ChatMsg[], override?: string): Promise<string> {
-    const resolved = await this.resolver.resolveFallback();
-    const model = override || this.config.get<string>('AI_AGENT_MODEL') || resolved.model;
+  private async streamAll(p: AiProvider, messages: ChatMsg[], model: string): Promise<string> {
     let full = '';
-    for await (const t of resolved.provider.streamChat(messages, model)) full += t;
+    for await (const t of p.streamChat(messages, model)) full += t;
     return full;
+  }
+
+  private async callLLM(ctx: ToolCtx, messages: ChatMsg[]): Promise<string> {
+    try {
+      const full = await this.streamAll(ctx.provider as AiProvider, messages, ctx.resolvedModel as string);
+      if (ctx.isNetwork && ctx.meter) ctx.meter.networkChars += full.length;
+      return full;
+    } catch (e) {
+      // soft fallback: a network node failed mid-run -> finish on the local model
+      if (ctx.isNetwork) {
+        const local = await this.resolver.resolveFallback();
+        ctx.provider = local.provider;
+        ctx.resolvedModel = ctx.model || this.config.get<string>('AI_AGENT_MODEL') || local.model;
+        ctx.isNetwork = false;
+        ctx.nodeId = undefined;
+        ctx.emit('agent.compute_fallback', { reason: (e as Error).message });
+        return this.streamAll(ctx.provider, messages, ctx.resolvedModel as string);
+      }
+      throw e;
+    }
   }
 
   /** Tolerant extraction of the first JSON object from model output. */
@@ -126,6 +212,24 @@ export class AgentOrchestratorService {
 
   /** Run the agent loop for a goal. Emits agent.* events. Returns the final answer. */
   async run(goal: string, ctx: ToolCtx, isSub = false): Promise<string> {
+    if (ctx.depth === 0 && !ctx.provider) {
+      ctx.meter = { networkChars: 0 };
+      const r = await this.resolveCompute(ctx);
+      if (!r.ok) {
+        const msg = `No network node is available (${r.reason}). Switch Compute to "Local" or "Auto", or wait for a node to come online.`;
+        ctx.emit('agent.final', { depth: 0, text: msg });
+        return msg;
+      }
+      ctx.emit('agent.compute', { lane: ctx.isNetwork ? 'network' : 'local', model: ctx.resolvedModel ?? null, nodeId: ctx.nodeId ?? null });
+    }
+    try {
+      return await this.loop(goal, ctx, isSub);
+    } finally {
+      if (ctx.depth === 0) await this.meterNetwork(ctx).catch(() => undefined);
+    }
+  }
+
+  private async loop(goal: string, ctx: ToolCtx, isSub: boolean): Promise<string> {
     const tools = this.toolset(ctx);
     const byName = new Map(tools.map((t) => [t.name, t]));
     const memories = ctx.depth === 0 ? (await this.memory.recent(ctx.user.sub, 15)).map((m) => m.content) : [];
@@ -136,7 +240,7 @@ export class AgentOrchestratorService {
     const maxSteps = isSub ? SUB_MAX_STEPS : MAX_STEPS;
 
     for (let step = 0; step < maxSteps; step++) {
-      const raw = await this.callLLM(messages, ctx.model);
+      const raw = await this.callLLM(ctx, messages);
       const action = this.parseAction(raw);
 
       if (action.final !== undefined || !action.tool) {
@@ -181,7 +285,7 @@ export class AgentOrchestratorService {
 
     // out of steps -> ask for a final summary
     messages.push({ role: 'user', content: 'Stop using tools. Reply now with {"final": "..."} summarising the result.' });
-    const wrap = this.parseAction(await this.callLLM(messages, ctx.model));
+    const wrap = this.parseAction(await this.callLLM(ctx, messages));
     const answer = wrap.final ?? 'Reached step limit without a final answer.';
     ctx.emit('agent.final', { depth: ctx.depth, text: answer });
     return answer;

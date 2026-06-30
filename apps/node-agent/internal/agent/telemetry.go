@@ -156,7 +156,7 @@ func benchmarkRealtime(cfg *config.Config, model string) (firstTokenMs int, tokP
 	if cfg.Realtime.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+cfg.Realtime.APIKey)
 	}
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 15 * time.Second}
 	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {

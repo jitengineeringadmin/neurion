@@ -302,5 +302,16 @@ const dict: Record<string, string> = {
   "models.nodePass": "contraseña",
   "models.nodeNeedsEngine": "Descarga primero un modelo (el motor local debe estar en ejecución).",
   "models.nodeUnavailable": "Nodo no disponible en esta compilación.",
+
+  "agent.compute": "Cómputo",
+  "agent.modeAsk": "Preguntar",
+  "agent.modeAuto": "Auto",
+  "agent.modeLocal": "Local (mi PC)",
+  "agent.modeNetwork": "Solo red",
+  "agent.netModel": "modelo de red",
+  "agent.computeAsk": "Un nodo de la red puede ejecutar {model} (consume créditos). ¿Usarlo?",
+  "agent.useNetwork": "Usar red",
+  "agent.useLocal": "Usar local",
+  "agent.computeFallback": "el nodo de la red falló — se cambió a tu modelo local",
 };
 export default dict;
