@@ -8,10 +8,10 @@ interface PullDto {
   quant?: string;
 }
 
-// Quantization variants the picker offers. The tag is appended to an ollama base
-// name (e.g. qwen2.5:7b + q4_K_M -> qwen2.5:7b-q4_K_M). '' = whatever ollama ships
-// by default (usually Q4_K_M). These tags exist for the qwen/llama/gemma families;
-// if a specific model lacks one, the pull surfaces ollama's error to the user.
+// Quantization variants the picker offers. '' = whatever ollama ships by default.
+// The real ollama tag is NOT base+quant — the variant infix differs per family
+// (qwen3/qwq: {size}-{quant}; qwen2.5/coder, gemma2, llama3.2: {size}-instruct-{quant}).
+// So resolveQuantTag() probes the ollama registry for the actual tag instead of guessing.
 const QUANT_LEVELS: Array<{ tag: string; hint: string }> = [
   { tag: '', hint: 'default · balanced (~Q4)' },
   { tag: 'q4_K_M', hint: 'smallest, fastest, least memory' },
@@ -21,6 +21,9 @@ const QUANT_LEVELS: Array<{ tag: string; hint: string }> = [
   { tag: 'fp16', hint: 'full precision, very large' },
 ];
 const QUANT_TAGS = new Set(QUANT_LEVELS.map((q) => q.tag).filter(Boolean));
+// Variant infixes tried (in order) between the size tag and the quant token.
+const QUANT_INFIXES = ['', 'instruct'];
+const OLLAMA_REGISTRY = 'https://registry.ollama.ai/v2/library';
 // ollama model name: family[/...][:tag] — letters, digits, . _ - / :
 const NAME_RE = /^[a-zA-Z0-9][\w.\/-]*(:[\w.-]+)?$/;
 
@@ -70,6 +73,31 @@ export class ModelsController {
     return b.replace(/\/v1\/?$/, '');
   }
 
+  /**
+   * Resolve a base model + quant token to the REAL ollama tag by probing the
+   * registry, since the variant infix differs per family (e.g. qwen2.5 needs
+   * `-instruct-` while qwen3 does not). Returns the full pull name, or null if
+   * no variant of that quant exists for the model.
+   */
+  private async resolveQuantTag(base: string, quant: string): Promise<string | null> {
+    const i = base.indexOf(':');
+    const model = i >= 0 ? base.slice(0, i) : base;
+    const sizeTag = i >= 0 ? base.slice(i + 1) : 'latest';
+    if (model.includes('/')) return null; // only official library models are probeable
+    for (const infix of QUANT_INFIXES) {
+      const tag = infix ? `${sizeTag}-${infix}-${quant}` : `${sizeTag}-${quant}`;
+      try {
+        const r = await fetch(`${OLLAMA_REGISTRY}/${model}/manifests/${tag}`, {
+          signal: AbortSignal.timeout(6000),
+        });
+        if (r.ok) return `${model}:${tag}`;
+      } catch {
+        /* network/timeout — try next infix */
+      }
+    }
+    return null;
+  }
+
   @Get('models')
   async models() {
     return {
@@ -117,8 +145,18 @@ export class ModelsController {
       send('error', { message: `unsupported quantization: ${quant}` });
       return void res.end();
     }
-    // Append the quant as an ollama tag suffix on the base tag (qwen2.5:7b -> qwen2.5:7b-q4_K_M).
-    const name = quant ? `${base}-${quant}` : base;
+    // Resolve the real ollama tag for the requested quant (the variant infix
+    // differs per family); blind base+quant would 404 on the registry.
+    let name = base;
+    if (quant) {
+      send('progress', { status: `resolving ${quant}…`, total: null, completed: null, percent: null });
+      const resolved = await this.resolveQuantTag(base, quant);
+      if (!resolved) {
+        send('error', { message: `quantization ${quant} is not available for ${base}` });
+        return void res.end();
+      }
+      name = resolved;
+    }
     try {
       const r = await fetch(`${this.ollamaBase()}/api/pull`, {
         method: 'POST',

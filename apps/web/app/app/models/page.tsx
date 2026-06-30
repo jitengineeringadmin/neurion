@@ -151,8 +151,13 @@ export default function ModelsPage() {
               ))}
             </select>
             {selModel && (() => {
-              const target = quant ? `${selModel.name}-${quant}` : selModel.name;
-              const targetInstalled = quant ? installed.some((m) => m.name === target) : has(selModel.name);
+              // Real installed name is base-infix-quant (e.g. qwen2.5:7b-instruct-q8_0),
+              // so match loosely by base prefix + quant token rather than an exact guess.
+              const inst = quant
+                ? installed.find((m) => m.name.startsWith(selModel.name + '-') && m.name.includes(quant))
+                : installed.find((m) => m.name === selModel.name || m.name.startsWith(selModel.name + ':') || m.name === selModel.name + ':latest');
+              const targetInstalled = !!inst;
+              const defName = inst?.name || (quant ? `${selModel.name}-${quant}` : selModel.name);
               const selQuant = quants.find((q) => q.tag === quant);
               return (
               <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 16 }}>
@@ -175,7 +180,7 @@ export default function ModelsPage() {
                 {targetInstalled ? (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span style={{ fontSize: 12, color: theme.accent }}>✓ {t('models.installedBadge')}{quant ? ` (${quant})` : ''}</span>
-                    {def !== target && <button onClick={() => makeDefault(target)} style={ghost}>{t('models.useAsDefault')}</button>}
+                    {def !== defName && <button onClick={() => makeDefault(defName)} style={ghost}>{t('models.useAsDefault')}</button>}
                   </div>
                 ) : (
                   <button onClick={() => void download(selModel.name, quant)} disabled={!!pulling || engine !== 'up'} style={{ ...button, padding: '6px 14px', opacity: pulling || engine !== 'up' ? 0.5 : 1 }}>⬇ {t('models.downloadButton')}{selQuant && quant ? ` · ${quant}` : ''}</button>
