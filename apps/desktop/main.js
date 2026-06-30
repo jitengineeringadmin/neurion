@@ -204,9 +204,41 @@ async function startDb() {
   await waitPort('localhost', PG_PORT, 25000);
 }
 
+// The packaged build may ship without a .env (CI has no repo-root .env to copy),
+// so the API would start with no JWT secret and every login would 500. Generate
+// the secrets once per install and persist them in userData so issued tokens
+// survive restarts and app updates.
+function ensureSecrets() {
+  const file = path.join(app.getPath('userData'), 'secrets.json');
+  let s = {};
+  try {
+    s = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    /* none yet */
+  }
+  let changed = false;
+  for (const k of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET']) {
+    if (!ENV[k]) {
+      if (!s[k]) {
+        s[k] = require('node:crypto').randomBytes(48).toString('hex');
+        changed = true;
+      }
+      ENV[k] = s[k];
+    }
+  }
+  if (changed) {
+    try {
+      fs.writeFileSync(file, JSON.stringify(s), { mode: 0o600 });
+    } catch {
+      /* best effort */
+    }
+  }
+}
+
 async function startStack() {
   // children + tooling all use the embedded DB
   ENV.DATABASE_URL = DB_URL;
+  ensureSecrets();
 
   // first run = no Postgres cluster yet (the slow initdb path) — drives both the
   // splash message and whether we seed.
