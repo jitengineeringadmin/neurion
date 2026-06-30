@@ -292,5 +292,15 @@ const dict: Record<string, string> = {
   "network.byRegion": "Узлы по регионам",
 
   "models.choose": "Выберите модель для загрузки",
+
+  "models.nodeHeading": "Поделитесь моделями (запустите узел)",
+  "models.nodeDesc": "Запустите узел в сети Neurion со своими загруженными моделями и зарабатывайте NRN. Войдите с помощью аккаунта neurionproject.org.",
+  "models.nodeRunning": "Делитесь — зарабатываете NRN",
+  "models.nodeStop": "Остановить",
+  "models.nodeStart": "Начать делиться",
+  "models.nodeEmail": "Эл. почта neurionproject.org",
+  "models.nodePass": "пароль",
+  "models.nodeNeedsEngine": "Сначала загрузите модель (локальный движок должен быть запущен).",
+  "models.nodeUnavailable": "Узел недоступен в этой сборке.",
 };
 export default dict;

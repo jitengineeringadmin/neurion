@@ -292,5 +292,15 @@ const dict: Record<string, string> = {
   "network.byRegion": "按地区分布的节点",
 
   "models.choose": "选择要下载的模型",
+
+  "models.nodeHeading": "共享你的模型（运行节点）",
+  "models.nodeDesc": "使用已下载的模型在 Neurion 网络上运行节点，赚取 NRN。使用你的 neurionproject.org 账户登录。",
+  "models.nodeRunning": "正在共享 — 赚取 NRN 中",
+  "models.nodeStop": "停止",
+  "models.nodeStart": "开始共享",
+  "models.nodeEmail": "neurionproject.org 邮箱",
+  "models.nodePass": "密码",
+  "models.nodeNeedsEngine": "请先下载一个模型（本地引擎必须正在运行）。",
+  "models.nodeUnavailable": "此版本不支持节点功能。",
 };
 export default dict;

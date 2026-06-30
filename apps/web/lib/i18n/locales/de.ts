@@ -292,5 +292,15 @@ const dict: Record<string, string> = {
   "network.byRegion": "Nodes nach Region",
 
   "models.choose": "Modell zum Download wählen",
+
+  "models.nodeHeading": "Modelle teilen (Node betreiben)",
+  "models.nodeDesc": "Betreibe einen Node im Neurion-Netzwerk mit deinen heruntergeladenen Modellen und verdiene NRN. Melde dich mit deinem neurionproject.org-Konto an.",
+  "models.nodeRunning": "Wird geteilt – NRN wird verdient",
+  "models.nodeStop": "Stoppen",
+  "models.nodeStart": "Teilen starten",
+  "models.nodeEmail": "neurionproject.org-E-Mail",
+  "models.nodePass": "Passwort",
+  "models.nodeNeedsEngine": "Lade zuerst ein Modell herunter (die lokale Engine muss laufen).",
+  "models.nodeUnavailable": "Node in diesem Build nicht verfügbar.",
 };
 export default dict;

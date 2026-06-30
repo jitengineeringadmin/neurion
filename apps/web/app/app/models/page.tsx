@@ -7,6 +7,11 @@ import { useT } from '../../../lib/i18n';
 interface Installed { name: string; sizeBytes: number | null }
 interface Reco { name: string; label: string; size: string; note: string; group: string }
 interface Pulling { name: string; percent: number | null; status: string }
+interface NodeApi {
+  status: () => Promise<{ running: boolean; registered: boolean; available: boolean }>;
+  start: (creds?: { email: string; password: string }) => Promise<{ ok: boolean; error?: string; running?: boolean }>;
+  stop: () => Promise<{ ok: boolean }>;
+}
 
 const fmt = (b: number | null) => (b ? `${(b / 1e9).toFixed(1)} GB` : '');
 
@@ -19,6 +24,13 @@ export default function ModelsPage() {
   const [def, setDef] = useState<string>('');
   const [sel, setSel] = useState('');
   const [err, setErr] = useState('');
+  const nodeApi: NodeApi | null =
+    typeof window !== 'undefined' ? (window as unknown as { neurion?: { node?: NodeApi } }).neurion?.node ?? null : null;
+  const [nodeSt, setNodeSt] = useState<{ running: boolean; registered: boolean; available: boolean } | null>(null);
+  const [nEmail, setNEmail] = useState('');
+  const [nPass, setNPass] = useState('');
+  const [nErr, setNErr] = useState('');
+  const [nBusy, setNBusy] = useState(false);
 
   const load = async () => {
     const inst = await api<{ engine: string; installed: Installed[] }>('/ai/models/installed').catch(() => ({ engine: 'down', installed: [] as Installed[] }));
@@ -52,6 +64,33 @@ export default function ModelsPage() {
   function makeDefault(name: string) {
     setDef(name);
     if (typeof window !== 'undefined') localStorage.setItem('neurion_model', name);
+  }
+
+  useEffect(() => {
+    if (!nodeApi) return;
+    let alive = true;
+    const tick = () => void nodeApi.status().then((s) => alive && setNodeSt(s)).catch(() => undefined);
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => { alive = false; clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function nodeStart() {
+    if (!nodeApi) return;
+    setNErr(''); setNBusy(true);
+    try {
+      const r = await nodeApi.start(nodeSt?.registered ? undefined : { email: nEmail, password: nPass });
+      if (!r.ok) setNErr(r.error || t('models.errDownloadFailed'));
+      setNodeSt(await nodeApi.status());
+    } catch (e) {
+      setNErr((e as Error).message);
+    } finally { setNBusy(false); }
+  }
+  async function nodeStop() {
+    if (!nodeApi) return;
+    setNBusy(true);
+    try { await nodeApi.stop(); setNodeSt(await nodeApi.status()); } finally { setNBusy(false); }
   }
 
   const has = (name: string) => installed.some((m) => m.name === name || m.name.startsWith(name + ':') || m.name === name + ':latest');
@@ -135,6 +174,35 @@ export default function ModelsPage() {
           {def !== m.name && <button onClick={() => makeDefault(m.name)} style={ghost}>{t('models.makeDefaultButton')}</button>}
         </div>
       ))}
+
+      {nodeApi && (
+        <>
+          <h3 style={{ fontSize: 14, color: theme.muted, textTransform: 'uppercase', letterSpacing: '.08em', margin: '28px 0 8px' }}>{t('models.nodeHeading')}</h3>
+          <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 16, maxWidth: 520 }}>
+            <p style={{ fontSize: 13, color: theme.muted, margin: '0 0 12px' }}>{t('models.nodeDesc')}</p>
+            {nodeSt?.available === false ? (
+              <div style={{ color: theme.muted, fontSize: 13 }}>{t('models.nodeUnavailable')}</div>
+            ) : nodeSt?.running ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ color: theme.accent, fontSize: 14 }}>● {t('models.nodeRunning')}</span>
+                <button onClick={() => void nodeStop()} disabled={nBusy} style={ghost}>{t('models.nodeStop')}</button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {!nodeSt?.registered && (
+                  <>
+                    <input value={nEmail} onChange={(e) => setNEmail(e.target.value)} placeholder={t('models.nodeEmail')} style={input} />
+                    <input value={nPass} onChange={(e) => setNPass(e.target.value)} type="password" placeholder={t('models.nodePass')} style={input} />
+                  </>
+                )}
+                <button onClick={() => void nodeStart()} disabled={nBusy || engine !== 'up'} style={{ ...button, padding: '8px 16px', alignSelf: 'flex-start', opacity: nBusy || engine !== 'up' ? 0.5 : 1 }}>{nBusy ? '…' : t('models.nodeStart')}</button>
+                {engine !== 'up' && <span style={{ fontSize: 12, color: theme.muted }}>{t('models.nodeNeedsEngine')}</span>}
+              </div>
+            )}
+            {nErr && <div style={{ color: '#e0533d', fontSize: 12, marginTop: 8 }}>⚠ {nErr}</div>}
+          </div>
+        </>
+      )}
     </div>
   );
 }

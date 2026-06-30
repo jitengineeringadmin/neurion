@@ -5,7 +5,8 @@ const path = require('node:path');
 const fs = require('node:fs');
 const net = require('node:net');
 const http = require('node:http');
-const { spawn } = require('node:child_process');
+const os = require('node:os');
+const { spawn, spawnSync } = require('node:child_process');
 const { pathToFileURL } = require('node:url');
 
 // In a packaged build the stack lives under resources/app-stack (extraResources);
@@ -19,6 +20,15 @@ const ENV_PATH = PACKAGED ? path.join(STACK, '.env') : path.join(ROOT, '.env');
 const WEB_URL = 'http://localhost:3091';
 const API_HEALTH = 'http://localhost:8091/api/health';
 
+// In-app node: the bundled node-agent binary connects to the PRODUCTION network
+// (registers under the user's neurionproject.org account, serves the local ollama
+// models over the realtime lane) so a desktop user can earn NRN with one click.
+const NODE_BIN = PACKAGED
+  ? path.join(STACK, '_node', process.platform === 'win32' ? 'neurion-node.exe' : 'neurion-node')
+  : path.join(ROOT, 'apps', 'node-agent', 'bin', process.platform === 'win32' ? 'neurion-node.exe' : 'neurion-node');
+const NODE_API = process.env.NEURION_NODE_API || 'https://neurionproject.org';
+const nodeConfigPath = () => path.join(app.getPath('userData'), 'neurion-node.yaml');
+
 // Embedded Postgres — standalone, no Docker.
 const PG_PORT = 5433;
 const PG_USER = 'neurion';
@@ -30,6 +40,7 @@ const children = [];
 let pg = null;
 let mainWindow = null;
 let splash = null;
+let nodeProc = null;
 
 function parseEnv() {
   const env = { ...process.env };
@@ -356,6 +367,38 @@ ipcMain.handle('pick-folder', async (_e, initial) => {
   return { path: res.canceled || !res.filePaths[0] ? null : res.filePaths[0].replace(/\\/g, '/') };
 });
 
+// --- in-app node: register once on the production network, then run/stop it ---
+ipcMain.handle('node:status', () => ({
+  running: !!nodeProc,
+  registered: fs.existsSync(nodeConfigPath()),
+  available: fs.existsSync(NODE_BIN),
+}));
+
+ipcMain.handle('node:start', (_e, creds) => {
+  if (nodeProc) return { ok: true, running: true };
+  if (!fs.existsSync(NODE_BIN)) return { ok: false, error: 'node binary not bundled in this build' };
+  const cfg = nodeConfigPath();
+  if (!fs.existsSync(cfg)) {
+    const email = (creds && creds.email) || '';
+    const password = (creds && creds.password) || '';
+    if (!email || !password) return { ok: false, error: 'credentials required' };
+    const reg = spawnSync(
+      NODE_BIN,
+      ['register', '--api', NODE_API, '--email', email, '--password', password, '--name', os.hostname() || 'neurion-node', '--realtime', '--realtime-base-url', 'http://127.0.0.1:11434/v1'],
+      { cwd: app.getPath('userData'), windowsHide: true, encoding: 'utf8' },
+    );
+    if (reg.status !== 0) return { ok: false, error: ((reg.stderr || reg.stdout || 'register failed') + '').trim().slice(-400) };
+  }
+  nodeProc = spawn(NODE_BIN, ['start', '--config', cfg], { cwd: app.getPath('userData'), windowsHide: true });
+  nodeProc.on('exit', () => { nodeProc = null; });
+  return { ok: true, running: true };
+});
+
+ipcMain.handle('node:stop', () => {
+  stopNode();
+  return { ok: true };
+});
+
 // Single instance: a second launch must not spin up a second embedded stack
 // (it would fight for ports 5433/8091/3091 and leave one window black). Focus
 // the existing window instead.
@@ -393,7 +436,19 @@ function killChildren() {
   }
 }
 
+function stopNode() {
+  if (!nodeProc) return;
+  try {
+    if (process.platform === 'win32') sh('taskkill', ['/pid', String(nodeProc.pid), '/f', '/t']);
+    else nodeProc.kill('SIGTERM');
+  } catch {
+    /* ignore */
+  }
+  nodeProc = null;
+}
+
 function stopAll() {
+  stopNode();
   killChildren();
   if (pg) {
     try {
