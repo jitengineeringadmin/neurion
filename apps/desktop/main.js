@@ -1,6 +1,6 @@
 // Neurion desktop (Electron) — launches the API + web, shows a native window,
 // native folder dialog, app menu. Wraps the existing monorepo stack (Phase 1).
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, Tray, ipcMain, dialog, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const net = require('node:net');
@@ -41,6 +41,8 @@ let pg = null;
 let mainWindow = null;
 let splash = null;
 let nodeProc = null;
+let tray = null;
+let isQuitting = false;
 
 function parseEnv() {
   const env = { ...process.env };
@@ -71,6 +73,8 @@ const STRINGS = {
     error: 'Startup error: ',
     openBrowser: 'Open in browser',
     quit: 'Quit',
+    trayOpen: 'Open Neurion',
+    trayQuit: 'Quit Neurion (stops your node)',
     edit: 'Edit',
     view: 'View',
     window: 'Window',
@@ -91,6 +95,8 @@ const STRINGS = {
     error: 'Errore di avvio: ',
     openBrowser: 'Apri nel browser',
     quit: 'Esci',
+    trayOpen: 'Apri Neurion',
+    trayQuit: 'Esci da Neurion (ferma il tuo node)',
     edit: 'Modifica',
     view: 'Vista',
     window: 'Finestra',
@@ -337,6 +343,39 @@ function createMainWindow() {
     shell.openExternal(url);
     return { action: 'deny' };
   });
+  // Closing the window hides it to the tray (so the embedded stack + any running
+  // node keep going). Real exit is the tray's "Quit".
+  mainWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
+}
+
+function createTray() {
+  const iconFile = path.join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+  try {
+    tray = new Tray(iconFile);
+  } catch {
+    return; // no icon available — stay a plain window app
+  }
+  tray.setToolTip('Neurion');
+  const show = () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  };
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: T.trayOpen, click: show },
+      { type: 'separator' },
+      { label: T.trayQuit, click: () => { isQuitting = true; app.quit(); } },
+    ]),
+  );
+  tray.on('click', show);
+  tray.on('double-click', show);
 }
 
 function buildMenu() {
@@ -422,6 +461,7 @@ if (!app.requestSingleInstanceLock()) {
       setStatus('errore avvio: ' + (e && e.message ? e.message : e));
     }
     createMainWindow();
+    createTray();
   });
 }
 
@@ -461,6 +501,10 @@ function stopAll() {
 
 app.on('before-quit', stopAll);
 app.on('window-all-closed', () => {
-  stopAll();
-  app.quit();
+  // The window hides to the tray instead of closing, so this normally won't fire;
+  // only really exit when the user chose Quit.
+  if (isQuitting) {
+    stopAll();
+    app.quit();
+  }
 });
