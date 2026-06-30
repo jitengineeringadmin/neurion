@@ -80,7 +80,7 @@ const STRINGS = {
     view: 'View',
     window: 'Window',
     about: 'About Neurion',
-    aboutDetail: 'Distributed AI compute + agent. v1.3.2',
+    aboutDetail: 'Distributed AI compute + agent.',
     pickFolder: 'Select the project folder',
     failTitle: 'Neurion won’t start',
     failBody: 'The local engine did not respond. Fully close Neurion and reopen it.<br/>If it persists, restart your PC or reinstall.',
@@ -103,7 +103,7 @@ const STRINGS = {
     view: 'Vista',
     window: 'Finestra',
     about: 'Informazioni su Neurion',
-    aboutDetail: 'Calcolo AI distribuito + agente. v1.3.2',
+    aboutDetail: 'Calcolo AI distribuito + agente.',
     pickFolder: 'Seleziona la cartella del progetto',
     failTitle: 'Neurion non si avvia',
     failBody: 'Il motore locale non ha risposto. Chiudi completamente Neurion e riaprilo.<br/>Se persiste, riavvia il PC o reinstalla.',
@@ -415,7 +415,7 @@ function buildMenu() {
     {
       label: 'Neurion',
       submenu: [
-        { label: T.about, click: () => dialog.showMessageBox(mainWindow, { title: 'Neurion', message: 'Neurion desktop', detail: T.aboutDetail }) },
+        { label: T.about, click: () => dialog.showMessageBox(mainWindow, { title: 'Neurion', message: 'Neurion desktop', detail: `${T.aboutDetail} v${app.getVersion()}` }) },
         { type: 'separator' },
         { label: T.openBrowser, click: () => shell.openExternal(WEB_URL) },
         { label: T.trayAutostart, type: 'checkbox', checked: getAutoStart(), click: (item) => setAutoStart(item.checked) },
