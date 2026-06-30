@@ -75,6 +75,7 @@ const STRINGS = {
     quit: 'Quit',
     trayOpen: 'Open Neurion',
     trayQuit: 'Quit Neurion (stops your node)',
+    trayAutostart: 'Start at login',
     edit: 'Edit',
     view: 'View',
     window: 'Window',
@@ -97,6 +98,7 @@ const STRINGS = {
     quit: 'Esci',
     trayOpen: 'Apri Neurion',
     trayQuit: 'Esci da Neurion (ferma il tuo node)',
+    trayAutostart: "Avvia all'accensione",
     edit: 'Modifica',
     view: 'Vista',
     window: 'Finestra',
@@ -353,6 +355,35 @@ function createMainWindow() {
   });
 }
 
+function autostartFile() {
+  return path.join(os.homedir(), '.config', 'autostart', 'neurion.desktop');
+}
+function getAutoStart() {
+  try {
+    if (process.platform === 'linux') return fs.existsSync(autostartFile());
+    return app.getLoginItemSettings().openAtLogin;
+  } catch {
+    return false;
+  }
+}
+function setAutoStart(on) {
+  try {
+    if (process.platform === 'linux') {
+      const p = autostartFile();
+      if (on) {
+        fs.mkdirSync(path.dirname(p), { recursive: true });
+        fs.writeFileSync(p, `[Desktop Entry]\nType=Application\nName=Neurion\nExec=${process.execPath}\nX-GNOME-Autostart-enabled=true\n`);
+      } else if (fs.existsSync(p)) {
+        fs.unlinkSync(p);
+      }
+    } else {
+      app.setLoginItemSettings({ openAtLogin: on });
+    }
+  } catch {
+    /* best effort */
+  }
+}
+
 function createTray() {
   const iconFile = path.join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
   try {
@@ -370,6 +401,7 @@ function createTray() {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: T.trayOpen, click: show },
+      { label: T.trayAutostart, type: 'checkbox', checked: getAutoStart(), click: (item) => setAutoStart(item.checked) },
       { type: 'separator' },
       { label: T.trayQuit, click: () => { isQuitting = true; app.quit(); } },
     ]),
@@ -386,6 +418,7 @@ function buildMenu() {
         { label: T.about, click: () => dialog.showMessageBox(mainWindow, { title: 'Neurion', message: 'Neurion desktop', detail: T.aboutDetail }) },
         { type: 'separator' },
         { label: T.openBrowser, click: () => shell.openExternal(WEB_URL) },
+        { label: T.trayAutostart, type: 'checkbox', checked: getAutoStart(), click: (item) => setAutoStart(item.checked) },
         { type: 'separator' },
         { role: 'quit', label: T.quit },
       ],
