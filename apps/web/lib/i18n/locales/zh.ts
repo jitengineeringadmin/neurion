@@ -344,5 +344,13 @@ const dict: Record<string, string> = {
   "image.networkNote": "由网络节点生成（消耗积分）",
   "image.queued": "排队中…",
   "image.networkStatus": "网络：",
+
+  "network.connectPrompt": "登录网络以使用共享节点：",
+  "network.connected": "已连接到网络",
+  "network.disconnect": "断开连接",
+  "network.email": "网络邮箱",
+  "network.password": "密码",
+  "network.connect": "连接",
+  "network.connectFailed": "登录失败 — 请检查您的网络账户",
 };
 export default dict;

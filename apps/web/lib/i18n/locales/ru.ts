@@ -344,5 +344,13 @@ const dict: Record<string, string> = {
   "image.networkNote": "генерацию выполняет сетевой узел (расходует кредиты)",
   "image.queued": "в очереди…",
   "image.networkStatus": "сеть:",
+
+  "network.connectPrompt": "Войдите в сеть, чтобы использовать общие узлы:",
+  "network.connected": "подключено к сети",
+  "network.disconnect": "отключиться",
+  "network.email": "эл. почта для сети",
+  "network.password": "пароль",
+  "network.connect": "Подключиться",
+  "network.connectFailed": "не удалось войти — проверьте свою учётную запись сети",
 };
 export default dict;

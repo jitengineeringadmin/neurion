@@ -344,5 +344,13 @@ const dict: Record<string, string> = {
   "image.networkNote": "un nœud du réseau la génère (coûte des crédits)",
   "image.queued": "en file d'attente…",
   "image.networkStatus": "réseau :",
+
+  "network.connectPrompt": "Connectez-vous au réseau pour utiliser les nœuds partagés :",
+  "network.connected": "connecté au réseau",
+  "network.disconnect": "se déconnecter",
+  "network.email": "e-mail du réseau",
+  "network.password": "mot de passe",
+  "network.connect": "Se connecter",
+  "network.connectFailed": "échec de la connexion — vérifiez votre compte réseau",
 };
 export default dict;

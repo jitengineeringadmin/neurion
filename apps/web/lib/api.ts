@@ -1,5 +1,53 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8091';
 
+// The production network API. In the desktop the app talks to a LOCAL embedded API
+// (API_BASE = localhost), but its node pool is empty — community nodes live on the
+// production API. The "network" lane relays to PROD_BASE: a separate prod session.
+export const PROD_BASE = 'https://neurionproject.org';
+export const isDesktop = (): boolean =>
+  typeof window !== 'undefined' && API_BASE !== PROD_BASE && /localhost|127\.0\.0\.1/.test(API_BASE);
+
+let prodToken: string | null = null;
+export function getProdToken(): string | null {
+  if (prodToken) return prodToken;
+  if (typeof window !== 'undefined') prodToken = localStorage.getItem('neurion_prod_token');
+  return prodToken;
+}
+export function setProdToken(token: string | null): void {
+  prodToken = token;
+  if (typeof window !== 'undefined') {
+    if (token) localStorage.setItem('neurion_prod_token', token);
+    else localStorage.removeItem('neurion_prod_token');
+  }
+}
+/** Sign in to the production network (separate account from the local one). */
+export async function prodLogin(email: string, password: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${PROD_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { accessToken?: string };
+    if (!data.accessToken) return false;
+    setProdToken(data.accessToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+/** Authenticated call against the production API (used by the desktop network lane). */
+export async function prodApi<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${PROD_BASE}/api${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(getProdToken() ? { Authorization: `Bearer ${getProdToken()}` } : {}), ...(init.headers ?? {}) },
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(text || res.statusText);
+  return (text ? JSON.parse(text) : {}) as T;
+}
+
 let accessToken: string | null = null;
 
 export function setToken(token: string | null): void {
@@ -97,5 +145,5 @@ export const streamAgent = (
   handlers: SseHandlers,
   model?: string,
   cwd?: string,
-  extra?: { computeMode?: string; networkModel?: string },
+  extra?: { computeMode?: string; networkModel?: string; relayBase?: string; relayToken?: string },
 ) => streamSSE('/agent/stream', { goal, model, cwd, ...extra }, handlers);

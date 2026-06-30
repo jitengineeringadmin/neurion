@@ -26,6 +26,18 @@ class RunAgentDto {
   @IsString()
   @MaxLength(120)
   networkModel?: string;
+
+  // Desktop relay: the remote API base + a token for it, so the local agent can use
+  // the remote shared node pool for the network LLM step.
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  relayBase?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  relayToken?: string;
 }
 
 class ApproveDto {
@@ -64,6 +76,8 @@ export class AgentController {
         cwd: dto.cwd,
         computeMode: dto.computeMode,
         networkModel: dto.networkModel,
+        relayBase: dto.relayBase,
+        relayToken: dto.relayToken,
       });
       emit('agent.done', { answer });
     } catch (err) {

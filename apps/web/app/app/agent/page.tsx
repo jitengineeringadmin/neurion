@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { api, streamAgent } from '../../../lib/api';
+import { api, streamAgent, isDesktop, getProdToken, PROD_BASE } from '../../../lib/api';
 import { theme, card, input, button, ghostButton } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
+import { NetworkConnect } from '../../../components/NetworkConnect';
 
 type Mode = 'ask' | 'auto' | 'local' | 'network';
 
@@ -71,7 +72,12 @@ export default function AgentPage() {
             return s;
           });
         },
-      }, undefined, undefined, { computeMode: mode, networkModel: netModel });
+      }, undefined, undefined, {
+        computeMode: mode,
+        networkModel: netModel,
+        // Desktop: relay the network LLM step to the production pool.
+        ...(mode !== 'local' && isDesktop() && getProdToken() ? { relayBase: PROD_BASE, relayToken: getProdToken() as string } : {}),
+      });
     } catch (e) {
       setSteps((s) => [...s, { kind: 'error', depth: 0, data: { message: (e as Error).message } }]);
     } finally {
@@ -114,6 +120,9 @@ export default function AgentPage() {
             </span>
           )}
         </div>
+        {mode !== 'local' && isDesktop() && (
+          <div style={{ marginTop: 10 }}><NetworkConnect /></div>
+        )}
       </div>
 
       {plan && plan.length > 0 && (

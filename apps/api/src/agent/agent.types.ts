@@ -15,11 +15,16 @@ export interface ToolCtx {
   // compute selection (set by the controller from the client):
   computeMode?: ComputeMode;
   networkModel?: string; // the bigger model to look for on a network node
+  // desktop relay: reach a REMOTE API's shared pool for the network LLM step while
+  // the agent loop stays local. When set, the network lane streams via /ai/infer.
+  relayBase?: string;
+  relayToken?: string;
   // resolved once at run start (depth 0), inherited by sub-agents:
   provider?: AiProvider;
   resolvedModel?: string;
   nodeId?: string;
   isNetwork?: boolean;
+  relayed?: boolean; // network LLM served by the remote relay (billed remotely)
   meter?: { networkChars: number };
 }
 

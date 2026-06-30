@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { api } from '../../../lib/api';
+import { api, prodApi, isDesktop, getProdToken } from '../../../lib/api';
 import { theme, card, button, input } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
+import { NetworkConnect } from '../../../components/NetworkConnect';
 
 interface GenResult { ok: boolean; image?: string; error?: string; width?: number; height?: number; seed?: number }
 
@@ -58,18 +59,24 @@ export default function ImagePage() {
     else setErr(r.error || t('image.errFailed'));
   }
 
-  // Network: create an image.v1 GRID job, poll until a node returns the PNG.
+  // Network: create an image.v1 GRID job, poll until a node returns the PNG. On the
+  // desktop the shared pool is on the production API, so relay there with the prod
+  // session; in the online app the local API already IS the network.
   async function generateNetwork() {
+    const relay = isDesktop() && !!getProdToken();
+    type Job = { id: string };
+    type JobState = { status: string; outputJson?: { result?: { image?: string; seed?: number } }; errorMessage?: string };
+    const createJob = (b: unknown) =>
+      relay ? prodApi<Job>('/jobs', { method: 'POST', body: JSON.stringify(b) }) : api<Job>('/jobs', { method: 'POST', body: JSON.stringify(b) });
+    const getJob = (id: string) => (relay ? prodApi<JobState>(`/jobs/${id}`) : api<JobState>(`/jobs/${id}`));
+
     setStatus(t('image.queued'));
-    const job = await api<{ id: string }>('/jobs', {
-      method: 'POST',
-      body: JSON.stringify({ type: 'image.v1', inputJson: { prompt, negative, width: size, height: size, steps } }),
-    });
+    const job = await createJob({ type: 'image.v1', inputJson: { prompt, negative, width: size, height: size, steps } });
     const id = job.id;
     const done = ['COMPLETED', 'VERIFYING', 'VERIFIED', 'REWARDED'];
     for (let i = 0; i < 200; i++) {
       await new Promise((r) => setTimeout(r, 2000));
-      const j = await api<{ status: string; outputJson?: { result?: { image?: string; seed?: number } }; errorMessage?: string }>(`/jobs/${id}`);
+      const j = await getJob(id);
       if (j.status === 'FAILED' || j.status === 'CANCELLED') { setErr(j.errorMessage || t('image.errFailed')); return; }
       setStatus(`${t('image.networkStatus')} ${j.status.toLowerCase()}`);
       const image = j.outputJson?.result?.image;
@@ -98,6 +105,8 @@ export default function ImagePage() {
           <span style={{ fontSize: 12, color: theme.muted }}>⚡ {t('image.networkNote')}</span>
         )}
       </div>
+
+      {mode === 'network' && isDesktop() && <NetworkConnect />}
 
       {mode === 'local' && engine === 'down' && (() => {
         const parts = t('image.engineDownBanner').split('{link}');

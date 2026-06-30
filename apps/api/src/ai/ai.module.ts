@@ -7,10 +7,11 @@ import { RealtimePoolService } from './realtime-pool.service';
 import { AiRouterService } from './ai-router.service';
 import { ModelsController } from './models.controller';
 import { ImageController } from './image.controller';
+import { InferController } from './infer.controller';
 
 @Module({
   imports: [NodesModule],
-  controllers: [ModelsController, ImageController],
+  controllers: [ModelsController, ImageController, InferController],
   providers: [
     ProviderResolverService,
     PrivacyClassifierService,

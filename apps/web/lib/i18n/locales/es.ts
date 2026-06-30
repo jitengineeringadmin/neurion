@@ -344,5 +344,13 @@ const dict: Record<string, string> = {
   "image.networkNote": "un nodo de la red la genera (consume créditos)",
   "image.queued": "en cola…",
   "image.networkStatus": "red:",
+
+  "network.connectPrompt": "Inicia sesión en la red para usar nodos compartidos:",
+  "network.connected": "conectado a la red",
+  "network.disconnect": "desconectar",
+  "network.email": "correo de la red",
+  "network.password": "contraseña",
+  "network.connect": "Conectar",
+  "network.connectFailed": "error al iniciar sesión: revisa tu cuenta de la red",
 };
 export default dict;

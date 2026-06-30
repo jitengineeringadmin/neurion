@@ -6,6 +6,7 @@ import { ProviderResolverService } from '../ai/provider-resolver.service';
 import { RealtimePoolService, WarmMatch } from '../ai/realtime-pool.service';
 import { CreditsService } from '../credits/credits.service';
 import { AiProvider, ChatMsg } from '../ai/providers/ai-provider.interface';
+import { RelayProvider } from '../ai/providers/relay.provider';
 import { AgentToolsService } from './agent-tools.service';
 import { AgentApprovalService } from './agent-approval.service';
 import { AgentMemoryService } from './agent-memory.service';
@@ -58,6 +59,32 @@ export class AgentOrchestratorService {
       setLocal();
       return { ok: true };
     }
+
+    // Relay path (desktop): the shared node pool lives on a REMOTE API, reached via
+    // /ai/infer. The agent loop stays local (for file tools); only the LLM is remote.
+    // Node-finding + billing happen remotely, so a runtime miss just soft-falls back
+    // to local in callLLM.
+    if (ctx.relayBase && ctx.relayToken) {
+      const setRelay = () => {
+        ctx.provider = new RelayProvider(ctx.relayBase as string, ctx.relayToken as string);
+        ctx.resolvedModel = netModel;
+        ctx.isNetwork = true;
+        ctx.relayed = true;
+        ctx.nodeId = undefined;
+      };
+      if (mode === 'network' || mode === 'auto') {
+        setRelay();
+        return { ok: true };
+      }
+      // ask
+      const id = randomUUID();
+      const pending = this.approvals.wait(id);
+      ctx.emit('agent.compute_request', { id, model: netModel, nodeId: null });
+      if (await pending) setRelay();
+      else setLocal();
+      return { ok: true };
+    }
+
     const warm = await this.pool.findWarm(netModel, 'PUBLIC' as JobPrivacyLevel).catch(() => null);
 
     if (mode === 'network') {
@@ -86,6 +113,7 @@ export class AgentOrchestratorService {
 
   // Charge the user + reward the node for the network LLM tokens used this run.
   private async meterNetwork(ctx: ToolCtx): Promise<void> {
+    if (ctx.relayed) return; // billed + rewarded on the remote /ai/infer endpoint
     if (!ctx.isNetwork || !ctx.nodeId || !ctx.meter || ctx.meter.networkChars <= 0) return;
     const ref = `agent:${ctx.user.sub}:${randomUUID()}`;
     const estTokens = Math.ceil(ctx.meter.networkChars / 4);
