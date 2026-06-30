@@ -6,10 +6,11 @@ import { EstimatorService } from './estimator.service';
 import { RealtimePoolService } from './realtime-pool.service';
 import { AiRouterService } from './ai-router.service';
 import { ModelsController } from './models.controller';
+import { ImageController } from './image.controller';
 
 @Module({
   imports: [NodesModule],
-  controllers: [ModelsController],
+  controllers: [ModelsController, ImageController],
   providers: [
     ProviderResolverService,
     PrivacyClassifierService,

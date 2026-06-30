@@ -14,6 +14,7 @@ import { useT } from '../../lib/i18n';
 const TABS: [string, string][] = [
   ['/app/chat', 'nav.tabChat'],
   ['/app/agent', 'nav.tabAgent'],
+  ['/app/image', 'nav.tabImage'],
   ['/app/models', 'nav.tabModels'],
   ['/app/forum', 'nav.tabForum'],
   ['/app/dashboard', 'nav.tabNetwork'],
@@ -55,6 +56,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const isNetwork = ['/app/dashboard', '/app/jobs', '/app/nodes', '/app/wallet', '/app/admin'].some((p) => pathname.startsWith(p));
   const activeTab = pathname.startsWith('/app/agent')
     ? '/app/agent'
+    : pathname.startsWith('/app/image')
+    ? '/app/image'
     : pathname.startsWith('/app/models')
     ? '/app/models'
     : pathname.startsWith('/app/forum')
