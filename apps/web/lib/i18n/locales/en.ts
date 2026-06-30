@@ -284,5 +284,7 @@ const dict: Record<string, string> = {
 
   "network.secGeo": "Geographic distribution",
   "network.byRegion": "Nodes by region",
+
+  "models.choose": "Choose a model to download",
 };
 export default dict;

@@ -290,5 +290,7 @@ const dict: Record<string, string> = {
 
   "network.secGeo": "地理分布",
   "network.byRegion": "按地区分布的节点",
+
+  "models.choose": "选择要下载的模型",
 };
 export default dict;

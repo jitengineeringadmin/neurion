@@ -1,11 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api, streamSSE } from '../../../lib/api';
-import { theme, button } from '../../../lib/ui';
+import { theme, button, input } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
 
 interface Installed { name: string; sizeBytes: number | null }
-interface Reco { name: string; label: string; size: string; note: string }
+interface Reco { name: string; label: string; size: string; note: string; group: string }
 interface Pulling { name: string; percent: number | null; status: string }
 
 const fmt = (b: number | null) => (b ? `${(b / 1e9).toFixed(1)} GB` : '');
@@ -17,6 +17,7 @@ export default function ModelsPage() {
   const [reco, setReco] = useState<Reco[]>([]);
   const [pulling, setPulling] = useState<Pulling | null>(null);
   const [def, setDef] = useState<string>('');
+  const [sel, setSel] = useState('');
   const [err, setErr] = useState('');
 
   const load = async () => {
@@ -89,25 +90,41 @@ export default function ModelsPage() {
       )}
 
       <h3 style={{ fontSize: 14, color: theme.muted, textTransform: 'uppercase', letterSpacing: '.08em', margin: '8px 0' }}>{t('models.recommendedHeading')}</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        {reco.map((m) => (
-          <div key={m.name} style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <b style={{ fontSize: 15 }}>{m.label}</b>
-              <span style={{ fontSize: 11, color: theme.muted }}>{m.size}</span>
-            </div>
-            <div style={{ fontSize: 12, color: theme.muted, margin: '4px 0 12px' }}>{m.note}</div>
-            {has(m.name) ? (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <span style={{ fontSize: 12, color: theme.accent, alignSelf: 'center' }}>✓ {t('models.installedBadge')}</span>
-                {def !== m.name && <button onClick={() => makeDefault(m.name)} style={ghost}>{t('models.useAsDefault')}</button>}
+      {(() => {
+        const groups = reco.reduce<string[]>((acc, r) => (acc.includes(r.group) ? acc : [...acc, r.group]), []);
+        const selModel = reco.find((m) => m.name === sel) || null;
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 520 }}>
+            <select value={sel} onChange={(e) => setSel(e.target.value)} style={{ ...input, cursor: 'pointer' }}>
+              <option value="">{t('models.choose')}</option>
+              {groups.map((g) => (
+                <optgroup key={g} label={g}>
+                  {reco.filter((m) => m.group === g).map((m) => (
+                    <option key={m.name} value={m.name}>{m.label} — {m.size}{has(m.name) ? ' ✓' : ''}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {selModel && (
+              <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <b style={{ fontSize: 15 }}>{selModel.label}</b>
+                  <span style={{ fontSize: 11, color: theme.muted }}>{selModel.size}</span>
+                </div>
+                <div style={{ fontSize: 12, color: theme.muted, margin: '4px 0 12px' }}>{selModel.note}</div>
+                {has(selModel.name) ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: theme.accent }}>✓ {t('models.installedBadge')}</span>
+                    {def !== selModel.name && <button onClick={() => makeDefault(selModel.name)} style={ghost}>{t('models.useAsDefault')}</button>}
+                  </div>
+                ) : (
+                  <button onClick={() => void download(selModel.name)} disabled={!!pulling || engine !== 'up'} style={{ ...button, padding: '6px 14px', opacity: pulling || engine !== 'up' ? 0.5 : 1 }}>⬇ {t('models.downloadButton')}</button>
+                )}
               </div>
-            ) : (
-              <button onClick={() => void download(m.name)} disabled={!!pulling || engine !== 'up'} style={{ ...button, padding: '6px 14px', opacity: pulling || engine !== 'up' ? 0.5 : 1 }}>⬇ {t('models.downloadButton')}</button>
             )}
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       <h3 style={{ fontSize: 14, color: theme.muted, textTransform: 'uppercase', letterSpacing: '.08em', margin: '24px 0 8px' }}>{t('models.installedHeading')}</h3>
       {installed.length === 0 && <div style={{ color: theme.muted, fontSize: 13 }}>{t('models.emptyInstalled')}</div>}
