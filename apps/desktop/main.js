@@ -299,11 +299,32 @@ async function reclaimStack() {
       /* best effort */
     }
   }
+  clearStalePgLock();
   await Promise.all([
     waitPortFree('localhost', PG_PORT, 12000),
     waitPortFree('localhost', 8091, 12000),
     waitPortFree('localhost', 3091, 12000),
   ]);
+}
+
+// An unclean shutdown (crash, force-kill, forced close, an OS reboot) leaves
+// pgdata/postmaster.pid behind. The next launch's embedded Postgres then refuses to
+// start ("another server might be running"), the whole stack fails to come up, and the
+// window is black. If that pid is not actually a live process, the lock is stale —
+// remove it so Postgres (and the app) start normally on reopen.
+function clearStalePgLock() {
+  try {
+    const pidFile = path.join(app.getPath('userData'), 'pgdata', 'postmaster.pid');
+    if (!fs.existsSync(pidFile)) return;
+    const pid = parseInt(String(fs.readFileSync(pidFile, 'utf8')).split('\n')[0].trim(), 10);
+    let alive = false;
+    if (Number.isInteger(pid) && pid > 0) {
+      try { process.kill(pid, 0); alive = true; } catch (e) { alive = !!e && e.code === 'EPERM'; }
+    }
+    if (!alive) fs.rmSync(pidFile, { force: true });
+  } catch {
+    /* best effort */
+  }
 }
 
 async function startStack() {
