@@ -4,6 +4,38 @@ import { api, streamAgent, isDesktop, getProdToken, PROD_BASE } from '../../../l
 import { theme, card, input, button, ghostButton } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
 import { NetworkConnect } from '../../../components/NetworkConnect';
+import { Markdown } from '../../../components/Markdown';
+
+// Human-readable labels for tool calls: a normal user should read "Reading config.txt",
+// not `read_file({"path":...})`. The raw JSON stays available behind a toggle.
+const TOOL_META: Record<string, { icon: string; key: string; arg?: string[] }> = {
+  read_file: { icon: '📖', key: 'agent.t.read_file', arg: ['path'] },
+  write_file: { icon: '✏️', key: 'agent.t.write_file', arg: ['path'] },
+  edit_file: { icon: '✏️', key: 'agent.t.edit_file', arg: ['path'] },
+  apply_patch: { icon: '🩹', key: 'agent.t.apply_patch', arg: ['path'] },
+  run_command: { icon: '⚡', key: 'agent.t.run_command', arg: ['command'] },
+  list_dir: { icon: '📂', key: 'agent.t.list_dir', arg: ['path'] },
+  find_files: { icon: '🔎', key: 'agent.t.find_files', arg: ['pattern', 'query'] },
+  search_files: { icon: '🔎', key: 'agent.t.search_files', arg: ['pattern', 'query'] },
+  create_project: { icon: '📁', key: 'agent.t.create_project', arg: ['name', 'path'] },
+  spawn_agent: { icon: '🤖', key: 'agent.t.spawn_agent' },
+  remember: { icon: '🧠', key: 'agent.t.remember' },
+  recall: { icon: '🧠', key: 'agent.t.recall' },
+  set_plan: { icon: '📋', key: 'agent.t.set_plan' },
+  web_fetch: { icon: '🌐', key: 'agent.t.web_fetch', arg: ['url'] },
+  create_grid_job: { icon: '🕸️', key: 'agent.t.create_grid_job' },
+};
+function humanTool(tool: string, args: Record<string, unknown> | undefined, t: (k: string, v?: Record<string, string | number>) => string): { icon: string; text: string } {
+  const m = TOOL_META[tool];
+  if (!m) return { icon: '⚙', text: tool };
+  let v = '';
+  if (m.arg && args) {
+    for (const k of m.arg) { const x = args[k]; if (typeof x === 'string' && x) { v = x; break; } }
+    if (!v) { const first = Object.values(args).find((x) => typeof x === 'string' && x); v = (first as string) || ''; }
+  }
+  if (v.length > 70) v = v.slice(0, 67) + '…';
+  return { icon: m.icon, text: t(m.key, { v }) };
+}
 
 type Mode = 'ask' | 'auto' | 'local' | 'network';
 
@@ -182,15 +214,22 @@ export default function AgentPage() {
                 )}
               </div>
             )}
-            {s.kind === 'tool_call' && (
-              <div style={{ ...card, padding: '8px 12px', borderLeft: `2px solid ${theme.accent}` }}>
-                {s.data.thought && <div style={{ color: theme.muted, fontSize: 12, marginBottom: 4 }}>💭 {s.data.thought}</div>}
-                <div style={{ fontSize: 13 }}>
-                  <span style={{ color: theme.accent }}>⚙ {s.data.tool}</span>
-                  <span style={{ color: theme.muted }}>({JSON.stringify(s.data.args)})</span>
+            {s.kind === 'tool_call' && (() => {
+              const h = humanTool(String(s.data.tool), s.data.args, t);
+              return (
+                <div style={{ ...card, padding: '8px 12px', borderLeft: `2px solid ${theme.accent}` }}>
+                  {s.data.thought && <div style={{ color: theme.muted, fontSize: 12, marginBottom: 4 }}>💭 {s.data.thought}</div>}
+                  <div style={{ fontSize: 13 }}>
+                    <span>{h.icon} </span>
+                    <span style={{ color: theme.text }}>{h.text}</span>
+                  </div>
+                  <details style={{ marginTop: 4 }}>
+                    <summary style={{ fontSize: 11, color: theme.muted, cursor: 'pointer', listStylePosition: 'inside' }}>{t('agent.details')}</summary>
+                    <pre style={{ fontSize: 11, color: theme.muted, margin: '4px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{s.data.tool}({JSON.stringify(s.data.args, null, 1)})</pre>
+                  </details>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             {s.kind === 'tool_result' && (
               <div style={{ fontSize: 12, color: theme.muted, whiteSpace: 'pre-wrap', padding: '4px 12px', wordBreak: 'break-word' }}>
                 ⟵ {typeof s.data.result === 'string' ? s.data.result.slice(0, 600) : JSON.stringify(s.data.result)}
@@ -199,7 +238,7 @@ export default function AgentPage() {
             {s.kind === 'final' && s.depth === 0 && (
               <div style={{ ...card, borderLeft: `2px solid ${theme.green}`, marginTop: 6 }}>
                 <div style={{ color: theme.green, fontSize: 12, marginBottom: 4 }}>{t('agent.finalLabel')}</div>
-                <div style={{ whiteSpace: 'pre-wrap', fontSize: 14 }}>{s.data.text}</div>
+                <Markdown>{String(s.data.text ?? '')}</Markdown>
               </div>
             )}
             {s.kind === 'final' && s.depth > 0 && <Dim>↳ {t('agent.subAnswerPrefix')} {String(s.data.text).slice(0, 200)}</Dim>}

@@ -8,6 +8,7 @@ import { theme } from '../../lib/ui';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { LangToggle } from '../../components/LangToggle';
 import { SessionsSidebar } from '../../components/SessionsSidebar';
+import { Onboarding } from '../../components/Onboarding';
 import { useT } from '../../lib/i18n';
 
 // [href, i18n key] — label resolved via t() in render (hooks can't run at module scope)
@@ -89,6 +90,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      {/* first-run wizard: guides a new user to a working model (skips itself otherwise) */}
+      {!restricted && <Onboarding />}
       {/* top bar: logo + segmented tabs */}
       <header style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '10px 16px', borderBottom: `1px solid ${theme.border}` }}>
         <div className="display neon" style={{ fontSize: 18, letterSpacing: '0.1em', color: theme.accent }}>NEURION</div>

@@ -1,6 +1,6 @@
 import './globals.css';
 import type { ReactNode } from 'react';
-import { Share_Tech_Mono, Orbitron } from 'next/font/google';
+import { Share_Tech_Mono, Orbitron, Inter } from 'next/font/google';
 import { AuthProvider } from '../lib/auth';
 import { ThemeProvider } from '../lib/theme';
 import { LanguageProvider } from '../lib/i18n';
@@ -9,6 +9,9 @@ import { PWARegister } from '../components/PWARegister';
 
 const mono = Share_Tech_Mono({ weight: '400', subsets: ['latin'], variable: '--font-mono', display: 'swap' });
 const display = Orbitron({ subsets: ['latin'], weight: ['500', '700'], variable: '--font-display', display: 'swap' });
+// Proportional font for CONTENT (chat answers, long text): mono stays for the brand,
+// headers, badges and code, but reading paragraphs in monospace is tiring.
+const sans = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 
 export const metadata = {
   title: 'Neurion AI',
@@ -27,7 +30,7 @@ const noFlash = `(function(){try{var t=localStorage.getItem('neurion_theme')||'d
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" data-theme="dark" className={`${mono.variable} ${display.variable}`}>
+    <html lang="en" data-theme="dark" className={`${mono.variable} ${display.variable} ${sans.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: noFlash }} />
       </head>

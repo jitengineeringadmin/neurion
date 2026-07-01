@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { api, streamChat, streamAgent } from '../../../lib/api';
 import { theme, input, button } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
+import { Markdown } from '../../../components/Markdown';
 
 interface Approval { id: string; tool: string; args: any; resolved: boolean | null }
 interface Msg {
@@ -197,8 +198,14 @@ function ChatInner() {
               </div>
             )}
             {(m.content || !m.agent) && (
-              <div style={{ background: m.role === 'user' ? theme.accent : theme.surface, border: m.role === 'user' ? 'none' : `1px solid ${theme.border}`, color: m.role === 'user' ? 'var(--bg)' : theme.text, borderRadius: 12, padding: '10px 14px', fontSize: 14, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                {m.content || (m.role === 'assistant' && busy ? <Thinking label={t('chat.thinking')} /> : '')}
+              <div style={{ background: m.role === 'user' ? theme.accent : theme.surface, border: m.role === 'user' ? 'none' : `1px solid ${theme.border}`, color: m.role === 'user' ? 'var(--bg)' : theme.text, borderRadius: 12, padding: '10px 14px', fontSize: m.role === 'user' ? 14 : 15, whiteSpace: m.role === 'user' ? 'pre-wrap' : 'normal', lineHeight: 1.5 }}>
+                {m.content
+                  ? m.role === 'assistant'
+                    ? <Markdown>{m.content}</Markdown>
+                    : m.content
+                  : m.role === 'assistant' && busy
+                    ? <Thinking label={t('chat.thinking')} />
+                    : ''}
               </div>
             )}
             {m.badge && (
