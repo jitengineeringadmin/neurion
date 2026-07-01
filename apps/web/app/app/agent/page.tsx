@@ -6,6 +6,13 @@ import { useT } from '../../../lib/i18n';
 import { NetworkConnect } from '../../../components/NetworkConnect';
 import { Markdown } from '../../../components/Markdown';
 
+const FOLDER_KEY = 'neurion_agent_folder'; // last-opened working folder, restored across sessions
+// Tools that create/modify a file — used to build the live "changed files" panel.
+const WRITE_TOOLS: Record<string, string> = {
+  write_file: '✏️', edit_file: '✏️', append_file: '✏️', apply_patch: '🩹',
+  make_dir: '📁', move_path: '➡️', delete_path: '🗑️', create_project: '📁',
+};
+
 // Human-readable labels for tool calls: a normal user should read "Reading config.txt",
 // not `read_file({"path":...})`. The raw JSON stays available behind a toggle.
 const TOOL_META: Record<string, { icon: string; key: string; arg?: string[] }> = {
@@ -54,6 +61,9 @@ export default function AgentPage() {
   const [mode, setMode] = useState<Mode>('ask');
   const [netModel, setNetModel] = useState('qwen2.5-coder:7b');
   const [compute, setCompute] = useState<{ lane: string; model: string; nodeId: string | null } | null>(null);
+  const [folder, setFolder] = useState<string>(''); // working directory (Claude-Code style)
+  const [touched, setTouched] = useState<{ path: string; icon: string }[]>([]); // files the run created/edited
+  const [picking, setPicking] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -61,7 +71,22 @@ export default function AgentPage() {
     if (m === 'ask' || m === 'auto' || m === 'local' || m === 'network') setMode(m);
     const nm = localStorage.getItem('neurion_netmodel');
     if (nm) setNetModel(nm);
+    const f = localStorage.getItem(FOLDER_KEY);
+    if (f) setFolder(f);
   }, []);
+
+  const shortFolder = folder ? folder.replace(/\\/g, '/').split('/').filter(Boolean).slice(-2).join('/') : '';
+  async function pickFolder() {
+    if (picking) return;
+    setPicking(true);
+    try {
+      const neurion = (window as any).neurion;
+      let path: string | null = null;
+      if (neurion?.pickFolder) path = (await neurion.pickFolder(folder || undefined))?.path ?? null;
+      else path = (await api<{ path: string | null }>('/projects/pick-folder', { method: 'POST', body: JSON.stringify({ initial: folder || undefined }) })).path;
+      if (path) { const p = path.replace(/\\/g, '/'); setFolder(p); try { localStorage.setItem(FOLDER_KEY, p); } catch { /* ignore */ } }
+    } catch { /* cancelled / unavailable */ } finally { setPicking(false); }
+  }
   const pickMode = (m: Mode) => { setMode(m); try { localStorage.setItem('neurion_compute', m); } catch {} };
   const pickNet = (v: string) => { setNetModel(v); try { localStorage.setItem('neurion_netmodel', v); } catch {} };
 
@@ -70,6 +95,7 @@ export default function AgentPage() {
     setSteps([]);
     setPlan(null);
     setCompute(null);
+    setTouched([]);
     setRunning(true);
     try {
       await streamAgent(goal, {
@@ -81,6 +107,10 @@ export default function AgentPage() {
             return;
           }
           if (event === 'agent.compute_billed') { return; }
+          if (event === 'agent.tool_call' && WRITE_TOOLS[d.tool]) {
+            const p = d.args?.path || d.args?.to || d.args?.dest || d.args?.name;
+            if (typeof p === 'string' && p) setTouched((prev) => (prev.some((x) => x.path === p) ? prev : [...prev, { path: p, icon: WRITE_TOOLS[d.tool] }]));
+          }
           if (event === 'agent.plan') {
             setPlan(d.steps);
             return;
@@ -104,9 +134,10 @@ export default function AgentPage() {
             return s;
           });
         },
-      }, undefined, undefined, {
+      }, undefined, folder || undefined, {
         computeMode: mode,
         networkModel: netModel,
+        confineToCwd: !!folder, // Claude-Code style: only touch files inside the opened folder
         // Desktop: relay the network LLM step to the production pool.
         ...(mode !== 'local' && isDesktop() && getProdToken() ? { relayBase: PROD_BASE, relayToken: getProdToken() as string } : {}),
       });
@@ -126,6 +157,21 @@ export default function AgentPage() {
     <div>
       <h2 style={{ fontSize: 20, marginTop: 0 }}>{t('agent.heading')} <span style={{ color: theme.muted, fontSize: 13 }}>{t('agent.headingSubtitle')}</span></h2>
       <div style={{ ...card, marginBottom: 16 }}>
+        {/* Working folder — the agent creates/edits files inside it (Claude-Code style). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, paddingBottom: 12, borderBottom: `1px solid ${theme.border}` }}>
+          <span style={{ fontSize: 15 }}>📂</span>
+          {folder ? (
+            <>
+              <span title={folder} style={{ fontSize: 13, color: theme.text, fontFamily: 'var(--font-mono), monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>…/{shortFolder}</span>
+              <button onClick={() => void pickFolder()} disabled={picking} style={ghostButton}>{t('agent.changeFolder')}</button>
+            </>
+          ) : (
+            <>
+              <span style={{ fontSize: 13, color: theme.muted, flex: 1 }}>{t('agent.noFolderHint')}</span>
+              <button onClick={() => void pickFolder()} disabled={picking} style={{ ...button, padding: '6px 14px' }}>{picking ? '…' : t('agent.chooseFolder')}</button>
+            </>
+          )}
+        </div>
         <textarea
           style={{ ...input, minHeight: 64, resize: 'vertical' }}
           value={goal}
@@ -133,7 +179,7 @@ export default function AgentPage() {
           placeholder={t('agent.goalPlaceholder')}
         />
         <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button style={{ ...button, opacity: running ? 0.6 : 1 }} onClick={() => void run()} disabled={running}>
+          <button style={{ ...button, opacity: running || !folder ? 0.6 : 1, cursor: running || !folder ? 'not-allowed' : 'pointer' }} onClick={() => void run()} disabled={running || !folder} title={!folder ? t('agent.chooseFolderFirst') : ''}>
             {running ? t('agent.runningLabel') : t('agent.runAgentButton')}
           </button>
           <label style={{ fontSize: 12, color: theme.muted }}>{t('agent.compute')}</label>
@@ -164,6 +210,17 @@ export default function AgentPage() {
             <div key={i} style={{ fontSize: 13, display: 'flex', gap: 8, padding: '2px 0' }}>
               <span style={{ color: s.done ? theme.green : theme.muted }}>{s.done ? '☑' : '☐'}</span>
               <span style={{ textDecoration: s.done ? 'line-through' : 'none', opacity: s.done ? 0.7 : 1 }}>{s.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {touched.length > 0 && (
+        <div style={{ ...card, marginBottom: 14, borderLeft: `2px solid ${theme.green}` }}>
+          <div style={{ fontSize: 12, color: theme.muted, marginBottom: 8 }}>{t('agent.filesChanged')} · {touched.length}</div>
+          {touched.map((f, i) => (
+            <div key={i} style={{ fontSize: 13, fontFamily: 'var(--font-mono), monospace', padding: '2px 0', display: 'flex', gap: 8 }}>
+              <span>{f.icon}</span><span style={{ wordBreak: 'break-all' }}>{f.path}</span>
             </div>
           ))}
         </div>

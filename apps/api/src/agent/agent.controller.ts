@@ -38,6 +38,12 @@ class RunAgentDto {
   @IsString()
   @MaxLength(4000)
   relayToken?: string;
+
+  // When true (+cwd set), confine all file tools to cwd — the Workspace page sets this
+  // so the agent can only create/edit files inside the folder the user opened.
+  @IsOptional()
+  @IsBoolean()
+  confineToCwd?: boolean;
 }
 
 class ApproveDto {
@@ -74,6 +80,7 @@ export class AgentController {
         depth: 0,
         model: dto.model,
         cwd: dto.cwd,
+        confine: dto.confineToCwd,
         computeMode: dto.computeMode,
         networkModel: dto.networkModel,
         relayBase: dto.relayBase,

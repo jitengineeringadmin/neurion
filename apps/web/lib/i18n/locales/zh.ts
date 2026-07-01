@@ -409,5 +409,11 @@ const dict: Record<string, string> = {
   "agent.t.set_plan": "正在制定计划",
   "agent.t.web_fetch": "正在读取 {v}",
   "agent.t.create_grid_job": "正在向网络发送任务",
+
+  "agent.chooseFolder": "选择文件夹",
+  "agent.changeFolder": "更改",
+  "agent.noFolderHint": "选择一个让智能体工作的文件夹",
+  "agent.chooseFolderFirst": "请先选择一个工作文件夹",
+  "agent.filesChanged": "已修改的文件",
 };
 export default dict;

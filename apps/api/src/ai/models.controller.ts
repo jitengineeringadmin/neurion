@@ -100,11 +100,21 @@ export class ModelsController {
 
   @Get('models')
   async models() {
+    const models = await this.resolver.listModels();
     return {
-      models: await this.resolver.listModels(),
-      chatDefault: this.config.get<string>('AI_DEFAULT_CHAT_MODEL') ?? null,
-      agentDefault: this.config.get<string>('AI_AGENT_MODEL') ?? null,
+      models,
+      // Never null when models exist: without an env override, fall back to the first
+      // installed CHAT model (embedding/rerank models filtered out) so a fresh user's
+      // first message gets real inference, not the labeled mock.
+      chatDefault: this.pickDefault(models, this.config.get<string>('AI_DEFAULT_CHAT_MODEL')),
+      agentDefault: this.pickDefault(models, this.config.get<string>('AI_AGENT_MODEL')),
     };
+  }
+
+  private pickDefault(models: string[], preferred?: string): string | null {
+    if (preferred && models.includes(preferred)) return preferred;
+    const chatable = models.filter((m) => !/embed|rerank|bge|clip/i.test(m));
+    return chatable[0] ?? models[0] ?? preferred ?? null;
   }
 
   @Get('models/recommended')

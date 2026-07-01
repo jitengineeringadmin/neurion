@@ -48,7 +48,7 @@ export class AgentToolsService {
    * AGENT_FS_CONFINE_TO_CWD=true, reject paths that escape the project dir. */
   private resolve(ctx: ToolCtx, p: string): string {
     const full = p && ctx.cwd && !isAbsolute(p) ? join(ctx.cwd, p) : p;
-    if (this.confineFs() && ctx.cwd && full) {
+    if ((this.confineFs() || ctx.confine) && ctx.cwd && full) {
       const norm = pathResolve(full);
       const base = pathResolve(ctx.cwd);
       if (norm !== base && !norm.startsWith(base + sep)) {

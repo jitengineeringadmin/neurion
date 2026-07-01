@@ -409,5 +409,11 @@ const dict: Record<string, string> = {
   "agent.t.set_plan": "Erstelle einen Plan",
   "agent.t.web_fetch": "Lese {v}",
   "agent.t.create_grid_job": "Sende einen Auftrag ans Netzwerk",
+
+  "agent.chooseFolder": "Ordner wählen",
+  "agent.changeFolder": "Ändern",
+  "agent.noFolderHint": "Wähle einen Ordner, in dem der Agent arbeitet",
+  "agent.chooseFolderFirst": "Wähle zuerst einen Arbeitsordner",
+  "agent.filesChanged": "Geänderte Dateien",
 };
 export default dict;

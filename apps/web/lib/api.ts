@@ -145,5 +145,5 @@ export const streamAgent = (
   handlers: SseHandlers,
   model?: string,
   cwd?: string,
-  extra?: { computeMode?: string; networkModel?: string; relayBase?: string; relayToken?: string },
+  extra?: { computeMode?: string; networkModel?: string; relayBase?: string; relayToken?: string; confineToCwd?: boolean },
 ) => streamSSE('/agent/stream', { goal, model, cwd, ...extra }, handlers);
