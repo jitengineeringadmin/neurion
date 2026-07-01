@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
-const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days (rotates on each use)
 
 export interface IssuedRefresh {
   raw: string;

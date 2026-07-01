@@ -57,7 +57,9 @@ export class AuthService {
     const payload: AuthUser = { sub: u.id, email: u.email, role: u.role, workspaceId: u.workspaceId };
     return this.jwt.signAsync(payload, {
       secret: this.config.get<string>('JWT_ACCESS_SECRET'),
-      expiresIn: '15m',
+      // Short by default (web/prod); the desktop sets a long TTL so a personal
+      // machine stays logged in across restarts instead of re-prompting each launch.
+      expiresIn: this.config.get<string>('JWT_ACCESS_TTL') || '15m',
     });
   }
 

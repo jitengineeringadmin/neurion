@@ -249,7 +249,13 @@ async function startDb() {
 // the secrets once per install and persist them in userData so issued tokens
 // survive restarts and app updates.
 function ensureSecrets() {
-  const file = path.join(app.getPath('userData'), 'secrets.json');
+  const dir = app.getPath('userData');
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch {
+    /* exists */
+  }
+  const file = path.join(dir, 'secrets.json');
   let s = {};
   try {
     s = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -258,19 +264,20 @@ function ensureSecrets() {
   }
   let changed = false;
   for (const k of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET']) {
-    if (!ENV[k]) {
-      if (!s[k]) {
-        s[k] = require('node:crypto').randomBytes(48).toString('hex');
-        changed = true;
-      }
-      ENV[k] = s[k];
+    if (!s[k]) {
+      s[k] = require('node:crypto').randomBytes(48).toString('hex');
+      changed = true;
     }
+    ENV[k] = s[k]; // ALWAYS load from the persisted store so tokens survive restarts
   }
+  // Persist so the JWT secret is STABLE across launches — otherwise every restart
+  // regenerates it, invalidating all tokens, and the user must log in every time.
+  // (No POSIX mode option: it can throw on Windows and silently drop persistence.)
   if (changed) {
     try {
-      fs.writeFileSync(file, JSON.stringify(s), { mode: 0o600 });
-    } catch {
-      /* best effort */
+      fs.writeFileSync(file, JSON.stringify(s), 'utf8');
+    } catch (e) {
+      console.error('[neurion] could not persist secrets.json — sessions will not survive restarts:', e && e.message);
     }
   }
 }
@@ -302,6 +309,9 @@ async function reclaimStack() {
 async function startStack() {
   // children + tooling all use the embedded DB
   ENV.DATABASE_URL = DB_URL;
+  // Personal desktop: keep the user signed in across restarts (a 30-day access token
+  // in localStorage) instead of re-prompting every launch. Prod/web keeps the 15m default.
+  ENV.JWT_ACCESS_TTL = ENV.JWT_ACCESS_TTL || '30d';
   ensureSecrets();
 
   // free ports held by a not-yet-dead previous instance (in-place update race)
