@@ -198,15 +198,17 @@ function ChatInner() {
             )}
             {(m.content || !m.agent) && (
               <div style={{ background: m.role === 'user' ? theme.accent : theme.surface, border: m.role === 'user' ? 'none' : `1px solid ${theme.border}`, color: m.role === 'user' ? 'var(--bg)' : theme.text, borderRadius: 12, padding: '10px 14px', fontSize: 14, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                {m.content || (m.role === 'assistant' && busy ? '…' : '')}
+                {m.content || (m.role === 'assistant' && busy ? <Thinking label={t('chat.thinking')} /> : '')}
               </div>
             )}
             {m.badge && (
               <div style={{ fontSize: 11, color: theme.muted, marginTop: 4, display: 'flex', gap: 8 }}>
-                <span style={{ color: theme.accent }}>{m.badge.lane}</span>
-                <span>{m.badge.provider}{m.badge.labeled ? t('chat.badgeMockSuffix') : ''}</span>
-                <span>{m.badge.effectivePrivacy}</span>
-                {m.cost != null && <span>{t('chat.badgeCostSuffix', { cost: m.cost })}</span>}
+                <span style={{ color: m.badge.lane === 'FALLBACK' ? theme.muted : theme.accent }}>
+                  {m.badge.lane === 'FALLBACK' ? `💻 ${t('chat.laneLocal')}` : `⚡ ${t('chat.laneNetwork')}`}
+                </span>
+                {m.badge.model && <span>{m.badge.model}</span>}
+                {m.badge.labeled && <span>{t('chat.badgeMockSuffix')}</span>}
+                {m.cost != null && m.cost > 0 && <span>{t('chat.badgeCostSuffix', { cost: m.cost })}</span>}
               </div>
             )}
           </div>
@@ -219,6 +221,23 @@ function ChatInner() {
         <button style={{ ...button, opacity: busy ? 0.6 : 1 }} onClick={() => void send()} disabled={busy}>{agentMode ? t('chat.sendButtonRun') : t('chat.sendButtonSend')}</button>
       </div>
     </div>
+  );
+}
+
+// Animated "thinking" indicator: the label plus cycling dots, so it's obvious the
+// assistant is working (instead of a static "…").
+function Thinking({ label }: { label: string }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setN((v) => (v + 1) % 4), 400);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <span style={{ color: theme.muted, fontStyle: 'italic' }}>
+      {label}
+      {'.'.repeat(n)}
+      <span style={{ opacity: 0 }}>{'.'.repeat(3 - n)}</span>
+    </span>
   );
 }
 

@@ -367,5 +367,9 @@ const dict: Record<string, string> = {
   "image.sizeLarge": "Grande · más lento",
   "image.advanced": "Avanzado",
   "image.stepsHint": "más = más lento y detallado",
+
+  "chat.thinking": "Pensando",
+  "chat.laneLocal": "local",
+  "chat.laneNetwork": "red",
 };
 export default dict;
