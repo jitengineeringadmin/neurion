@@ -175,4 +175,12 @@ if [ -d /etc/letsencrypt/live/neurionproject.org ]; then
   systemctl reload nginx || true
 fi
 
+### [9/9] watchdog — self-heal + ntfy alert if the stack goes down (every 5 min)
+chmod +x "$APP/infra/watchdog.sh" || true
+cat > /etc/cron.d/neurion-watchdog <<'EOF'
+*/5 * * * * root bash /opt/neurion/infra/watchdog.sh >/dev/null 2>&1
+EOF
+chmod 644 /etc/cron.d/neurion-watchdog
+echo "    watchdog cron installed (*/5)"
+
 echo "### DONE"

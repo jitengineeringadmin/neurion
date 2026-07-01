@@ -8,12 +8,13 @@
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\" --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "tsx scripts/unit-test.ts",
+    "test": "tsx scripts/unit-test.ts && tsx scripts/money-test.ts",
     "test:unit": "tsx scripts/unit-test.ts",
     "db:validate": "dotenv -e ../../.env -- prisma validate",
     "db:generate": "dotenv -e ../../.env -- prisma generate",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
-    "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts"
+    "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "test:money": "tsx scripts/money-test.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
