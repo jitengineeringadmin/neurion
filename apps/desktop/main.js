@@ -131,6 +131,27 @@ function waitPort(host, port, timeoutMs) {
   });
 }
 
+// Inverse of waitPort: resolves true once nothing is listening on the port (i.e.
+// a dying previous instance has released it). Used to make an in-place update
+// relaunch wait for the old stack's ports before binding the new one.
+function waitPortFree(host, port, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve) => {
+    const tick = () => {
+      const s = net.connect({ host, port }, () => {
+        s.destroy();
+        if (Date.now() > deadline) resolve(false);
+        else setTimeout(tick, 500);
+      });
+      s.on('error', () => {
+        s.destroy();
+        resolve(true); // connect failed => port is free
+      });
+    };
+    tick();
+  });
+}
+
 function waitHttp(url, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   return new Promise((resolve) => {
@@ -254,10 +275,37 @@ function ensureSecrets() {
   }
 }
 
+// An in-place update relaunches the app while the previous instance's stack may
+// still be shutting down, so its DB/API/web ports linger for a few seconds. The
+// fresh stack then fails to bind and shows "engine didn't respond". Reclaim first:
+// kill our orphan embedded Postgres, then wait (bounded) for the ports to free up.
+async function reclaimStack() {
+  if (process.platform === 'win32') {
+    try {
+      spawnSync(
+        'powershell',
+        ['-NoProfile', '-Command',
+          "Get-CimInstance Win32_Process -Filter \"Name='postgres.exe'\" | Where-Object { $_.CommandLine -like '*neurion*pgdata*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"],
+        { windowsHide: true, timeout: 8000 },
+      );
+    } catch {
+      /* best effort */
+    }
+  }
+  await Promise.all([
+    waitPortFree('localhost', PG_PORT, 12000),
+    waitPortFree('localhost', 8091, 12000),
+    waitPortFree('localhost', 3091, 12000),
+  ]);
+}
+
 async function startStack() {
   // children + tooling all use the embedded DB
   ENV.DATABASE_URL = DB_URL;
   ensureSecrets();
+
+  // free ports held by a not-yet-dead previous instance (in-place update race)
+  await reclaimStack();
 
   // first run = no Postgres cluster yet (the slow initdb path) — drives both the
   // splash message and whether we seed.
@@ -279,11 +327,26 @@ async function startStack() {
     if (firstRun) await run('npx', ['tsx', path.join('prisma', 'seed.ts')], { cwd: API_DIR, env: ENV });
   }
 
-  // 3) API
+  // 3) API — retry once. A just-freed port or a cold/recovering DB can miss the
+  // first boot; a fresh spawn on the second attempt clears the "engine didn't
+  // respond" race instead of failing the whole launch.
   setStatus(T.api);
-  const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV });
-  children.push(api);
-  await waitHttp(API_HEALTH, 30000);
+  let apiUp = false;
+  for (let attempt = 0; attempt < 2 && !apiUp; attempt++) {
+    const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV });
+    children.push(api);
+    apiUp = await waitHttp(API_HEALTH, 45000);
+    if (!apiUp) {
+      try {
+        if (process.platform === 'win32') sh('taskkill', ['/pid', String(api.pid), '/f', '/t']);
+        else api.kill('SIGTERM');
+      } catch {
+        /* ignore */
+      }
+      await waitPortFree('localhost', 8091, 6000);
+    }
+  }
+  if (!apiUp) throw new Error('local engine did not respond');
 
   // 4) web
   setStatus(T.web);
