@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { spawn } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
@@ -9,42 +9,45 @@ import * as path from 'node:path';
 import AdmZip from 'adm-zip';
 import { Response } from 'express';
 
-interface GenDto {
-  prompt?: string;
-  negative?: string;
-  steps?: number;
-  width?: number;
-  height?: number;
-  seed?: number;
+interface GenDto { prompt?: string; negative?: string; steps?: number; width?: number; height?: number; seed?: number }
+interface ModelDef {
+  id: string; label: string; desc: string; url: string; file: string; sizeMb: number;
+  sampler: string; cfg: number; steps: number; recommended?: boolean;
 }
+interface Active { source: 'curated' | 'custom'; id?: string; path: string; label: string; sampler: string; cfg: number; steps: number }
 
-const clampInt = (v: unknown, lo: number, hi: number, def: number): number => {
-  const n = Math.round(Number(v));
-  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def;
-};
-const dim = (v: unknown, def: number): number => Math.round(clampInt(v, 256, 1024, def) / 64) * 64;
-
-// Pinned stable-diffusion.cpp release + a small, complete SD 1.5 model (GGUF Q8).
-// The win-vulkan build loads BOTH a Vulkan (GPU) and a CPU backend, so it runs on a
-// GPU when present and falls back to CPU otherwise — one build works everywhere.
+// stable-diffusion.cpp binary (win-vulkan auto-uses GPU + falls back to CPU; mac-arm64).
 const SDCPP_TAG = 'master-741-484baa4';
 const SDCPP_ZIP: Record<string, string> = {
   win32: 'sd-master-484baa4-bin-win-vulkan-x64.zip',
   darwin: 'sd-master-484baa4-bin-Darwin-macOS-15.7.7-arm64.zip',
 };
 const SDCPP_URL = (zip: string) => `https://github.com/leejet/stable-diffusion.cpp/releases/download/${SDCPP_TAG}/${zip}`;
-const MODEL_URL = 'https://huggingface.co/second-state/stable-diffusion-v1-5-GGUF/resolve/main/stable-diffusion-v1-5-pruned-emaonly-Q8_0.gguf';
 const CLI = process.platform === 'win32' ? 'sd-cli.exe' : 'sd-cli';
 
-// In-process setup state (single desktop, one API).
-let setup = { installing: false, percent: 0, stage: '', error: '' };
+// Curated image models the user can pick from (auto-downloaded). Each carries the
+// sd.cpp params it wants (LCM/Turbo models need a specific sampler + low cfg + few steps).
+const CURATED: ModelDef[] = [
+  { id: 'sd15', label: 'Standard', desc: 'Balanced, fast, small', file: 'sd15.gguf', sizeMb: 1600,
+    url: 'https://huggingface.co/second-state/stable-diffusion-v1-5-GGUF/resolve/main/stable-diffusion-v1-5-pruned-emaonly-Q8_0.gguf',
+    sampler: 'euler', cfg: 7, steps: 20 },
+  { id: 'dreamshaper', label: 'DreamShaper', desc: 'Nicer photos, still fast', file: 'dreamshaper.safetensors', sizeMb: 2000, recommended: true,
+    url: 'https://huggingface.co/Lykon/DreamShaper/resolve/main/DreamShaper8_LCM.safetensors',
+    sampler: 'lcm', cfg: 2, steps: 8 },
+  { id: 'dreamshaper-xl', label: 'DreamShaper XL · high quality (heavy)', desc: 'Best quality, needs a strong GPU', file: 'dreamshaper-xl.safetensors', sizeMb: 6500,
+    url: 'https://huggingface.co/Lykon/DreamShaper/resolve/main/DreamShaperXL_Turbo_dpmppSdeKarras_half_pruned_6.safetensors',
+    sampler: 'euler_a', cfg: 2, steps: 8 },
+];
+const byId = (id: string) => CURATED.find((m) => m.id === id) || null;
+const NAME_RE = /^[^<>|?*"']+\.(safetensors|gguf|ckpt)$/i; // custom model path sanity
+
+let setup = { installing: false, percent: 0, stage: '', modelId: '' };
 let generating = false;
 
 /**
- * Local text-to-image, turnkey. The engine (a stable-diffusion.cpp binary + a small
- * model) is downloaded on first use into NEURION_IMAGE_DIR — no Docker, no Python, no
- * external server, nothing for the user to install. Falls back to an Automatic1111-
- * compatible server if AI_IMAGE_BASE_URL is set (power users). See [[neurion-compute-control]].
+ * Local text-to-image. A stable-diffusion.cpp engine + a user-chosen model are
+ * downloaded on first use (no Docker/Python/external server). The user can pick from
+ * curated models OR point at their own .safetensors/.gguf. See [[neurion-compute-control]].
  */
 @Controller('ai/image')
 export class ImageController {
@@ -53,153 +56,207 @@ export class ImageController {
   private dir(): string | null {
     return this.config.get<string>('NEURION_IMAGE_DIR') || process.env.NEURION_IMAGE_DIR || null;
   }
-  private a1111(): string | null {
-    return this.config.get<string>('AI_IMAGE_BASE_URL') || process.env.AI_IMAGE_BASE_URL || null;
-  }
-  private paths(dir: string) {
-    return { bin: path.join(dir, 'bin', CLI), binDir: path.join(dir, 'bin'), model: path.join(dir, 'model.gguf') };
-  }
-  private ready(dir: string): boolean {
-    const p = this.paths(dir);
-    return existsSync(p.bin) && existsSync(p.model);
+  private binPath(dir: string) { return path.join(dir, 'bin', CLI); }
+  private binReady(dir: string) { return existsSync(this.binPath(dir)); }
+  private modelPath(dir: string, file: string) { return path.join(dir, 'models', file); }
+  private activePath(dir: string) { return path.join(dir, 'active.json'); }
+
+  /** Current active model (migrates the pre-picker single model.gguf to 'sd15' if present). */
+  private active(dir: string): Active | null {
+    const ap = this.activePath(dir);
+    if (existsSync(ap)) {
+      try {
+        const a = JSON.parse(readFileSync(ap, 'utf8')) as Active;
+        if (existsSync(a.path)) return a;
+      } catch { /* fall through */ }
+    }
+    const legacy = path.join(dir, 'model.gguf'); // pre-v1.5.1 setup wrote this
+    if (existsSync(legacy)) {
+      const m = byId('sd15')!;
+      const a: Active = { source: 'curated', id: 'sd15', path: legacy, label: m.label, sampler: m.sampler, cfg: m.cfg, steps: m.steps };
+      try { writeFileSync(ap, JSON.stringify(a)); } catch { /* best effort */ }
+      return a;
+    }
+    return null;
   }
 
   @Get('status')
-  async status() {
+  status() {
     const dir = this.dir();
-    // A1111 fallback (power users): report reachability like before.
-    if (this.a1111()) {
-      try {
-        const res = await fetch(`${this.a1111()!.replace(/\/$/, '')}/sdapi/v1/sd-models`, { signal: AbortSignal.timeout(3000) });
-        return { engine: res.ok ? ('ready' as const) : ('a1111_down' as const), backend: 'a1111' };
-      } catch {
-        return { engine: 'a1111_down' as const, backend: 'a1111' };
-      }
-    }
-    if (!dir) return { engine: 'unavailable' as const, backend: 'local' }; // online build, no local engine dir
-    if (setup.installing) return { engine: 'installing' as const, backend: 'local', percent: setup.percent, stage: setup.stage };
-    if (this.ready(dir)) return { engine: 'ready' as const, backend: 'local' };
+    if (!dir) return { engine: 'unavailable' as const };
+    if (setup.installing) return { engine: 'installing' as const, percent: setup.percent, stage: setup.stage };
     const supported = process.platform === 'win32' || process.platform === 'darwin';
-    return { engine: supported ? ('needs_setup' as const) : ('unsupported' as const), backend: 'local', sizeMb: 1800 };
+    if (!supported) return { engine: 'unsupported' as const };
+    const a = this.active(dir);
+    if (this.binReady(dir) && a) return { engine: 'ready' as const, model: { label: a.label, id: a.id ?? 'custom' } };
+    return { engine: 'needs_setup' as const };
   }
 
-  /** One-time engine install: download the sd.cpp binary + model into NEURION_IMAGE_DIR (SSE progress). */
-  @Post('setup')
-  async setupEngine(@Res() res: Response): Promise<void> {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.flushHeaders?.();
-    const send = (event: string, data: unknown) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-
+  /** Curated model list + which is installed + the active one. */
+  @Get('models')
+  models() {
     const dir = this.dir();
-    if (!dir) { send('error', { message: 'image engine not available in this build' }); return void res.end(); }
-    if (this.ready(dir)) { send('done', { already: true }); return void res.end(); }
-    if (setup.installing) { send('error', { message: 'setup already in progress' }); return void res.end(); }
-    const zipName = SDCPP_ZIP[process.platform];
-    if (!zipName) { send('error', { message: `image engine not supported on ${process.platform} yet` }); return void res.end(); }
+    const a = dir ? this.active(dir) : null;
+    return {
+      bin: dir ? this.binReady(dir) : false,
+      custom: process.platform === 'win32' || process.platform === 'darwin',
+      active: a ? { id: a.id ?? 'custom', label: a.label, source: a.source } : null,
+      models: CURATED.map((m) => ({
+        id: m.id, label: m.label, desc: m.desc, sizeMb: m.sizeMb, recommended: !!m.recommended,
+        installed: dir ? existsSync(this.modelPath(dir, m.file)) : false,
+      })),
+    };
+  }
 
-    setup = { installing: true, percent: 0, stage: 'engine', error: '' };
-    const p = this.paths(dir);
+  /** Pick + activate a curated model (downloads the engine binary + the model as needed). SSE. */
+  @Post('model/select')
+  async selectModel(@Body() dto: { id?: string }, @Res() res: Response): Promise<void> {
+    this.sse(res);
+    const send = (e: string, d: unknown) => res.write(`event: ${e}\ndata: ${JSON.stringify(d)}\n\n`);
+    const dir = this.dir();
+    const m = byId(String(dto.id ?? ''));
+    if (!dir) { send('error', { message: 'image engine not available' }); return void res.end(); }
+    if (!m) { send('error', { message: 'unknown model' }); return void res.end(); }
+    if (setup.installing) { send('error', { message: 'setup already in progress' }); return void res.end(); }
+
+    setup = { installing: true, percent: 0, stage: 'engine', modelId: m.id };
     try {
-      mkdirSync(p.binDir, { recursive: true });
-      // 1) sd.cpp binary (small, 0-8%)
-      const zipPath = path.join(dir, 'engine.zip');
-      await this.download(SDCPP_URL(zipName), zipPath, (pc) => {
-        setup.percent = Math.round(pc * 0.08); setup.stage = 'engine';
-        send('progress', { percent: setup.percent, stage: 'engine' });
-      });
-      new AdmZip(zipPath).extractAllTo(p.binDir, true);
-      rmSync(zipPath, { force: true });
-      // 2) model (8-100%)
-      setup.stage = 'model';
-      await this.download(MODEL_URL, p.model, (pc) => {
-        setup.percent = 8 + Math.round(pc * 0.92); setup.stage = 'model';
-        send('progress', { percent: setup.percent, stage: 'model' });
-      });
-      if (!this.ready(dir)) throw new Error('engine files missing after download');
-      setup = { installing: false, percent: 100, stage: 'done', error: '' };
+      await this.ensureBin(dir, (pc) => { setup.percent = Math.round(pc * 0.05); setup.stage = 'engine'; send('progress', { percent: setup.percent, stage: 'engine' }); });
+      const mp = this.modelPath(dir, m.file);
+      if (!existsSync(mp)) {
+        mkdirSync(path.dirname(mp), { recursive: true });
+        await this.download(m.url, mp, (pc) => { setup.percent = 5 + Math.round(pc * 0.95); setup.stage = 'model'; send('progress', { percent: setup.percent, stage: 'model' }); });
+      }
+      const a: Active = { source: 'curated', id: m.id, path: mp, label: m.label, sampler: m.sampler, cfg: m.cfg, steps: m.steps };
+      writeFileSync(this.activePath(dir), JSON.stringify(a));
+      setup = { installing: false, percent: 100, stage: 'done', modelId: '' };
       send('done', { ok: true });
     } catch (e) {
-      setup = { installing: false, percent: 0, stage: '', error: (e as Error).message };
-      try { rmSync(p.model, { force: true }); } catch { /* ignore */ }
+      setup = { installing: false, percent: 0, stage: '', modelId: '' };
       send('error', { message: (e as Error).message });
     }
     res.end();
   }
 
+  /** Use a model file the user already has on disk (chosen via the desktop file picker). */
+  @Post('model/custom')
+  async customModel(@Body() dto: { path?: string; label?: string }) {
+    const dir = this.dir();
+    if (!dir) return { ok: false as const, error: 'image engine not available' };
+    const p = (dto.path ?? '').trim();
+    if (!p || !existsSync(p) || !NAME_RE.test(path.basename(p))) return { ok: false as const, error: 'pick a .safetensors, .gguf or .ckpt file' };
+    if (!this.binReady(dir)) {
+      try { await this.ensureBin(dir, () => undefined); } catch (e) { return { ok: false as const, error: (e as Error).message }; }
+    }
+    const a: Active = { source: 'custom', path: p, label: dto.label || path.basename(p), sampler: 'euler_a', cfg: 7, steps: 20 };
+    writeFileSync(this.activePath(dir), JSON.stringify(a));
+    return { ok: true as const, model: { id: 'custom', label: a.label } };
+  }
+
+  private galleryDir(dir: string) { return path.join(dir, 'gallery'); }
+
+  /**
+   * Start a generation and return its id immediately. The work runs server-side and
+   * the result is saved to the gallery, so it KEEPS GOING (and is remembered) even if
+   * the user navigates away — unlike the old page-bound sync call.
+   */
+  @Post()
+  generate(@Body() dto: GenDto) {
+    const prompt = (dto.prompt ?? '').trim();
+    if (!prompt) return { ok: false as const, error: 'prompt required' };
+    const dir = this.dir();
+    if (!dir || !this.binReady(dir)) return { ok: false as const, error: 'image engine not ready — set up a model first' };
+    const a = this.active(dir);
+    if (!a) return { ok: false as const, error: 'no image model selected' };
+    if (generating) return { ok: false as const, error: 'another image is generating — one at a time' };
+
+    const id = randomUUID();
+    const width = this.dim(dto.width, 512);
+    const height = this.dim(dto.height, 512);
+    const steps = this.clampInt(dto.steps, 1, 40, a.steps);
+    // pick a concrete seed so it's known/reproducible (sd.cpp -1 = random but unreported)
+    const seed = Number.isFinite(Number(dto.seed)) && Number(dto.seed) >= 0 ? Math.round(Number(dto.seed)) : Math.floor(Math.random() * 2_147_483_647);
+    const gdir = this.galleryDir(dir);
+    mkdirSync(gdir, { recursive: true });
+    const meta = { id, prompt, negative: dto.negative ?? '', width, height, steps, seed, model: a.label, status: 'running' as string, ts: Date.now(), error: '' };
+    writeFileSync(path.join(gdir, `${id}.json`), JSON.stringify(meta));
+
+    const outPng = path.join(gdir, `${id}.png`);
+    const args = [
+      '-m', a.path, '-p', prompt,
+      ...(dto.negative && dto.negative.trim() ? ['-n', dto.negative.trim()] : []),
+      '--cfg-scale', String(a.cfg), '--steps', String(steps), '--sampling-method', a.sampler,
+      '-W', String(width), '-H', String(height), '--seed', String(seed), '-o', outPng,
+    ];
+    generating = true;
+    const finish = (status: string, error = '') => {
+      generating = false;
+      try { writeFileSync(path.join(gdir, `${id}.json`), JSON.stringify({ ...meta, status, error })); } catch { /* ignore */ }
+    };
+    const cp = spawn(this.binPath(dir), args, { cwd: path.join(dir, 'bin'), windowsHide: true });
+    let err = '';
+    cp.stderr.on('data', (d) => (err += d.toString()));
+    const to = setTimeout(() => { cp.kill(); finish('failed', 'timed out'); }, 600000);
+    cp.on('error', (e) => { clearTimeout(to); finish('failed', (e as Error).message); });
+    cp.on('close', (code) => {
+      clearTimeout(to);
+      if (code === 0 && existsSync(outPng)) finish('done');
+      else finish('failed', err.slice(-200) || `sd exited ${code}`);
+    });
+    return { ok: true as const, id };
+  }
+
+  /** Recent generations (newest first) — the persistent gallery / history. */
+  @Get('gallery')
+  gallery() {
+    const dir = this.dir();
+    if (!dir) return { items: [] as unknown[] };
+    const gdir = this.galleryDir(dir);
+    if (!existsSync(gdir)) return { items: [] as unknown[] };
+    const metas = readdirSync(gdir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => { try { return JSON.parse(readFileSync(path.join(gdir, f), 'utf8')) as Record<string, unknown>; } catch { return null; } })
+      .filter((m): m is Record<string, unknown> => !!m)
+      .sort((x, y) => (Number(y.ts) || 0) - (Number(x.ts) || 0))
+      .slice(0, 24);
+    const items = metas.map((m) => {
+      const png = path.join(gdir, `${String(m.id)}.png`);
+      const image = m.status === 'done' && existsSync(png) ? readFileSync(png).toString('base64') : undefined;
+      return { id: m.id, prompt: m.prompt, status: m.status, seed: m.seed, ts: m.ts, error: m.error, model: m.model, image };
+    });
+    return { items };
+  }
+
+  // --- helpers ---
+  private sse(res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.flushHeaders?.();
+  }
+  private async ensureBin(dir: string, onProgress: (pct: number) => void): Promise<void> {
+    if (this.binReady(dir)) return;
+    const zipName = SDCPP_ZIP[process.platform];
+    if (!zipName) throw new Error(`image engine not supported on ${process.platform}`);
+    const binDir = path.join(dir, 'bin');
+    mkdirSync(binDir, { recursive: true });
+    const zip = path.join(dir, 'engine.zip');
+    await this.download(SDCPP_URL(zipName), zip, onProgress);
+    new AdmZip(zip).extractAllTo(binDir, true);
+    rmSync(zip, { force: true });
+    if (!this.binReady(dir)) throw new Error('engine binary missing after extract');
+  }
   private async download(url: string, out: string, onProgress: (pct: number) => void): Promise<void> {
     const res = await fetch(url, { redirect: 'follow' });
     if (!res.ok || !res.body) throw new Error(`download failed HTTP ${res.status}`);
     const total = Number(res.headers.get('content-length') || 0);
     let got = 0;
     const rs = Readable.fromWeb(res.body as never);
-    rs.on('data', (c: Buffer) => {
-      got += c.length;
-      if (total > 0) onProgress((got / total) * 100);
-    });
+    rs.on('data', (c: Buffer) => { got += c.length; if (total > 0) onProgress((got / total) * 100); });
     await pipeline(rs, createWriteStream(out));
   }
-
-  /** Generate an image → base64 PNG. Uses the local sd.cpp engine, or the A1111 fallback. */
-  @Post()
-  async generate(@Body() dto: GenDto) {
-    const prompt = (dto.prompt ?? '').trim();
-    if (!prompt) return { ok: false as const, error: 'prompt required' };
-    const width = dim(dto.width, 512);
-    const height = dim(dto.height, 512);
-    const steps = clampInt(dto.steps, 1, 40, 20);
-    const seed = Number.isFinite(Number(dto.seed)) ? Math.round(Number(dto.seed)) : -1;
-
-    if (this.a1111()) return this.generateA1111(prompt, dto.negative ?? '', width, height, steps, seed);
-
-    const dir = this.dir();
-    if (!dir || !this.ready(dir)) return { ok: false as const, error: 'image engine not ready — run setup first' };
-    if (generating) return { ok: false as const, error: 'another image is generating — one at a time' };
-
-    const p = this.paths(dir);
-    const outPng = path.join(dir, `out-${randomUUID()}.png`);
-    const args = [
-      '-m', p.model, '-p', prompt,
-      ...(dto.negative && dto.negative.trim() ? ['-n', dto.negative.trim()] : []),
-      '--cfg-scale', '7', '--steps', String(steps),
-      '-W', String(width), '-H', String(height),
-      '--seed', String(seed), '-o', outPng,
-    ];
-    generating = true;
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const cp = spawn(p.bin, args, { cwd: p.binDir, windowsHide: true });
-        let err = '';
-        cp.stderr.on('data', (d) => (err += d.toString()));
-        const to = setTimeout(() => { cp.kill(); reject(new Error('generation timed out')); }, 600000);
-        cp.on('error', (e) => { clearTimeout(to); reject(e); });
-        cp.on('close', (code) => { clearTimeout(to); code === 0 ? resolve() : reject(new Error(err.slice(-300) || `sd exited ${code}`)); });
-      });
-      if (!existsSync(outPng)) return { ok: false as const, error: 'no image produced' };
-      const image = readFileSync(outPng).toString('base64');
-      return { ok: true as const, image, width, height, seed };
-    } catch (e) {
-      return { ok: false as const, error: (e as Error).message };
-    } finally {
-      generating = false;
-      try { rmSync(outPng, { force: true }); } catch { /* ignore */ }
-    }
+  private clampInt(v: unknown, lo: number, hi: number, def: number): number {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def;
   }
-
-  private async generateA1111(prompt: string, negative: string, width: number, height: number, steps: number, seed: number) {
-    try {
-      const res = await fetch(`${this.a1111()!.replace(/\/$/, '')}/sdapi/v1/txt2img`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, negative_prompt: negative, steps, width, height, seed, cfg_scale: 7, sampler_name: 'Euler a' }),
-        signal: AbortSignal.timeout(600000),
-      });
-      if (!res.ok) return { ok: false as const, error: `image engine HTTP ${res.status}` };
-      const json = (await res.json()) as { images?: string[] };
-      const image = json.images?.[0];
-      return image ? { ok: true as const, image, width, height, seed } : { ok: false as const, error: 'engine returned no image' };
-    } catch (e) {
-      return { ok: false as const, error: (e as Error).name === 'TimeoutError' ? 'generation timed out' : 'image engine unreachable' };
-    }
-  }
+  private dim(v: unknown, def: number): number { return Math.round(this.clampInt(v, 256, 1024, def) / 64) * 64; }
 }

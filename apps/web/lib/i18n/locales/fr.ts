@@ -371,5 +371,10 @@ const dict: Record<string, string> = {
   "chat.thinking": "Réflexion",
   "chat.laneLocal": "local",
   "chat.laneNetwork": "réseau",
+
+  "image.model": "Modèle",
+  "image.chooseModel": "Choisir un modèle",
+  "image.customFile": "Utiliser mon propre fichier…",
+  "image.recommended": "recommandé",
 };
 export default dict;

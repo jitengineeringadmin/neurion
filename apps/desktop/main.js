@@ -532,6 +532,18 @@ ipcMain.handle('pick-folder', async (_e, initial) => {
   return { path: res.canceled || !res.filePaths[0] ? null : res.filePaths[0].replace(/\\/g, '/') };
 });
 
+// Native file picker for a user's own image model (.safetensors / .gguf / .ckpt).
+ipcMain.handle('pick-model', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Neurion',
+    properties: ['openFile'],
+    filters: [{ name: 'Image model', extensions: ['safetensors', 'gguf', 'ckpt'] }],
+  });
+  if (res.canceled || !res.filePaths[0]) return { path: null };
+  const p = res.filePaths[0].replace(/\\/g, '/');
+  return { path: p, name: p.split('/').pop() };
+});
+
 // --- in-app node: register once on the production network, then run/stop it ---
 ipcMain.handle('node:status', () => ({
   running: !!nodeProc,
