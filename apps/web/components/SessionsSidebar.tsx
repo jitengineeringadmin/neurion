@@ -26,7 +26,7 @@ export function SessionsSidebar() {
   }, []);
 
   const open = (id: string) => router.push(`/app/chat?c=${id}`);
-  const newSession = () => router.push('/app/chat');
+  const newSession = () => router.push('/app/chat?new=1'); // explicit: start empty, don't restore the last one
 
   async function pinConv(id: string, pinned: boolean) {
     await api(`/chat/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ pinned }) }).catch(() => undefined);

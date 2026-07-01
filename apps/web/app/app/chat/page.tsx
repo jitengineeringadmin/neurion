@@ -6,6 +6,8 @@ import { theme, input, button } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
 import { Markdown } from '../../../components/Markdown';
 
+const ACTIVE_KEY = 'neurion_active_conv'; // last-open conversation, restored across tab switches
+
 interface Approval { id: string; tool: string; args: any; resolved: boolean | null }
 interface Msg {
   role: 'user' | 'assistant';
@@ -22,6 +24,7 @@ function ChatInner() {
   const params = useSearchParams();
   const router = useRouter();
   const cParam = params.get('c') || undefined;
+  const isNew = params.get('new');
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState('');
@@ -47,6 +50,24 @@ function ChatInner() {
       .catch(() => undefined);
   }, []);
 
+  // Restore the last-open conversation when arriving at /app/chat with no ?c (e.g. the
+  // top-nav Chat tab). Chat is persisted server-side, so we just re-point the URL —
+  // switching to Agent and back no longer looks like the conversation was lost.
+  // "?new" (New session button) explicitly opts out and starts empty.
+  useEffect(() => {
+    if (isNew) {
+      try { localStorage.removeItem(ACTIVE_KEY); } catch { /* ignore */ }
+      setConvId(undefined); setMessages([]); setCwd(undefined);
+      router.replace('/app/chat');
+      return;
+    }
+    if (!cParam) {
+      const last = typeof window !== 'undefined' ? localStorage.getItem(ACTIVE_KEY) : null;
+      if (last) router.replace(`/app/chat?c=${last}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, cParam]);
+
   // load the conversation selected in the URL
   useEffect(() => {
     setConvId(cParam);
@@ -55,6 +76,7 @@ function ChatInner() {
       setCwd(undefined);
       return;
     }
+    try { localStorage.setItem(ACTIVE_KEY, cParam); } catch { /* ignore */ }
     void (async () => {
       try {
         const [msgs, conv, projs] = await Promise.all([
@@ -65,6 +87,8 @@ function ChatInner() {
         setMessages(msgs.filter((m) => m.role === 'USER' || m.role === 'ASSISTANT').map((m) => ({ role: m.role === 'ASSISTANT' ? 'assistant' : 'user', content: m.content })));
         setCwd(projs.find((p) => p.id === conv.projectId)?.path);
       } catch {
+        // conversation gone (deleted elsewhere) — drop the stale pointer, show empty
+        try { localStorage.removeItem(ACTIVE_KEY); } catch { /* ignore */ }
         setMessages([]);
       }
     })();
@@ -121,6 +145,7 @@ function ChatInner() {
               a.cost = data.costCredits;
               if (data.conversationId && !convId) {
                 setConvId(data.conversationId);
+                try { localStorage.setItem(ACTIVE_KEY, data.conversationId); } catch { /* ignore */ }
                 router.replace(`/app/chat?c=${data.conversationId}`);
                 window.dispatchEvent(new Event('neurion:sessions-changed'));
               }

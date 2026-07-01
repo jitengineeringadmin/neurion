@@ -89,8 +89,18 @@ export class ChatController {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders?.();
 
+    // If the user navigates away mid-answer, keep generating and persisting to the DB
+    // (addAssistantMessage at the end) — just stop writing to the dead socket. Coming
+    // back to the conversation then shows the finished reply instead of a lost one.
+    let clientGone = false;
+    res.on('close', () => { clientGone = true; });
     const send = (event: string, data: unknown): void => {
-      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      if (clientGone) return;
+      try {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      } catch {
+        clientGone = true;
+      }
     };
     // Backpressure: pause token production while the socket buffer is full so a
     // slow client can't make us buffer the whole stream in memory.
