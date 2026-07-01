@@ -556,12 +556,15 @@ ipcMain.handle('node:start', (_e, creds) => {
   if (!fs.existsSync(NODE_BIN)) return { ok: false, error: 'node binary not bundled in this build' };
   const cfg = nodeConfigPath();
   if (!fs.existsSync(cfg)) {
+    const token = (creds && creds.token) || '';
     const email = (creds && creds.email) || '';
     const password = (creds && creds.password) || '';
-    if (!email || !password) return { ok: false, error: 'credentials required' };
+    // Prefer the already-signed-in token (no need to retype the password); fall back to creds.
+    const authArgs = token ? ['--token', token] : email && password ? ['--email', email, '--password', password] : null;
+    if (!authArgs) return { ok: false, error: 'credentials required' };
     const reg = spawnSync(
       NODE_BIN,
-      ['register', '--api', NODE_API, '--email', email, '--password', password, '--name', os.hostname() || 'neurion-node', '--realtime', '--realtime-base-url', 'http://127.0.0.1:11434/v1'],
+      ['register', '--api', NODE_API, ...authArgs, '--name', os.hostname() || 'neurion-node', '--realtime', '--realtime-base-url', 'http://127.0.0.1:11434/v1'],
       { cwd: app.getPath('userData'), windowsHide: true, encoding: 'utf8' },
     );
     if (reg.status !== 0) return { ok: false, error: ((reg.stderr || reg.stdout || 'register failed') + '').trim().slice(-400) };

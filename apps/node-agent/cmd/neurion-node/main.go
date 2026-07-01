@@ -90,6 +90,7 @@ func cmdRegister(args []string) {
 	name := fs.String("name", "neurion-node", "node name")
 	email := fs.String("email", os.Getenv("NODE_EMAIL"), "owner email")
 	password := fs.String("password", os.Getenv("NODE_PASSWORD"), "owner password")
+	token := fs.String("token", os.Getenv("NODE_TOKEN"), "access token (use instead of email/password when already signed in)")
 	out := fs.String("config", "neurion-node.yaml", "config output path")
 	realtime := fs.Bool("realtime", false, "serve realtime chat (FAST lane) and earn NRN")
 	rtProvider := fs.String("realtime-provider", "ds4", "realtime backend label (ds4 | openai_compatible)")
@@ -98,14 +99,17 @@ func cmdRegister(args []string) {
 	rtKey := fs.String("realtime-api-key", "local-dev", "bearer token for the realtime backend")
 	_ = fs.Parse(args)
 
-	if *email == "" || *password == "" {
-		log.Fatal("provide --email and --password (or NODE_EMAIL/NODE_PASSWORD)")
+	if *token == "" && (*email == "" || *password == "") {
+		log.Fatal("provide --token, or --email and --password (or NODE_EMAIL/NODE_PASSWORD)")
 	}
 
 	var login struct {
 		AccessToken string `json:"accessToken"`
 	}
-	if err := httpJSON("POST", *api+"/api/auth/login", map[string]string{"email": *email, "password": *password}, "", &login); err != nil {
+	if *token != "" {
+		// already signed in — use the token instead of logging in again
+		login.AccessToken = *token
+	} else if err := httpJSON("POST", *api+"/api/auth/login", map[string]string{"email": *email, "password": *password}, "", &login); err != nil {
 		log.Fatal(err)
 	}
 

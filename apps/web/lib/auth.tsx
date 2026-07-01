@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { api, setToken } from './api';
+import { api, setToken, isDesktop, prodLogin, setProdToken } from './api';
 
 export interface User {
   id: string;
@@ -38,6 +38,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setToken(res.accessToken);
     setUser(res.user);
+    // Desktop: the same account also authenticates the production network, so establish
+    // that session now (best-effort) — the network lanes (relay, image-on-nodes) then
+    // work without a second "connect to the network" prompt.
+    if (isDesktop()) void prodLogin(email, password).catch(() => undefined);
   }
 
   async function register(email: string, password: string, displayName?: string): Promise<void> {
@@ -52,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function logout(): Promise<void> {
     await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
     setToken(null);
+    setProdToken(null);
     setUser(null);
   }
 

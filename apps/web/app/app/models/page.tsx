@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { api, streamSSE } from '../../../lib/api';
+import { api, streamSSE, getProdToken } from '../../../lib/api';
 import { theme, button, input } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
+import { useAuth } from '../../../lib/auth';
 
 interface Installed { name: string; sizeBytes: number | null }
 interface Reco { name: string; label: string; size: string; note: string; group: string }
@@ -10,7 +11,7 @@ interface Quant { tag: string; hint: string }
 interface Pulling { name: string; percent: number | null; status: string }
 interface NodeApi {
   status: () => Promise<{ running: boolean; registered: boolean; available: boolean }>;
-  start: (creds?: { email: string; password: string }) => Promise<{ ok: boolean; error?: string; running?: boolean }>;
+  start: (creds?: { email?: string; password?: string; token?: string }) => Promise<{ ok: boolean; error?: string; running?: boolean }>;
   stop: () => Promise<{ ok: boolean }>;
 }
 
@@ -18,6 +19,7 @@ const fmt = (b: number | null) => (b ? `${(b / 1e9).toFixed(1)} GB` : '');
 
 export default function ModelsPage() {
   const t = useT();
+  const { user } = useAuth();
   const [engine, setEngine] = useState<'up' | 'down' | '…'>('…');
   const [installed, setInstalled] = useState<Installed[]>([]);
   const [reco, setReco] = useState<Reco[]>([]);
@@ -46,7 +48,8 @@ export default function ModelsPage() {
       .then((r) => { setReco(r.recommended); if (r.quants?.length) setQuants(r.quants); })
       .catch(() => undefined);
     if (typeof window !== 'undefined') setDef(localStorage.getItem('neurion_model') || '');
-  }, []);
+    if (user?.email) setNEmail(user.email); // you're logged in — don't make you retype it
+  }, [user?.email]);
 
   async function download(base: string, q: string) {
     if (pulling) return;
@@ -86,7 +89,10 @@ export default function ModelsPage() {
     if (!nodeApi) return;
     setNErr(''); setNBusy(true);
     try {
-      const r = await nodeApi.start(nodeSt?.registered ? undefined : { email: nEmail, password: nPass });
+      // Already registered → just start. Else prefer the signed-in token (no password
+      // re-entry); fall back to the form only if there's no session.
+      const creds = nodeSt?.registered ? undefined : getProdToken() ? { token: getProdToken() as string } : { email: nEmail, password: nPass };
+      const r = await nodeApi.start(creds);
       if (!r.ok) setNErr(r.error || t('models.errDownloadFailed'));
       setNodeSt(await nodeApi.status());
     } catch (e) {
@@ -216,12 +222,14 @@ export default function ModelsPage() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {!nodeSt?.registered && (
+                {!nodeSt?.registered && (getProdToken() ? (
+                  <span style={{ fontSize: 12, color: theme.muted }}>✓ {user?.email}</span>
+                ) : (
                   <>
                     <input value={nEmail} onChange={(e) => setNEmail(e.target.value)} placeholder={t('models.nodeEmail')} style={input} />
                     <input value={nPass} onChange={(e) => setNPass(e.target.value)} type="password" placeholder={t('models.nodePass')} style={input} />
                   </>
-                )}
+                ))}
                 <button onClick={() => void nodeStart()} disabled={nBusy || engine !== 'up'} style={{ ...button, padding: '8px 16px', alignSelf: 'flex-start', opacity: nBusy || engine !== 'up' ? 0.5 : 1 }}>{nBusy ? '…' : t('models.nodeStart')}</button>
                 {engine !== 'up' && <span style={{ fontSize: 12, color: theme.muted }}>{t('models.nodeNeedsEngine')}</span>}
               </div>
