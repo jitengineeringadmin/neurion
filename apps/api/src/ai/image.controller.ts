@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { spawn } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
@@ -60,6 +60,10 @@ export class ImageController {
   private binReady(dir: string) { return existsSync(this.binPath(dir)); }
   private modelPath(dir: string, file: string) { return path.join(dir, 'models', file); }
   private activePath(dir: string) { return path.join(dir, 'active.json'); }
+  // A real, COMPLETE model file — not a 0-byte or partially-downloaded remnant. For
+  // curated models, pass the expected size so a truncated file (interrupted download)
+  // is not counted as installed and gets re-downloaded.
+  private modelOk(p: string, minMb = 1): boolean { try { return existsSync(p) && statSync(p).size >= minMb * 1_000_000; } catch { return false; } }
 
   /** Current active model (migrates the pre-picker single model.gguf to 'sd15' if present). */
   private active(dir: string): Active | null {
@@ -67,7 +71,7 @@ export class ImageController {
     if (existsSync(ap)) {
       try {
         const a = JSON.parse(readFileSync(ap, 'utf8')) as Active;
-        if (existsSync(a.path)) return a;
+        if (this.modelOk(a.path)) return a;
       } catch { /* fall through */ }
     }
     const legacy = path.join(dir, 'model.gguf'); // pre-v1.5.1 setup wrote this
@@ -103,7 +107,7 @@ export class ImageController {
       active: a ? { id: a.id ?? 'custom', label: a.label, source: a.source } : null,
       models: CURATED.map((m) => ({
         id: m.id, label: m.label, desc: m.desc, sizeMb: m.sizeMb, recommended: !!m.recommended,
-        installed: dir ? existsSync(this.modelPath(dir, m.file)) : false,
+        installed: dir ? this.modelOk(this.modelPath(dir, m.file), m.sizeMb * 0.9) : false,
       })),
     };
   }
@@ -123,7 +127,7 @@ export class ImageController {
     try {
       await this.ensureBin(dir, (pc) => { setup.percent = Math.round(pc * 0.05); setup.stage = 'engine'; send('progress', { percent: setup.percent, stage: 'engine' }); });
       const mp = this.modelPath(dir, m.file);
-      if (!existsSync(mp)) {
+      if (!this.modelOk(mp, m.sizeMb * 0.9)) {
         mkdirSync(path.dirname(mp), { recursive: true });
         await this.download(m.url, mp, (pc) => { setup.percent = 5 + Math.round(pc * 0.95); setup.stage = 'model'; send('progress', { percent: setup.percent, stage: 'model' }); });
       }
@@ -245,14 +249,25 @@ export class ImageController {
     rmSync(zip, { force: true });
     if (!this.binReady(dir)) throw new Error('engine binary missing after extract');
   }
+  // Atomic: stream to a .part file and only rename into place when complete, so an
+  // interrupted download never leaves a truncated file that looks "installed".
   private async download(url: string, out: string, onProgress: (pct: number) => void): Promise<void> {
     const res = await fetch(url, { redirect: 'follow' });
     if (!res.ok || !res.body) throw new Error(`download failed HTTP ${res.status}`);
     const total = Number(res.headers.get('content-length') || 0);
     let got = 0;
+    const tmp = `${out}.part`;
     const rs = Readable.fromWeb(res.body as never);
     rs.on('data', (c: Buffer) => { got += c.length; if (total > 0) onProgress((got / total) * 100); });
-    await pipeline(rs, createWriteStream(out));
+    try {
+      await pipeline(rs, createWriteStream(tmp));
+      if (total > 0 && got < total * 0.99) throw new Error('download incomplete');
+      rmSync(out, { force: true });
+      renameSync(tmp, out);
+    } catch (e) {
+      try { rmSync(tmp, { force: true }); } catch { /* ignore */ }
+      throw e;
+    }
   }
   private clampInt(v: unknown, lo: number, hi: number, def: number): number {
     const n = Math.round(Number(v));
