@@ -379,9 +379,19 @@ function createMainWindow() {
     title: 'Neurion',
     icon: path.join(__dirname, 'build', 'icon.ico'),
     show: false,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, backgroundThrottling: false },
   });
   mainWindow.loadURL(WEB_URL);
+
+  // Windows/Chromium can leave the newly-exposed region unpainted after a maximize
+  // (content looks frozen at the old size until you interact). Force a repaint on
+  // every window-size change so the layout fills the window immediately.
+  const repaint = () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.invalidate();
+  };
+  for (const ev of ['resize', 'maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen']) {
+    mainWindow.on(ev, repaint);
+  }
   // The web server may take a moment after this point; retry instead of showing
   // a black window, and fall back to a readable error page (never a dead URL).
   let loadTries = 0;
