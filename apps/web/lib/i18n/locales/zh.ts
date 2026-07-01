@@ -352,5 +352,14 @@ const dict: Record<string, string> = {
   "network.password": "密码",
   "network.connect": "连接",
   "network.connectFailed": "登录失败 — 请检查您的网络账户",
+
+  "image.setupPrompt": "图像生成需要一次性设置。",
+  "image.setupSub": "仅下载约 {size} MB，保存在你的电脑上——无需安装任何东西。",
+  "image.setupBtn": "设置图像生成",
+  "image.installing": "正在准备引擎…",
+  "image.installEngine": "正在下载程序",
+  "image.installModel": "正在下载模型",
+  "image.unsupported": "此系统暂时还不支持本地图像生成——请使用网络模式。",
+  "image.genNoteGpu": "在 GPU 上只需几秒，在 CPU 上需要几分钟。",
 };
 export default dict;

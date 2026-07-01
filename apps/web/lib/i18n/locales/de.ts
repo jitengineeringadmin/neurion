@@ -352,5 +352,14 @@ const dict: Record<string, string> = {
   "network.password": "Passwort",
   "network.connect": "Verbinden",
   "network.connectFailed": "Anmeldung fehlgeschlagen – prüfe dein Netzwerkkonto",
+
+  "image.setupPrompt": "Für die Bildgenerierung ist eine einmalige Einrichtung nötig.",
+  "image.setupSub": "Lädt einmalig ca. {size} MB herunter und bleibt auf deinem PC — nichts zu installieren.",
+  "image.setupBtn": "Bildgenerierung einrichten",
+  "image.installing": "Programm wird vorbereitet…",
+  "image.installEngine": "Programm wird heruntergeladen",
+  "image.installModel": "Modell wird heruntergeladen",
+  "image.unsupported": "Lokale Bildgenerierung ist auf diesem System noch nicht verfügbar — nutze den Netzwerkmodus.",
+  "image.genNoteGpu": "Ein paar Sekunden auf einer GPU, ein paar Minuten auf der CPU.",
 };
 export default dict;

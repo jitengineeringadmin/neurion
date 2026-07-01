@@ -352,5 +352,14 @@ const dict: Record<string, string> = {
   "network.password": "пароль",
   "network.connect": "Подключиться",
   "network.connectFailed": "не удалось войти — проверьте свою учётную запись сети",
+
+  "image.setupPrompt": "Для генерации изображений нужна разовая настройка.",
+  "image.setupSub": "Один раз загрузится ~{size} МБ и останется на вашем ПК — ничего устанавливать не нужно.",
+  "image.setupBtn": "Настроить генерацию изображений",
+  "image.installing": "Готовим движок…",
+  "image.installEngine": "загружаем программу",
+  "image.installModel": "загружаем модель",
+  "image.unsupported": "Локальная генерация изображений пока недоступна на этой системе — используйте сетевой режим.",
+  "image.genNoteGpu": "Несколько секунд на GPU, несколько минут на CPU.",
 };
 export default dict;

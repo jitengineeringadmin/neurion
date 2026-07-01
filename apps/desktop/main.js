@@ -314,6 +314,16 @@ async function startStack() {
   ENV.JWT_ACCESS_TTL = ENV.JWT_ACCESS_TTL || '30d';
   ensureSecrets();
 
+  // Local image engine (stable-diffusion.cpp) lives under userData; the API downloads
+  // the binary + model here on first use (persists across updates). One-click, no deps.
+  try {
+    const imgDir = path.join(app.getPath('userData'), 'image-engine');
+    fs.mkdirSync(imgDir, { recursive: true });
+    ENV.NEURION_IMAGE_DIR = imgDir;
+  } catch {
+    /* best effort — image gen just stays unavailable */
+  }
+
   // free ports held by a not-yet-dead previous instance (in-place update race)
   await reclaimStack();
 
