@@ -29,8 +29,8 @@ const dim = (v: unknown, def: number): number => Math.round(clampInt(v, 256, 102
 // GPU when present and falls back to CPU otherwise — one build works everywhere.
 const SDCPP_TAG = 'master-741-484baa4';
 const SDCPP_ZIP: Record<string, string> = {
-  win32: `sd-${SDCPP_TAG.replace('master-741-', '')}-bin-win-vulkan-x64.zip`,
-  darwin: `sd-${SDCPP_TAG.replace('master-741-', '')}-bin-Darwin-macOS-15.7.7-arm64.zip`,
+  win32: 'sd-master-484baa4-bin-win-vulkan-x64.zip',
+  darwin: 'sd-master-484baa4-bin-Darwin-macOS-15.7.7-arm64.zip',
 };
 const SDCPP_URL = (zip: string) => `https://github.com/leejet/stable-diffusion.cpp/releases/download/${SDCPP_TAG}/${zip}`;
 const MODEL_URL = 'https://huggingface.co/second-state/stable-diffusion-v1-5-GGUF/resolve/main/stable-diffusion-v1-5-pruned-emaonly-Q8_0.gguf';

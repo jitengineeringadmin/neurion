@@ -361,5 +361,11 @@ const dict: Record<string, string> = {
   "image.installModel": "Modell wird heruntergeladen",
   "image.unsupported": "Lokale Bildgenerierung ist auf diesem System noch nicht verfügbar — nutze den Netzwerkmodus.",
   "image.genNoteGpu": "Ein paar Sekunden auf einer GPU, ein paar Minuten auf der CPU.",
+
+  "image.sizeSmall": "Klein · schnell",
+  "image.sizeMedium": "Mittel",
+  "image.sizeLarge": "Groß · langsamer",
+  "image.advanced": "Erweitert",
+  "image.stepsHint": "mehr = langsamer, feiner",
 };
 export default dict;

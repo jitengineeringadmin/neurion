@@ -19,6 +19,7 @@ export default function ImagePage() {
   const [size, setSize] = useState(512);
   const [steps, setSteps] = useState(20);
   const [busy, setBusy] = useState(false);
+  const [advanced, setAdvanced] = useState(false);
   const [setupPct, setSetupPct] = useState(0);
   const [status, setStatus] = useState('');
   const [err, setErr] = useState('');
@@ -146,24 +147,34 @@ export default function ImagePage() {
       )}
 
       <div style={{ ...card, marginBottom: 16 }}>
-        <textarea style={{ ...input, minHeight: 70, resize: 'vertical' }} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t('image.promptPlaceholder')} />
-        <textarea style={{ ...input, minHeight: 40, resize: 'vertical', marginTop: 8 }} value={negative} onChange={(e) => setNegative(e.target.value)} placeholder={t('image.negativePlaceholder')} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 10 }}>
+        <textarea style={{ ...input, minHeight: 84, resize: 'vertical', fontSize: 15 }} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t('image.promptPlaceholder')} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 12 }}>
+          <button onClick={() => void generate()} disabled={formBlocked} style={{ ...button, padding: '9px 22px', fontSize: 15, opacity: formBlocked ? 0.5 : 1 }}>
+            {busy ? t('image.generating') : `✨ ${t('image.generate')}`}
+          </button>
           <label style={{ fontSize: 12, color: theme.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
             {t('image.size')}
             <select value={size} onChange={(e) => setSize(Number(e.target.value))} style={{ ...input, width: 'auto', padding: '5px 8px', cursor: 'pointer' }}>
-              {[256, 512, 768, 1024].map((s) => <option key={s} value={s}>{s}×{s}</option>)}
+              <option value={512}>{t('image.sizeSmall')}</option>
+              <option value={768}>{t('image.sizeMedium')}</option>
+              <option value={1024}>{t('image.sizeLarge')}</option>
             </select>
           </label>
-          <label style={{ fontSize: 12, color: theme.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
-            {t('image.steps')}
-            <input type="number" min={1} max={40} value={steps} onChange={(e) => setSteps(Number(e.target.value))} style={{ ...input, width: 64, padding: '5px 8px' }} />
-          </label>
-          <button onClick={() => void generate()} disabled={formBlocked} style={{ ...button, opacity: formBlocked ? 0.5 : 1 }}>
-            {busy ? t('image.generating') : t('image.generate')}
+          <button onClick={() => setAdvanced((v) => !v)} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 12, textDecoration: 'underline', marginLeft: 'auto' }}>
+            {advanced ? '▾' : '▸'} {t('image.advanced')}
           </button>
         </div>
-        {busy && <div style={{ fontSize: 12, color: theme.muted, marginTop: 8 }}>⏳ {status || t('image.genNoteGpu')}</div>}
+        {advanced && (
+          <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <textarea style={{ ...input, minHeight: 40, resize: 'vertical' }} value={negative} onChange={(e) => setNegative(e.target.value)} placeholder={t('image.negativePlaceholder')} />
+            <label style={{ fontSize: 12, color: theme.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {t('image.steps')}
+              <input type="number" min={1} max={40} value={steps} onChange={(e) => setSteps(Number(e.target.value))} style={{ ...input, width: 64, padding: '5px 8px' }} />
+              <span style={{ fontSize: 11 }}>{t('image.stepsHint')}</span>
+            </label>
+          </div>
+        )}
+        {busy && <div style={{ fontSize: 12, color: theme.muted, marginTop: 10 }}>⏳ {status || t('image.genNoteGpu')}</div>}
       </div>
 
       {err && <div style={{ color: '#e0533d', fontSize: 13, marginBottom: 12 }}>⚠ {err}</div>}

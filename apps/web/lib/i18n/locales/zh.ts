@@ -361,5 +361,11 @@ const dict: Record<string, string> = {
   "image.installModel": "正在下载模型",
   "image.unsupported": "此系统暂时还不支持本地图像生成——请使用网络模式。",
   "image.genNoteGpu": "在 GPU 上只需几秒，在 CPU 上需要几分钟。",
+
+  "image.sizeSmall": "小 · 快",
+  "image.sizeMedium": "中",
+  "image.sizeLarge": "大 · 慢",
+  "image.advanced": "高级",
+  "image.stepsHint": "越大越慢，越精细",
 };
 export default dict;
