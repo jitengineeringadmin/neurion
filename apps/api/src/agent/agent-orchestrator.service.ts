@@ -228,14 +228,32 @@ export class AgentOrchestratorService {
               try {
                 return JSON.parse(safe) as AgentAction;
               } catch {
-                break;
+                // Small local models emit almost-JSON: curly quotes, a stray single
+                // quote closing a double-quoted string ("…estetiche.',), trailing
+                // commas. Repair those before giving up.
+                const repaired = safe
+                  .replace(/[‘’]/g, "'")
+                  .replace(/[“”]/g, '"')
+                  .replace(/'\s*,/g, '",')
+                  .replace(/'\s*([}\]])/g, '"$1')
+                  .replace(/,\s*([}\]])/g, '$1');
+                try {
+                  return JSON.parse(repaired) as AgentAction;
+                } catch {
+                  break;
+                }
               }
             }
           }
         }
       }
     }
-    return { final: text.trim() }; // model didn't follow format -> treat as the answer
+    const t = text.trim();
+    // Never dump a broken tool-call JSON on the user as the "answer".
+    if (/^\{\s*"?thought"?/.test(t) && /"tool"/.test(t)) {
+      return { final: 'Il modello ha prodotto un passaggio non valido e la corsa si è fermata. Riprova (di solito al secondo tentativo va), o scegli un modello più adatto al codice come qwen2.5-coder.' };
+    }
+    return { final: t }; // model didn't follow format -> treat as the answer
   }
 
   /** Run the agent loop for a goal. Emits agent.* events. Returns the final answer. */

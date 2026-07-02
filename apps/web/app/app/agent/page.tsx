@@ -182,7 +182,7 @@ export default function AgentPage() {
   }
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <h2 style={{ fontSize: 20, marginTop: 0 }}>{t('agent.heading')} <span style={{ color: theme.muted, fontSize: 13 }}>{t('agent.headingSubtitle')}</span></h2>
       <div style={{ ...card, marginBottom: 16 }}>
         {/* Working folder — the agent creates/edits files inside it (Claude-Code style). */}
@@ -200,42 +200,10 @@ export default function AgentPage() {
             </>
           )}
         </div>
-        <textarea
-          style={{ ...input, minHeight: 64, resize: 'vertical' }}
-          value={goal}
-          onChange={(e) => setGoal(e.target.value)}
-          placeholder={t('agent.goalPlaceholder')}
-        />
-        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button style={{ ...button, opacity: running || !folder ? 0.6 : 1, cursor: running || !folder ? 'not-allowed' : 'pointer' }} onClick={() => void run()} disabled={running || !folder} title={!folder ? t('agent.chooseFolderFirst') : ''}>
-            {running ? t('agent.runningLabel') : t('agent.runAgentButton')}
-          </button>
-          <label style={{ fontSize: 12, color: theme.muted }}>{t('agent.compute')}</label>
-          <select value={mode} onChange={(e) => pickMode(e.target.value as Mode)} style={{ ...input, width: 'auto', padding: '6px 8px', cursor: 'pointer' }}>
-            <option value="ask">{t('agent.modeAsk')}</option>
-            <option value="auto">{t('agent.modeAuto')}</option>
-            <option value="local">{t('agent.modeLocal')}</option>
-            <option value="network">{t('agent.modeNetwork')}</option>
-          </select>
-          {models.length > 0 && (
-            <select value={model} onChange={(e) => pickLocalModel(e.target.value)} title={t('agent.model')} style={{ ...input, width: 'auto', maxWidth: 190, padding: '6px 8px', cursor: 'pointer' }}>
-              {models.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          )}
-          {mode !== 'local' && (
-            <input value={netModel} onChange={(e) => pickNet(e.target.value)} placeholder={t('agent.netModel')} title={t('agent.netModel')} style={{ ...input, width: 170, padding: '6px 8px' }} />
-          )}
-          {compute && (
-            <span style={{ fontSize: 12, color: compute.lane === 'network' ? theme.accent : theme.muted }}>
-              {compute.lane === 'network' ? '⚡' : '💻'} {compute.model}
-            </span>
-          )}
-        </div>
-        {mode !== 'local' && isDesktop() && (
-          <div style={{ marginTop: 10 }}><NetworkConnect /></div>
-        )}
       </div>
 
+      {/* transcript scrolls in the middle; the input is pinned below, chat-style */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 4 }}>
       {plan && plan.length > 0 && (
         <div style={{ ...card, marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: theme.muted, marginBottom: 8 }}>{t('agent.planLabel')}</div>
@@ -343,6 +311,46 @@ export default function AgentPage() {
           </div>
         ))}
         {running && <div style={{ color: theme.accent, fontSize: 13 }}>{t('agent.thinkingStatus')}</div>}
+      </div>
+      </div>
+
+      {/* input pinned at the bottom, chat-style */}
+      <div style={{ ...card, marginTop: 12, flexShrink: 0 }}>
+        <textarea
+          style={{ ...input, minHeight: 56, resize: 'vertical' }}
+          value={goal}
+          onChange={(e) => setGoal(e.target.value)}
+          placeholder={t('agent.goalPlaceholder')}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void run(); } }}
+        />
+        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button style={{ ...button, opacity: running || !folder ? 0.6 : 1, cursor: running || !folder ? 'not-allowed' : 'pointer' }} onClick={() => void run()} disabled={running || !folder} title={!folder ? t('agent.chooseFolderFirst') : ''}>
+            {running ? t('agent.runningLabel') : t('agent.runAgentButton')}
+          </button>
+          <label style={{ fontSize: 12, color: theme.muted }}>{t('agent.compute')}</label>
+          <select value={mode} onChange={(e) => pickMode(e.target.value as Mode)} style={{ ...input, width: 'auto', padding: '6px 8px', cursor: 'pointer' }}>
+            <option value="ask">{t('agent.modeAsk')}</option>
+            <option value="auto">{t('agent.modeAuto')}</option>
+            <option value="local">{t('agent.modeLocal')}</option>
+            <option value="network">{t('agent.modeNetwork')}</option>
+          </select>
+          {models.length > 0 && (
+            <select value={model} onChange={(e) => pickLocalModel(e.target.value)} title={t('agent.model')} style={{ ...input, width: 'auto', maxWidth: 190, padding: '6px 8px', cursor: 'pointer' }}>
+              {models.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          )}
+          {mode !== 'local' && (
+            <input value={netModel} onChange={(e) => pickNet(e.target.value)} placeholder={t('agent.netModel')} title={t('agent.netModel')} style={{ ...input, width: 170, padding: '6px 8px' }} />
+          )}
+          {compute && (
+            <span style={{ fontSize: 12, color: compute.lane === 'network' ? theme.accent : theme.muted }}>
+              {compute.lane === 'network' ? '⚡' : '💻'} {compute.model}
+            </span>
+          )}
+        </div>
+        {mode !== 'local' && isDesktop() && (
+          <div style={{ marginTop: 10 }}><NetworkConnect /></div>
+        )}
       </div>
     </div>
   );
