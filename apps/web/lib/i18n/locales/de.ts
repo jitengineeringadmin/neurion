@@ -481,5 +481,10 @@ const dict: Record<string, string> = {
   "agent.autoOff": "Jede Aktion fragen",
   "agent.autoHint": "Autonom = der Agent schreibt Dateien und führt Befehle ohne Nachfrage aus. Aus = du bestätigst jede Aktion.",
   "agent.clearHist": "Verlauf löschen",
+
+  "agent.preview": "Vorschau",
+  "agent.previewHint": "Live-Vorschau der HTML-Seite im Ordner anzeigen",
+  "agent.previewRefresh": "Aktualisieren",
+  "agent.previewEmpty": "Noch keine HTML-Seite im Ordner — die Vorschau erscheint, sobald der Agent eine schreibt.",
 };
 export default dict;

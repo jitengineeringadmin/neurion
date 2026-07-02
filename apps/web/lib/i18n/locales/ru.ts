@@ -481,5 +481,10 @@ const dict: Record<string, string> = {
   "agent.autoOff": "Спрашивать каждое действие",
   "agent.autoHint": "Автономно = агент пишет файлы и выполняет команды без запроса. Выкл = вы подтверждаете каждое действие.",
   "agent.clearHist": "Очистить историю",
+
+  "agent.preview": "Превью",
+  "agent.previewHint": "Показать живой предпросмотр HTML-страницы в папке",
+  "agent.previewRefresh": "Обновить",
+  "agent.previewEmpty": "В папке пока нет HTML-страницы — превью появится, когда агент её создаст.",
 };
 export default dict;

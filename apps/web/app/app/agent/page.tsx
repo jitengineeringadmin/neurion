@@ -95,6 +95,14 @@ export default function AgentPage() {
   const [model, setModel] = useState(''); // local-lane model (like the chat picker)
   const [touched, setTouched] = useState<{ path: string; icon: string }[]>([]); // files the run created/edited
   const [picking, setPicking] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [preview, setPreview] = useState<{ files: string[]; file: string | null; content: string | null }>({ files: [], file: null, content: null });
+
+  const loadPreview = (file?: string) => {
+    if (!folder) return;
+    void api<{ files: string[]; file: string | null; content: string | null }>('/projects/preview', { method: 'POST', body: JSON.stringify({ dir: folder, file }) })
+      .then(setPreview).catch(() => undefined);
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -121,6 +129,9 @@ export default function AgentPage() {
   // persist the transcript under the folder it belongs to (ref, not `folder`, to avoid
   // saving stale steps under a just-switched folder)
   useEffect(() => { saveHist(stepsFolderRef.current, steps); }, [steps]);
+  // refresh the preview when it's opened or the folder changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (showPreview) loadPreview(); }, [showPreview, folder]);
   const pickLocalModel = (v: string) => { setModel(v); try { localStorage.setItem('neurion_agent_model', v); } catch { /* ignore */ } };
   const toggleAuto = () => setAutonomous((a) => { const n = !a; try { localStorage.setItem('neurion_agent_auto', n ? '1' : '0'); } catch { /* ignore */ } return n; });
   // auto-scroll the transcript as the agent works (chat-style)
@@ -211,6 +222,7 @@ export default function AgentPage() {
       setSteps((s) => [...s, { kind: 'error', depth: 0, data: { message: (e as Error).message } }]);
     } finally {
       setRunning(false);
+      if (showPreview) setTimeout(() => loadPreview(preview.file ?? undefined), 300); // refresh preview after the run
     }
   }
 
@@ -229,6 +241,7 @@ export default function AgentPage() {
           {folder ? (
             <>
               <span title={folder} style={{ fontSize: 13, color: theme.text, fontFamily: 'var(--font-mono), monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>…/{shortFolder}</span>
+              <button onClick={() => { setShowPreview((v) => !v); }} title={t('agent.previewHint')} style={{ ...ghostButton, borderColor: showPreview ? theme.accent : undefined, color: showPreview ? theme.accent : undefined }}>👁 {t('agent.preview')}</button>
               <button onClick={() => void pickFolder()} disabled={picking} style={ghostButton}>{t('agent.changeFolder')}</button>
             </>
           ) : (
@@ -240,8 +253,9 @@ export default function AgentPage() {
         </div>
       </div>
 
-      {/* transcript scrolls in the middle; the input is pinned below, chat-style */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 4 }}>
+      {/* middle: transcript (+ optional collapsible live preview) */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, gap: 12 }}>
+      <div style={{ flex: showPreview ? '1 1 52%' : 1, minWidth: 0, minHeight: 0, overflowY: 'auto', paddingRight: 4 }}>
       {steps.length > 0 && !running && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
           <button
@@ -372,6 +386,29 @@ export default function AgentPage() {
         {running && <div style={{ color: theme.accent, fontSize: 13 }}>{t('agent.thinkingStatus')}</div>}
         <div ref={endRef} />
       </div>
+      </div>
+
+      {/* collapsible live preview of the built page */}
+      {showPreview && (
+        <div style={{ flex: '1 1 48%', minWidth: 0, display: 'flex', flexDirection: 'column', border: `1px solid ${theme.border}`, borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: theme.surface, borderBottom: `1px solid ${theme.border}` }}>
+            <span style={{ fontSize: 12, color: theme.muted }}>👁 {t('agent.preview')}</span>
+            {preview.files.length > 1 && (
+              <select value={preview.file ?? ''} onChange={(e) => loadPreview(e.target.value)} style={{ ...input, width: 'auto', padding: '3px 6px', fontSize: 12 }}>
+                {preview.files.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
+            )}
+            <span style={{ flex: 1 }} />
+            <button onClick={() => loadPreview(preview.file ?? undefined)} title={t('agent.previewRefresh')} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 13 }}>↻</button>
+            <button onClick={() => setShowPreview(false)} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 14 }}>✕</button>
+          </div>
+          {preview.content ? (
+            <iframe title="preview" sandbox="allow-scripts allow-same-origin allow-popups" srcDoc={preview.content} style={{ flex: 1, width: '100%', border: 'none', background: '#fff' }} />
+          ) : (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.muted, fontSize: 13, padding: 20, textAlign: 'center' }}>{t('agent.previewEmpty')}</div>
+          )}
+        </div>
+      )}
       </div>
 
       {/* input pinned at the bottom, chat-style */}

@@ -481,5 +481,10 @@ const dict: Record<string, string> = {
   "agent.autoOff": "每步询问",
   "agent.autoHint": "自主 = 智能体无需询问即可写文件、执行命令。关闭 = 每步都需你批准。",
   "agent.clearHist": "清除历史",
+
+  "agent.preview": "预览",
+  "agent.previewHint": "实时预览文件夹中的 HTML 页面",
+  "agent.previewRefresh": "刷新",
+  "agent.previewEmpty": "文件夹中还没有 HTML 页面——智能体生成后即可预览。",
 };
 export default dict;

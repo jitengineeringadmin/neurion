@@ -2,8 +2,8 @@ import { Body, Controller, Delete, ForbiddenException, Get, Injectable, Param, P
 import { IsString, MaxLength } from 'class-validator';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, resolve as pathResolve, sep } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 
@@ -53,6 +53,43 @@ export class ProjectsService {
     await this.prisma.project.delete({ where: { id } });
     return { ok: true };
   }
+
+  /**
+   * Read an HTML file from a project folder for the in-app preview. Confined to the
+   * caller's OWN project folders (the dir must be one, or under one) so this can't read
+   * arbitrary files off disk, and the file path can't escape the dir.
+   */
+  async previewHtml(user: AuthUser, dir: string, file?: string): Promise<{ files: string[]; file: string | null; content: string | null }> {
+    const norm = (p: string) => p.replace(/\\/g, '/').replace(/\/+$/, '');
+    const d = norm(dir || '');
+    const projects = await this.list(user);
+    const ok = projects.some((p) => { const pp = norm(p.path); return !!pp && (d === pp || d.startsWith(pp + '/')); });
+    if (!ok) throw new ForbiddenException('not one of your project folders');
+
+    // list top-level + one-level-deep .html files
+    const htmls: string[] = [];
+    const scan = (rel: string, depth: number) => {
+      const abs = join(dir, rel);
+      let entries: string[] = [];
+      try { entries = readdirSync(abs); } catch { return; }
+      for (const e of entries) {
+        const r = rel ? `${rel}/${e}` : e;
+        let st; try { st = statSync(join(dir, r)); } catch { continue; }
+        if (st.isDirectory()) { if (depth < 1 && !/node_modules|\.git/.test(e)) scan(r, depth + 1); }
+        else if (/\.html?$/i.test(e)) htmls.push(r);
+      }
+    };
+    scan('', 0);
+    htmls.sort((a, b) => (a === 'index.html' ? -1 : b === 'index.html' ? 1 : a.localeCompare(b)));
+
+    const want = (file && file.replace(/\\/g, '/')) || htmls[0] || null;
+    if (!want || want.includes('..')) return { files: htmls, file: null, content: null };
+    const full = pathResolve(join(dir, want));
+    if (full !== pathResolve(dir) && !full.startsWith(pathResolve(dir) + sep)) throw new ForbiddenException('path escapes the folder');
+    let content: string | null = null;
+    try { if (existsSync(full)) content = readFileSync(full, 'utf8').slice(0, 3_000_000); } catch { content = null; }
+    return { files: htmls, file: want, content };
+  }
 }
 
 class CreateProjectDto {
@@ -82,6 +119,11 @@ export class ProjectsController {
   @Post('pick-folder')
   pickFolder(@Body() dto: { initial?: string }) {
     return this.projects.pickFolder(dto?.initial);
+  }
+
+  @Post('preview')
+  preview(@CurrentUser() user: AuthUser, @Body() dto: { dir: string; file?: string }) {
+    return this.projects.previewHtml(user, dto?.dir ?? '', dto?.file);
   }
 
   @Delete(':id')
