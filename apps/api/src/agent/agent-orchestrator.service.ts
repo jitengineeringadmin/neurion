@@ -129,7 +129,14 @@ export class AgentOrchestratorService {
   }
 
   private toolset(ctx: ToolCtx): AgentTool[] {
-    const tools = [...this.toolsService.tools()];
+    let tools = [...this.toolsService.tools()];
+    // A coding workspace (a folder is open) hides the network/economy tools —
+    // small local models otherwise wander into list_nodes / create_grid_job / wallet
+    // for a plain "make a landing page". Those stay only for the no-folder network use.
+    if (ctx.cwd) {
+      const NETWORK_TOOLS = new Set(['create_grid_job', 'list_nodes', 'get_credits']);
+      tools = tools.filter((t) => !NETWORK_TOOLS.has(t.name));
+    }
     if (ctx.depth < MAX_DEPTH) {
       tools.push({
         name: 'spawn_agent',
@@ -147,7 +154,7 @@ export class AgentOrchestratorService {
     return tools;
   }
 
-  private systemPrompt(tools: AgentTool[], memories: string[] = [], cwd?: string): string {
+  private systemPrompt(tools: AgentTool[], memories: string[] = [], cwd?: string, goal = ''): string {
     const memBlock =
       memories.length > 0
         ? '\n\nPersistent memory (facts you were told to remember):\n' + memories.map((m) => `- ${m}`).join('\n')
@@ -169,6 +176,15 @@ export class AgentOrchestratorService {
       '1) Use a tool:  {"thought":"brief reason","tool":"tool_name","args":{ ... }}',
       '2) Finish:      {"final":"your complete answer for the user"}',
       '',
+      'WRITING FILES — do NOT put the file body inside the JSON (quotes and newlines',
+      'break it). Instead put only the path in args, then the RAW content between a',
+      '<<<FILE line and a FILE line, like this:',
+      '{"thought":"create the page","tool":"write_file","args":{"path":"index.html"}}',
+      '<<<FILE',
+      '<!DOCTYPE html>',
+      '<html> ... the whole file, verbatim, unescaped ... </html>',
+      'FILE',
+      '',
       'Available tools:',
       list,
       '',
@@ -178,8 +194,40 @@ export class AgentOrchestratorService {
       'them, calling update_plan(index, done=true) as you complete each. To scaffold a new',
       'project use create_project. To change several files at once use apply_patch.',
       'You can remember(note) facts for future sessions and recall() them.',
-      'Prefer finishing quickly. When you have enough information, return {"final": ...}.',
-    ].join('\n') + cwdBlock + memBlock;
+      'Stay strictly on the GOAL. Do NOT explore the network, nodes, credits or run',
+      'jobs unless the goal explicitly asks for it. Prefer finishing quickly — when the',
+      'goal is done, return {"final": ...}.',
+    ].join('\n') + cwdBlock + this.webGuidance(goal) + memBlock;
+  }
+
+  /** Design guidance so even a small local model makes a decent site (Tailwind does
+   * the visual heavy lifting; the model just fills structure + content). */
+  private webGuidance(goal: string): string {
+    if (!/\b(sito|site|website|web|landing|pagina|page|html|homepage|portfolio|blog)\b/i.test(goal)) return '';
+    return [
+      '',
+      '',
+      'WEBSITE TASK — this is your ONLY job. Do it in exactly TWO steps:',
+      'STEP 1: one write_file of a COMPLETE index.html (using the <<<FILE fence).',
+      'STEP 2: {"final":"Ready — open index.html."}. Nothing else.',
+      'Do NOT call set_plan, update_plan, edit_file, run_command or read_file. Do NOT',
+      'write the file twice or edit it afterwards — get it right in the single write.',
+      '',
+      'The index.html MUST be a full, good-looking, self-contained page:',
+      '- In <head>: <script src="https://cdn.tailwindcss.com"></script> + a Google Font.',
+      '- ALL visible content goes INSIDE <body> (nav, hero, sections, footer) — never in',
+      '  <head>. Style everything with Tailwind utility classes.',
+      '- Structure inside <body>: a sticky top nav; a HERO (min-h-[70vh], flex, centered,',
+      '  a big heading text-5xl md:text-6xl font-bold, a subtitle, a CTA button, a',
+      '  background gradient or image); then 3–4 <section class="py-20"> relevant to the',
+      '  topic (restaurant → Menu with cards, Chi siamo, Galleria as an image grid,',
+      '  Contatti with hours); then a <footer>.',
+      '- Modern: container mx-auto, generous spacing, rounded-2xl shadow cards, hover',
+      '  states, a coherent color palette, responsive (md:/lg: classes everywhere).',
+      '- Real Italian copy (menu dishes, prices, address), NOT lorem ipsum. Images from',
+      '  https://picsum.photos/seed/<word>/800/600 .',
+      '- Aim for a rich page (150+ lines). A near-empty <body> is a FAILURE.',
+    ].join('\n');
   }
 
   private async streamAll(p: AiProvider, messages: ChatMsg[], model: string): Promise<string> {
@@ -210,6 +258,19 @@ export class AgentOrchestratorService {
 
   /** Tolerant extraction of the first JSON object from model output. */
   private parseAction(text: string): AgentAction {
+    // Content-fence: small models can't reliably JSON-escape a whole HTML/JS file, so
+    // we let them put file content OUTSIDE the JSON, between <<<FILE and FILE. Capture
+    // it, strip it, then parse the (now small) JSON and re-attach as args.content.
+    let fenced: string | null = null;
+    const fence = text.match(/<<<FILE\r?\n([\s\S]*?)\r?\nFILE\b/);
+    if (fence) {
+      fenced = fence[1] ?? '';
+      text = text.slice(0, fence.index) + text.slice((fence.index ?? 0) + fence[0].length);
+    }
+    const attach = (a: AgentAction): AgentAction => {
+      if (fenced !== null && a && a.tool) a.args = { ...(a.args ?? {}), content: fenced };
+      return a;
+    };
     const cleaned = text.replace(/```json/gi, '').replace(/```/g, '');
     const start = cleaned.indexOf('{');
     if (start >= 0) {
@@ -223,10 +284,10 @@ export class AgentOrchestratorService {
             // Windows paths etc.: escape lone backslashes that aren't valid JSON escapes.
             const safe = candidate.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
             try {
-              return JSON.parse(candidate) as AgentAction;
+              return attach(JSON.parse(candidate) as AgentAction);
             } catch {
               try {
-                return JSON.parse(safe) as AgentAction;
+                return attach(JSON.parse(safe) as AgentAction);
               } catch {
                 // Small local models emit almost-JSON: curly quotes, a stray single
                 // quote closing a double-quoted string ("…estetiche.',), trailing
@@ -238,7 +299,7 @@ export class AgentOrchestratorService {
                   .replace(/'\s*([}\]])/g, '"$1')
                   .replace(/,\s*([}\]])/g, '$1');
                 try {
-                  return JSON.parse(repaired) as AgentAction;
+                  return attach(JSON.parse(repaired) as AgentAction);
                 } catch {
                   break;
                 }
@@ -280,7 +341,7 @@ export class AgentOrchestratorService {
     const byName = new Map(tools.map((t) => [t.name, t]));
     const memories = ctx.depth === 0 ? (await this.memory.recent(ctx.user.sub, 15)).map((m) => m.content) : [];
     const messages: ChatMsg[] = [
-      { role: 'system', content: this.systemPrompt(tools, memories, ctx.cwd) },
+      { role: 'system', content: this.systemPrompt(tools, memories, ctx.cwd, goal) },
       { role: 'user', content: `GOAL: ${goal}` },
     ];
     const maxSteps = isSub ? SUB_MAX_STEPS : MAX_STEPS;
