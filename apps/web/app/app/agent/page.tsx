@@ -97,6 +97,26 @@ export default function AgentPage() {
   const [picking, setPicking] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [preview, setPreview] = useState<{ files: string[]; file: string | null; content: string | null }>({ files: [], file: null, content: null });
+  const [rules, setRules] = useState<{ exists: boolean; content: string }>({ exists: false, content: '' });
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [rulesDraft, setRulesDraft] = useState('');
+  const [rulesBusy, setRulesBusy] = useState(false);
+
+  const RULES_TEMPLATE = `# Regole del progetto\n- Stack: HTML + Tailwind (CDN).\n- Lingua dei contenuti: italiano. Commenti in italiano.\n- Palette: (scrivi i tuoi colori).\n- Niente lorem ipsum: contenuti realistici.\n- Chiudi appena il file è pronto, senza rifarlo.\n`;
+  const loadRules = () => {
+    if (!folder) { setRules({ exists: false, content: '' }); return; }
+    void api<{ exists: boolean; content: string }>('/projects/rules', { method: 'POST', body: JSON.stringify({ dir: folder }) })
+      .then((r) => setRules({ exists: r.exists, content: r.content })).catch(() => undefined);
+  };
+  async function saveRules() {
+    if (!folder) return;
+    setRulesBusy(true);
+    try {
+      const r = await api<{ exists: boolean; content: string }>('/projects/rules', { method: 'PUT', body: JSON.stringify({ dir: folder, content: rulesDraft }) });
+      setRules({ exists: r.exists, content: r.content });
+      setRulesOpen(false);
+    } catch { /* ignore */ } finally { setRulesBusy(false); }
+  }
 
   const loadPreview = (file?: string) => {
     if (!folder) return;
@@ -132,6 +152,9 @@ export default function AgentPage() {
   // refresh the preview when it's opened or the folder changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (showPreview) loadPreview(); }, [showPreview, folder]);
+  // check for a per-project rules file (NEURION.md) whenever the folder changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadRules(); }, [folder]);
   const pickLocalModel = (v: string) => { setModel(v); try { localStorage.setItem('neurion_agent_model', v); } catch { /* ignore */ } };
   const toggleAuto = () => setAutonomous((a) => { const n = !a; try { localStorage.setItem('neurion_agent_auto', n ? '1' : '0'); } catch { /* ignore */ } return n; });
   // auto-scroll the transcript as the agent works (chat-style)
@@ -233,6 +256,19 @@ export default function AgentPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      {rulesOpen && (
+        <div onClick={() => setRulesOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'color-mix(in srgb, var(--bg) 70%, transparent)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ ...card, width: 620, maxWidth: '92vw' }}>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>📋 NEURION.md</div>
+            <p style={{ color: theme.muted, fontSize: 12.5, marginTop: 4, lineHeight: 1.5 }}>{t('agent.rulesSub')}</p>
+            <textarea value={rulesDraft} onChange={(e) => setRulesDraft(e.target.value)} style={{ ...input, minHeight: 260, resize: 'vertical', fontFamily: 'var(--font-mono), monospace', fontSize: 13, lineHeight: 1.55 }} />
+            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+              <button onClick={() => void saveRules()} disabled={rulesBusy} style={{ ...button, padding: '8px 18px', opacity: rulesBusy ? 0.5 : 1 }}>{rulesBusy ? '…' : t('agent.rulesSave')}</button>
+              <button onClick={() => setRulesOpen(false)} style={ghostButton}>{t('agent.rulesClose')}</button>
+            </div>
+          </div>
+        </div>
+      )}
       <h2 style={{ fontSize: 20, marginTop: 0 }}>{t('agent.heading')} <span style={{ color: theme.muted, fontSize: 13 }}>{t('agent.headingSubtitle')}</span></h2>
       <div style={{ ...card, marginBottom: 16 }}>
         {/* Working folder — the agent creates/edits files inside it (Claude-Code style). */}
@@ -241,6 +277,7 @@ export default function AgentPage() {
           {folder ? (
             <>
               <span title={folder} style={{ fontSize: 13, color: theme.text, fontFamily: 'var(--font-mono), monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>…/{shortFolder}</span>
+              <button onClick={() => { setRulesDraft(rules.content || RULES_TEMPLATE); setRulesOpen(true); }} title={t('agent.rulesHint')} style={{ ...ghostButton, borderColor: rules.exists ? theme.accent : undefined, color: rules.exists ? theme.accent : undefined }}>📋 NEURION.md{rules.exists ? ' ✓' : ''}</button>
               <button onClick={() => { setShowPreview((v) => !v); }} title={t('agent.previewHint')} style={{ ...ghostButton, borderColor: showPreview ? theme.accent : undefined, color: showPreview ? theme.accent : undefined }}>👁 {t('agent.preview')}</button>
               <button onClick={() => void pickFolder()} disabled={picking} style={ghostButton}>{t('agent.changeFolder')}</button>
             </>

@@ -1,8 +1,8 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Injectable, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Injectable, Param, Post, Put } from '@nestjs/common';
 import { IsString, MaxLength } from 'class-validator';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve as pathResolve, sep } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
@@ -90,6 +90,33 @@ export class ProjectsService {
     try { if (existsSync(full)) content = readFileSync(full, 'utf8').slice(0, 3_000_000); } catch { content = null; }
     return { files: htmls, file: want, content };
   }
+
+  private assertOwnFolder(projects: { path: string }[], dir: string): void {
+    const norm = (p: string) => p.replace(/\\/g, '/').replace(/\/+$/, '');
+    const d = norm(dir || '');
+    if (!projects.some((p) => { const pp = norm(p.path); return !!pp && (d === pp || d.startsWith(pp + '/')); })) {
+      throw new ForbiddenException('not one of your project folders');
+    }
+  }
+
+  /** Read the per-project rules file (NEURION.md etc.) the agent auto-follows. */
+  async getRules(user: AuthUser, dir: string): Promise<{ file: string; exists: boolean; content: string }> {
+    this.assertOwnFolder(await this.list(user), dir);
+    for (const name of ['NEURION.md', 'AGENTS.md', 'CLAUDE.md', '.neurion.md']) {
+      const p = join(dir, name);
+      if (existsSync(p)) { try { return { file: name, exists: true, content: readFileSync(p, 'utf8').slice(0, 12_000) }; } catch { /* next */ } }
+    }
+    return { file: 'NEURION.md', exists: false, content: '' };
+  }
+
+  /** Write NEURION.md in the project folder. */
+  async setRules(user: AuthUser, dir: string, content: string): Promise<{ file: string; exists: boolean; content: string }> {
+    this.assertOwnFolder(await this.list(user), dir);
+    const full = join(dir, 'NEURION.md');
+    const clean = String(content ?? '').slice(0, 12_000);
+    writeFileSync(full, clean);
+    return { file: 'NEURION.md', exists: true, content: clean };
+  }
 }
 
 class CreateProjectDto {
@@ -124,6 +151,16 @@ export class ProjectsController {
   @Post('preview')
   preview(@CurrentUser() user: AuthUser, @Body() dto: { dir: string; file?: string }) {
     return this.projects.previewHtml(user, dto?.dir ?? '', dto?.file);
+  }
+
+  @Post('rules')
+  getRules(@CurrentUser() user: AuthUser, @Body() dto: { dir: string }) {
+    return this.projects.getRules(user, dto?.dir ?? '');
+  }
+
+  @Put('rules')
+  setRules(@CurrentUser() user: AuthUser, @Body() dto: { dir: string; content: string }) {
+    return this.projects.setRules(user, dto?.dir ?? '', dto?.content ?? '');
   }
 
   @Delete(':id')

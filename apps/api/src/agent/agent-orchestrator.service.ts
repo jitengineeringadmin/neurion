@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { JobPrivacyLevel } from '@prisma/client';
 import { ProviderResolverService } from '../ai/provider-resolver.service';
 import { RealtimePoolService, WarmMatch } from '../ai/realtime-pool.service';
@@ -199,21 +201,42 @@ export class AgentOrchestratorService {
       'Stay strictly on the GOAL. Do NOT explore the network, nodes, credits or run',
       'jobs unless the goal explicitly asks for it. Prefer finishing quickly — when the',
       'goal is done, return {"final": ...}.',
-    ].join('\n') + cwdBlock + this.userInstructions() + this.webGuidance(goal) + memBlock;
+    ].join('\n') + cwdBlock + this.userInstructions(cwd) + this.webGuidance(goal) + memBlock;
   }
 
-  /** The user's own always-follow instructions (Settings) — high priority. */
-  private userInstructions(): string {
-    const ins = this.settings.get().instructions.trim();
-    if (!ins) return '';
-    return '\n\n=== USER INSTRUCTIONS (always follow these) ===\n' + ins + '\n=== END USER INSTRUCTIONS ===';
+  /** Global Settings instructions + a per-project rules file (NEURION.md etc.) if the
+   * open folder has one. Project rules come after the global ones (more specific). */
+  private allRules(cwd?: string): string {
+    const global = this.settings.get().instructions.trim();
+    const project = this.projectRules(cwd);
+    return [global, project].filter(Boolean).join('\n\n');
+  }
+  /** First recognised instruction file in the working folder, if any. */
+  private projectRules(cwd?: string): string {
+    if (!cwd) return '';
+    for (const name of ['NEURION.md', 'AGENTS.md', 'CLAUDE.md', '.neurion.md']) {
+      try {
+        const p = join(cwd, name);
+        if (existsSync(p)) return readFileSync(p, 'utf8').slice(0, 12_000).trim();
+      } catch {
+        /* unreadable — try next */
+      }
+    }
+    return '';
+  }
+
+  /** The always-follow rules — high priority (system prompt copy). */
+  private userInstructions(cwd?: string): string {
+    const rules = this.allRules(cwd);
+    if (!rules) return '';
+    return '\n\n=== USER INSTRUCTIONS (always follow these) ===\n' + rules + '\n=== END USER INSTRUCTIONS ===';
   }
 
   /** Same rules, restated in the user turn (where small models actually obey them). */
-  private userRulesForTurn(): string {
-    const ins = this.settings.get().instructions.trim();
-    if (!ins) return '';
-    return `RULES I must follow for everything below:\n${ins}\n\n`;
+  private userRulesForTurn(cwd?: string): string {
+    const rules = this.allRules(cwd);
+    if (!rules) return '';
+    return `RULES I must follow for everything below:\n${rules}\n\n`;
   }
 
   /** Design guidance so even a small local model makes a decent site (Tailwind does
@@ -360,7 +383,7 @@ export class AgentOrchestratorService {
       { role: 'system', content: this.systemPrompt(tools, memories, ctx.cwd, goal) },
       // Reinforce the user's own rules right next to the GOAL — small models weight the
       // user turn far more than the system prompt, so this is where instructions stick.
-      { role: 'user', content: `${this.userRulesForTurn()}GOAL: ${goal}` },
+      { role: 'user', content: `${this.userRulesForTurn(ctx.cwd)}GOAL: ${goal}` },
     ];
     const maxSteps = isSub ? SUB_MAX_STEPS : MAX_STEPS;
 
@@ -369,7 +392,9 @@ export class AgentOrchestratorService {
       const action = this.parseAction(raw);
 
       if (action.final !== undefined || !action.tool) {
-        const answer = action.final ?? raw.trim();
+        // Model finished. Some small models emit {"thought":"<the answer>","tool":null}
+        // instead of {"final":...} — use the thought rather than dumping raw JSON.
+        const answer = action.final ?? ((action.thought && action.thought.trim()) || raw.trim());
         ctx.emit('agent.final', { depth: ctx.depth, text: answer });
         return answer;
       }

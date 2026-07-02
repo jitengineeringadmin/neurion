@@ -478,5 +478,10 @@ const dict: Record<string, string> = {
   "settings.behaviorTitle": "Default behavior",
   "settings.autoDefault": "Start the Code agent in autonomous mode",
   "settings.autoDefaultSub": "New runs won’t ask for approval on each write/command (you can still toggle it per run).",
+
+  "agent.rulesHint": "Per-project rules the agent always follows (NEURION.md in this folder)",
+  "agent.rulesSub": "Rules just for THIS project, on top of your global Settings. Saved as NEURION.md in the folder; the agent reads it every run.",
+  "agent.rulesSave": "Save NEURION.md",
+  "agent.rulesClose": "Close",
 };
 export default dict;

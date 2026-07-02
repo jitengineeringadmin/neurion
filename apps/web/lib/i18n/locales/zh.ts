@@ -497,5 +497,10 @@ const dict: Record<string, string> = {
   "settings.behaviorTitle": "默认行为",
   "settings.autoDefault": "以自主模式启动 Code 智能体",
   "settings.autoDefaultSub": "新的运行不会在每次写入/命令时请求批准（仍可按运行切换）。",
+
+  "agent.rulesHint": "智能体始终遵循的本项目规则（文件夹中的 NEURION.md）",
+  "agent.rulesSub": "仅针对本项目的规则，叠加在全局设置之上。保存为文件夹中的 NEURION.md；智能体每次运行都会读取。",
+  "agent.rulesSave": "保存 NEURION.md",
+  "agent.rulesClose": "关闭",
 };
 export default dict;

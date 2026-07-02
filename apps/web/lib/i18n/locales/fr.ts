@@ -497,5 +497,10 @@ const dict: Record<string, string> = {
   "settings.behaviorTitle": "Comportement par défaut",
   "settings.autoDefault": "Démarrer l’agent Code en mode autonome",
   "settings.autoDefaultSub": "Les nouvelles exécutions ne demanderont pas d’approbation à chaque écriture/commande (modifiable par exécution).",
+
+  "agent.rulesHint": "Règles pour CE projet que l’agent suit toujours (NEURION.md dans le dossier)",
+  "agent.rulesSub": "Règles propres à CE projet, en plus de vos réglages globaux. Enregistrées en NEURION.md dans le dossier ; l’agent les lit à chaque exécution.",
+  "agent.rulesSave": "Enregistrer NEURION.md",
+  "agent.rulesClose": "Fermer",
 };
 export default dict;
