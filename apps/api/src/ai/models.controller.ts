@@ -52,12 +52,34 @@ const RECOMMENDED = [
   { name: 'qwen3:14b', label: 'Qwen 3 14B', size: '~9.3 GB', note: 'Newest, high quality, GPU', group: 'Qwen 3' },
   { name: 'qwen3:30b', label: 'Qwen 3 30B (MoE)', size: '~19 GB', note: 'Mixture-of-experts, fast for its size', group: 'Qwen 3' },
   { name: 'qwen3:32b', label: 'Qwen 3 32B', size: '~20 GB', note: 'Newest big, strong GPU', group: 'Qwen 3' },
-  // Reasoning
-  { name: 'qwq:32b', label: 'QwQ 32B', size: '~20 GB', note: 'Qwen reasoning model', group: 'Reasoning' },
+  // DeepSeek R1 — reasoning (thinks step by step; great for hard problems, math, logic)
+  { name: 'deepseek-r1:1.5b', label: 'DeepSeek R1 1.5B', size: '~1.1 GB', note: 'Reasoning, tiny', group: 'DeepSeek R1 · reasoning' },
+  { name: 'deepseek-r1:7b', label: 'DeepSeek R1 7B', size: '~4.7 GB', note: 'Reasoning, balanced', group: 'DeepSeek R1 · reasoning' },
+  { name: 'deepseek-r1:8b', label: 'DeepSeek R1 8B', size: '~4.9 GB', note: 'Reasoning, strong', group: 'DeepSeek R1 · reasoning' },
+  { name: 'deepseek-r1:14b', label: 'DeepSeek R1 14B', size: '~9.0 GB', note: 'Reasoning, high quality, GPU', group: 'DeepSeek R1 · reasoning' },
+  { name: 'deepseek-coder-v2:16b', label: 'DeepSeek Coder V2 16B', size: '~8.9 GB', note: 'Top-tier open coder (MoE)', group: 'DeepSeek R1 · reasoning' },
+  { name: 'qwq:32b', label: 'QwQ 32B', size: '~20 GB', note: 'Qwen reasoning model, strong GPU', group: 'DeepSeek R1 · reasoning' },
+  // Vision — chat that can SEE images you send
+  { name: 'moondream:latest', label: 'Moondream 1.8B', size: '~1.7 GB', note: 'Tiny, sees images, runs on anything', group: 'Vision · sees images' },
+  { name: 'llava:7b', label: 'LLaVA 7B', size: '~4.7 GB', note: 'Describes/answers about images', group: 'Vision · sees images' },
+  { name: 'llava:13b', label: 'LLaVA 13B', size: '~8.0 GB', note: 'Better vision, needs a GPU', group: 'Vision · sees images' },
+  { name: 'llama3.2-vision:11b', label: 'Llama 3.2 Vision 11B', size: '~7.9 GB', note: 'Meta vision, high quality, GPU', group: 'Vision · sees images' },
+  // Gemma 3 — Google, newest
+  { name: 'gemma3:1b', label: 'Gemma 3 1B', size: '~0.8 GB', note: 'Google, newest, tiny', group: 'Gemma 3' },
+  { name: 'gemma3:4b', label: 'Gemma 3 4B', size: '~3.3 GB', note: 'Google, newest, balanced', group: 'Gemma 3' },
+  { name: 'gemma3:12b', label: 'Gemma 3 12B', size: '~8.1 GB', note: 'Google, high quality, GPU', group: 'Gemma 3' },
+  { name: 'gemma3:27b', label: 'Gemma 3 27B', size: '~17 GB', note: 'Google flagship, strong GPU', group: 'Gemma 3' },
+  // Mistral
+  { name: 'mistral:7b', label: 'Mistral 7B', size: '~4.1 GB', note: 'Popular, fast, capable', group: 'Mistral' },
+  { name: 'mistral-nemo:12b', label: 'Mistral Nemo 12B', size: '~7.1 GB', note: 'Bigger context, high quality', group: 'Mistral' },
   // Other families
   { name: 'llama3.2:3b', label: 'Llama 3.2 3B', size: '~2.0 GB', note: 'Meta, fast + capable', group: 'Other' },
+  { name: 'llama3.3:70b', label: 'Llama 3.3 70B', size: '~43 GB', note: 'Meta flagship, very heavy', group: 'Other' },
   { name: 'gemma2:2b', label: 'Gemma 2 2B', size: '~1.6 GB', note: 'Google, smallest, lightest', group: 'Other' },
   { name: 'phi3.5:3.8b', label: 'Phi 3.5', size: '~2.2 GB', note: 'Microsoft, strong reasoning', group: 'Other' },
+  // Embedding — for search / RAG (not for chat)
+  { name: 'nomic-embed-text:latest', label: 'Nomic Embed', size: '~0.3 GB', note: 'For search / document memory', group: 'Embedding · search' },
+  { name: 'mxbai-embed-large:latest', label: 'MxBai Embed Large', size: '~0.7 GB', note: 'Higher-quality search embeddings', group: 'Embedding · search' },
 ];
 
 @Controller('ai')
