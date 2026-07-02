@@ -8,12 +8,14 @@ import { AiRouterService } from './ai-router.service';
 import { ModelsController } from './models.controller';
 import { ImageController } from './image.controller';
 import { VideoController } from './video.controller';
+import { AudioController } from './audio.controller';
+import { AudioService } from './audio.service';
 import { InferController } from './infer.controller';
 
 @Module({
   imports: [NodesModule],
-  controllers: [ModelsController, ImageController, VideoController, InferController],
-  providers: [
+  controllers: [ModelsController, ImageController, VideoController, AudioController, InferController],
+  providers: [AudioService, 
     ProviderResolverService,
     PrivacyClassifierService,
     EstimatorService,

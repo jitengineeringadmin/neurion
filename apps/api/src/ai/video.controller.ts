@@ -8,7 +8,8 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { AudioService, MOODS, Mood } from './audio.service';
 
 /**
  * Video (beta) — an animated clip assembled LOCALLY from AI-generated keyframes:
@@ -56,13 +57,37 @@ class VideoDto {
   @IsString()
   @MaxLength(10)
   mode?: 'clip' | 'ai';
+
+  // soundtrack: none (default) | music (mood pack) | tts (voice-over) | both | gen (AI music)
+  @IsOptional()
+  @IsIn(['none', 'music', 'tts', 'both', 'gen'])
+  audioMode?: 'none' | 'music' | 'tts' | 'both' | 'gen';
+
+  @IsOptional()
+  @IsIn([...MOODS])
+  mood?: Mood;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(600)
+  voiceText?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  musicPrompt?: string;
 }
+
+interface AudioOpts { mode: 'none' | 'music' | 'tts' | 'both' | 'gen'; mood: Mood; voiceText: string; musicPrompt: string }
 
 let busy = false; // one clip at a time (frames hit the same GPU as images)
 
 @Controller('ai/video')
 export class VideoController {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly audio: AudioService,
+  ) {}
 
   private dir(): string | null {
     return this.config.get<string>('NEURION_IMAGE_DIR') || process.env.NEURION_IMAGE_DIR || null;
@@ -213,15 +238,73 @@ export class VideoController {
     const save = () => { try { writeFileSync(path.join(gdir, `${id}.json`), JSON.stringify(meta)); } catch { /* ignore */ } };
     save();
     busy = true;
+    const audio: AudioOpts = {
+      mode: dto.audioMode ?? 'none',
+      mood: dto.mood ?? 'epic',
+      voiceText: (dto.voiceText ?? '').trim() || prompt,
+      musicPrompt: (dto.musicPrompt ?? '').trim() || prompt,
+    };
     const work = ai
-      ? this.renderAi(dir, ff, id, prompt, (dto.negative ?? '').trim(), meta, save)
-      : this.render(dir, ff, a as Active, id, prompt, (dto.negative ?? '').trim(), meta, save);
+      ? this.renderAi(dir, ff, id, prompt, (dto.negative ?? '').trim(), meta, save, audio)
+      : this.render(dir, ff, a as Active, id, prompt, (dto.negative ?? '').trim(), meta, save, audio);
     void work.finally(() => { busy = false; });
     return { ok: true as const, id };
   }
 
+  /**
+   * Add the soundtrack onto a finished MP4 in place: mood-pack music, piper
+   * voice-over, both (music ducked under the voice), or experimental AI music.
+   * Audio failures never lose the video — the silent MP4 stays.
+   */
+  private async muxAudio(dir: string, ff: string, outMp4: string, tmp: string, o: AudioOpts, meta: Record<string, unknown>, save: () => void): Promise<void> {
+    if (o.mode === 'none') return;
+    try {
+      meta.progress = 'audio'; save();
+      const inputs: string[] = [];
+      if (o.mode === 'music' || o.mode === 'both') {
+        if (!this.audio.musicReady()) throw new Error('music pack not set up');
+        inputs.push(this.audio.musicPath(o.mood));
+      }
+      if (o.mode === 'gen') {
+        const wav = path.join(tmp, 'gen-music.wav');
+        await this.audio.genMusic(o.musicPrompt, wav); // minutes-scale on CPU (experimental)
+        inputs.push(wav);
+      }
+      if (o.mode === 'tts' || o.mode === 'both') {
+        const wav = path.join(tmp, 'voice.wav');
+        await this.audio.tts(o.voiceText, wav);
+        inputs.push(wav);
+      }
+      if (inputs.length === 0) return;
+      const withAudio = path.join(tmp, 'with-audio.mp4');
+      let filter: string;
+      let maps: string[];
+      if (inputs.length === 2) {
+        // music (ducked) + voice
+        filter = '[1:a]volume=0.25,afade=t=in:d=0.8[m];[2:a]volume=1.0[v];[m][v]amix=inputs=2:duration=longest:dropout_transition=0[a]';
+        maps = ['-map', '0:v', '-map', '[a]'];
+      } else {
+        const vol = o.mode === 'tts' ? '1.0' : '0.9';
+        filter = `[1:a]volume=${vol},afade=t=in:d=0.8[a]`;
+        maps = ['-map', '0:v', '-map', '[a]'];
+      }
+      await this.run(ff, [
+        '-i', outMp4, ...inputs.flatMap((i) => ['-i', i]),
+        '-filter_complex', filter, ...maps,
+        '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-shortest', '-y', withAudio,
+      ], tmp, 600000);
+      if (existsSync(withAudio) && statSync(withAudio).size > 10_000) {
+        rmSync(outMp4, { force: true });
+        renameSync(withAudio, outMp4);
+      }
+    } catch (e) {
+      // keep the silent video; surface the reason in the meta without failing the item
+      meta.audioError = String((e as Error).message).slice(-160);
+    }
+  }
+
   /** True text-to-video: sd.cpp vid_gen (Wan 2.1 1.3B) → PNG frames → ffmpeg → MP4. */
-  private async renderAi(dir: string, ff: string, id: string, prompt: string, negative: string, meta: Record<string, unknown>, save: () => void): Promise<void> {
+  private async renderAi(dir: string, ff: string, id: string, prompt: string, negative: string, meta: Record<string, unknown>, save: () => void, audio: AudioOpts): Promise<void> {
     const gdir = this.galleryDir(dir);
     const tmp = path.join(gdir, `${id}-frames`);
     mkdirSync(tmp, { recursive: true });
@@ -276,6 +359,7 @@ export class VideoController {
         await this.run(ff, ['-framerate', String(AI_FPS), '-i', path.join(tmp, 'fr%04d.png'), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-y', outMp4], gdir, 600000);
       }
       if (!existsSync(outMp4) || statSync(outMp4).size < 10_000) throw new Error('ffmpeg produced no output');
+      await this.muxAudio(dir, ff, outMp4, tmp, audio, meta, save);
       meta.status = 'done'; meta.progress = ''; save();
     } catch (e) {
       meta.status = 'failed'; meta.error = String((e as Error).message).slice(-200); save();
@@ -284,7 +368,7 @@ export class VideoController {
     }
   }
 
-  private async render(dir: string, ff: string, a: Active, id: string, prompt: string, negative: string, meta: Record<string, unknown>, save: () => void): Promise<void> {
+  private async render(dir: string, ff: string, a: Active, id: string, prompt: string, negative: string, meta: Record<string, unknown>, save: () => void, audio: AudioOpts): Promise<void> {
     const gdir = this.galleryDir(dir);
     const tmp = path.join(gdir, `${id}-frames`);
     mkdirSync(tmp, { recursive: true });
@@ -328,6 +412,7 @@ export class VideoController {
       ];
       await this.run(ff, ffArgs, gdir, 300000);
       if (!existsSync(outMp4) || statSync(outMp4).size < 10_000) throw new Error('ffmpeg produced no output');
+      await this.muxAudio(dir, ff, outMp4, tmp, audio, meta, save);
       meta.status = 'done'; meta.progress = ''; save();
     } catch (e) {
       meta.status = 'failed'; meta.error = String((e as Error).message).slice(-200); save();

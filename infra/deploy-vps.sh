@@ -152,6 +152,7 @@ server {
     location = /            { try_files /index.html =404; }
     location = /favicon.png { }
     location /download/     { autoindex off; }
+    location /assets/       { autoindex off; }  # app-downloadable static packs (music etc.)
 
     # everything else is the Next.js web app (login, forgot, reset, verify,
     # app/*, _next, manifest, sw, icons …) — proxy-all so new routes just work.

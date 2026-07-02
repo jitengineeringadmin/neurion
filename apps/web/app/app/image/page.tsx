@@ -47,6 +47,12 @@ export default function ImagePage() {
   const [vSetupPct, setVSetupPct] = useState(-1); // -1 = not installing
   const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
   const [vKind, setVKind] = useState<'clip' | 'ai'>('clip');
+  const [audioMode, setAudioMode] = useState<'none' | 'music' | 'tts' | 'both' | 'gen'>('none');
+  const [mood, setMood] = useState<'epic' | 'calm' | 'happy' | 'dark'>('epic');
+  const [voiceText, setVoiceText] = useState('');
+  const [musicPrompt, setMusicPrompt] = useState('');
+  const [audioSt, setAudioSt] = useState<{ music: string; tts: string; gen: string } | null>(null);
+  const [audioSetupPct, setAudioSetupPct] = useState(-1);
   const [aiInfo, setAiInfo] = useState<{ aiInstalled: boolean; requirements: { ramGb: number; freeDiskGb: number; minRamGb: number; minDiskGb: number; ramOk: boolean; diskOk: boolean } | null } | null>(null);
   const [aiSetupPct, setAiSetupPct] = useState(-1);
 
@@ -57,6 +63,26 @@ export default function ImagePage() {
   const loadGallery = () => void api<{ items: GalleryItem[] }>('/ai/image/gallery').then((r) => setGallery(r.items || [])).catch(() => undefined);
   const loadVideoStatus = () => void api<{ status: string }>('/ai/video/status').then((r) => setVStatus(r.status)).catch(() => setVStatus('unavailable'));
   const loadAiInfo = () => void api<typeof aiInfo>('/ai/video/models').then(setAiInfo).catch(() => undefined);
+  const loadAudioSt = () => void api<{ music: string; tts: string; gen: string }>('/ai/audio/status').then(setAudioSt).catch(() => undefined);
+
+  // Which audio components the chosen mode needs, and whether they're installed.
+  const audioNeeds: ('music' | 'tts' | 'gen')[] = audioMode === 'music' ? ['music'] : audioMode === 'tts' ? ['tts'] : audioMode === 'both' ? ['music', 'tts'] : audioMode === 'gen' ? ['gen'] : [];
+  const audioMissing = audioNeeds.filter((w) => audioSt && audioSt[w] === 'needs_setup');
+  const audioBlocked = audioNeeds.some((w) => !audioSt || audioSt[w] !== 'ready');
+
+  async function setupAudio(what: 'music' | 'tts' | 'gen') {
+    if (audioSetupPct >= 0) return;
+    setErr(''); setAudioSetupPct(0);
+    try {
+      await streamSSE('/ai/audio/setup', { what }, {
+        onEvent: (event, d) => {
+          if (event === 'progress') setAudioSetupPct(d.percent ?? 0);
+          else if (event === 'done') { setAudioSetupPct(-1); loadAudioSt(); }
+          else if (event === 'error') { setErr(d.message || t('image.errFailed')); setAudioSetupPct(-1); }
+        },
+      });
+    } catch (e) { setErr((e as Error).message); setAudioSetupPct(-1); }
+  }
   const loadVideos = () => void api<{ items: VideoItem[] }>('/ai/video/gallery').then((r) => setVideos(r.items || [])).catch(() => undefined);
   useEffect(() => {
     loadAll();
@@ -64,6 +90,7 @@ export default function ImagePage() {
     loadVideoStatus();
     loadVideos();
     loadAiInfo();
+    loadAudioSt();
     if (typeof window !== 'undefined') { const m = localStorage.getItem('neurion_image_mode'); if (m === 'local' || m === 'network') setMode(m); }
   }, []);
   // While a generation is running server-side, poll the gallery so it updates even if
@@ -96,7 +123,16 @@ export default function ImagePage() {
 
   async function generateVideo() {
     try {
-      const r = await api<{ ok: boolean; id?: string; error?: string }>('/ai/video', { method: 'POST', body: JSON.stringify({ prompt, negative, mode: vKind }) });
+      const r = await api<{ ok: boolean; id?: string; error?: string }>('/ai/video', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt, negative, mode: vKind,
+          audioMode,
+          ...(audioMode === 'music' || audioMode === 'both' ? { mood } : {}),
+          ...(audioMode === 'tts' || audioMode === 'both' ? { voiceText: voiceText.trim() || undefined } : {}),
+          ...(audioMode === 'gen' ? { musicPrompt: musicPrompt.trim() || undefined } : {}),
+        }),
+      });
       if (r.ok) { loadVideos(); loadVideoStatus(); } else setErr(r.error || t('image.errFailed'));
     } catch (e) { setErr((e as Error).message); }
   }
@@ -224,7 +260,7 @@ export default function ImagePage() {
     ? vStatus === 'ready' && (vKind === 'clip' || aiReady)
     : mode === 'network' || st.engine === 'ready';
   const formBlocked = kind === 'video'
-    ? videoRunning || !prompt.trim() || !ready
+    ? videoRunning || !prompt.trim() || !ready || audioBlocked
     : busy || localRunning || !prompt.trim() || !ready;
   const installing = st.engine === 'installing';
   const kindBtn = (k: Kind, label: string): React.CSSProperties => ({
@@ -306,6 +342,63 @@ export default function ImagePage() {
             </div>
           )}
           {vKind === 'clip' && vStatus === 'ready' && <div style={{ fontSize: 13, color: theme.green }}>✓ {t('video.ready')}</div>}
+
+          {/* soundtrack: mood music / voice-over / both / AI music (experimental) */}
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${theme.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <label style={{ fontSize: 12, color: theme.muted }}>🔊 {t('audio.label')}</label>
+              <select value={audioMode} onChange={(e) => setAudioMode(e.target.value as typeof audioMode)} style={{ ...input, width: 'auto', padding: '5px 8px', cursor: 'pointer' }}>
+                <option value="none">{t('audio.none')}</option>
+                <option value="music">🎵 {t('audio.music')}</option>
+                <option value="tts">🎙 {t('audio.tts')}</option>
+                <option value="both">🎵+🎙 {t('audio.both')}</option>
+                <option value="gen">🧠 {t('audio.gen')}</option>
+              </select>
+              {(audioMode === 'music' || audioMode === 'both') && (
+                <select value={mood} onChange={(e) => setMood(e.target.value as typeof mood)} style={{ ...input, width: 'auto', padding: '5px 8px', cursor: 'pointer' }}>
+                  <option value="epic">{t('audio.moodEpic')}</option>
+                  <option value="calm">{t('audio.moodCalm')}</option>
+                  <option value="happy">{t('audio.moodHappy')}</option>
+                  <option value="dark">{t('audio.moodDark')}</option>
+                </select>
+              )}
+            </div>
+            {(audioMode === 'tts' || audioMode === 'both') && (
+              <input value={voiceText} onChange={(e) => setVoiceText(e.target.value)} placeholder={t('audio.voicePlaceholder')} style={{ ...input, marginTop: 8 }} />
+            )}
+            {audioMode === 'gen' && (
+              <>
+                <input value={musicPrompt} onChange={(e) => setMusicPrompt(e.target.value)} placeholder={t('audio.genPlaceholder')} style={{ ...input, marginTop: 8 }} />
+                <div style={{ fontSize: 11, color: theme.muted, marginTop: 4 }}>{t('audio.genNote')}</div>
+              </>
+            )}
+            {audioMissing.length > 0 && audioSetupPct < 0 && (
+              <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {audioMissing.map((w) => (
+                  <button key={w} style={{ ...button, padding: '7px 14px' }} onClick={() => void setupAudio(w)}>
+                    ⬇ {w === 'music' ? t('audio.setupMusic') : w === 'tts' ? t('audio.setupTts') : t('audio.setupGen')}
+                  </button>
+                ))}
+              </div>
+            )}
+            {audioSetupPct >= 0 && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+                  <span>⏳ {t('audio.installing')}…</span><span style={{ color: theme.accent }}>{audioSetupPct}%</span>
+                </div>
+                <div style={{ height: 8, background: theme.surface, borderRadius: 6, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.max(3, audioSetupPct)}%`, background: theme.accent, transition: 'width .3s' }} />
+                </div>
+              </div>
+            )}
+            {audioMode !== 'none' && audioSt?.tts === 'unsupported' && audioNeeds.includes('tts') && (
+              <div style={{ fontSize: 12, color: theme.amber, marginTop: 6 }}>⚠ {t('audio.ttsUnsupported')}</div>
+            )}
+            {(audioMode === 'music' || audioMode === 'both') && (
+              <div style={{ fontSize: 10, color: theme.muted, marginTop: 6 }}>{t('audio.credit')}</div>
+            )}
+            <div style={{ fontSize: 11, color: theme.muted, marginTop: 8 }}>🌐 {t('audio.foleyComing')}</div>
+          </div>
         </div>
       )}
 
@@ -400,6 +493,7 @@ export default function ImagePage() {
                   ? t('video.step', { c: cur, t: tot }) + (v.etaS ? ` · ${t('video.left', { m: Math.max(1, Math.round(v.etaS / 60)) })}` : '')
                   : v.progress === 'ai' ? t('video.aiWorking')
                   : v.progress === 'montage' ? t('video.montage')
+                  : v.progress === 'audio' ? t('audio.mixing')
                   : `${t('video.frame')} ${v.progress || ''}`;
                 return (
                   <div>
