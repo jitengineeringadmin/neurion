@@ -1,8 +1,9 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Res } from '@nestjs/common';
 import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Response } from 'express';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
 import { AgentApprovalService } from './agent-approval.service';
+import { AgentSettingsService } from './agent-settings.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 
 class RunAgentDto {
@@ -59,12 +60,30 @@ class ApproveDto {
   approved!: boolean;
 }
 
+class SettingsDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
+  instructions?: string;
+}
+
 @Controller('agent')
 export class AgentController {
   constructor(
     private readonly orchestrator: AgentOrchestratorService,
     private readonly approvals: AgentApprovalService,
+    private readonly settings: AgentSettingsService,
   ) {}
+
+  @Get('settings')
+  getSettings() {
+    return this.settings.get();
+  }
+
+  @Put('settings')
+  setSettings(@Body() dto: SettingsDto) {
+    return this.settings.set(dto.instructions ?? '');
+  }
 
   @Post('stream')
   async stream(@CurrentUser() user: AuthUser, @Body() dto: RunAgentDto, @Res() res: Response) {

@@ -486,5 +486,16 @@ const dict: Record<string, string> = {
   "agent.previewHint": "Affiche un aperçu en direct de la page HTML du dossier",
   "agent.previewRefresh": "Rafraîchir",
   "agent.previewEmpty": "Aucune page HTML dans ce dossier — l’aperçu apparaît dès que l’agent en crée une.",
+
+  "settings.title": "Paramètres",
+  "settings.instructionsTitle": "Vos instructions pour l’agent",
+  "settings.instructionsSub": "Règles que l’agent Code suit toujours — votre stack, style, langue, à faire et à éviter. Court et direct marche mieux, surtout avec de petits modèles locaux.",
+  "settings.save": "Enregistrer",
+  "settings.savedActive": "Enregistré — l’agent les suit",
+  "settings.unsaved": "modifications non enregistrées",
+  "settings.tip": "Astuce : donnez un exemple concret à copier, pas des règles vagues. Les petits modèles suivent mieux les exemples.",
+  "settings.behaviorTitle": "Comportement par défaut",
+  "settings.autoDefault": "Démarrer l’agent Code en mode autonome",
+  "settings.autoDefaultSub": "Les nouvelles exécutions ne demanderont pas d’approbation à chaque écriture/commande (modifiable par exécution).",
 };
 export default dict;

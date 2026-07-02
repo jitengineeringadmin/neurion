@@ -486,5 +486,16 @@ const dict: Record<string, string> = {
   "agent.previewHint": "实时预览文件夹中的 HTML 页面",
   "agent.previewRefresh": "刷新",
   "agent.previewEmpty": "文件夹中还没有 HTML 页面——智能体生成后即可预览。",
+
+  "settings.title": "设置",
+  "settings.instructionsTitle": "你的智能体指令",
+  "settings.instructionsSub": "Code 智能体始终遵循的规则——你的技术栈、风格、语言、该做与不该做。简短直接最好，尤其是小型本地模型。",
+  "settings.save": "保存",
+  "settings.savedActive": "已保存——智能体会遵循",
+  "settings.unsaved": "有未保存的更改",
+  "settings.tip": "提示：给一个可复制的具体示例，而不是模糊的规则。小模型更善于跟随示例。",
+  "settings.behaviorTitle": "默认行为",
+  "settings.autoDefault": "以自主模式启动 Code 智能体",
+  "settings.autoDefaultSub": "新的运行不会在每次写入/命令时请求批准（仍可按运行切换）。",
 };
 export default dict;

@@ -467,5 +467,16 @@ const dict: Record<string, string> = {
   "agent.previewHint": "Show a live preview of the HTML page in the folder",
   "agent.previewRefresh": "Refresh",
   "agent.previewEmpty": "No HTML page in this folder yet — the preview appears once the agent writes one.",
+
+  "settings.title": "Settings",
+  "settings.instructionsTitle": "Your agent instructions",
+  "settings.instructionsSub": "Rules the Code agent always follows — your stack, style, language, do’s and don’ts. Short and direct works best, especially with small local models.",
+  "settings.save": "Save",
+  "settings.savedActive": "Saved — the agent follows these",
+  "settings.unsaved": "unsaved changes",
+  "settings.tip": "Tip: give a concrete example to copy, not vague rules. Small models follow examples better than prose.",
+  "settings.behaviorTitle": "Default behavior",
+  "settings.autoDefault": "Start the Code agent in autonomous mode",
+  "settings.autoDefaultSub": "New runs won’t ask for approval on each write/command (you can still toggle it per run).",
 };
 export default dict;

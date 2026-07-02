@@ -5,6 +5,7 @@ import { JobPrivacyLevel } from '@prisma/client';
 import { ProviderResolverService } from '../ai/provider-resolver.service';
 import { RealtimePoolService, WarmMatch } from '../ai/realtime-pool.service';
 import { CreditsService } from '../credits/credits.service';
+import { AgentSettingsService } from './agent-settings.service';
 import { AiProvider, ChatMsg } from '../ai/providers/ai-provider.interface';
 import { RelayProvider } from '../ai/providers/relay.provider';
 import { AgentToolsService } from './agent-tools.service';
@@ -32,6 +33,7 @@ export class AgentOrchestratorService {
     private readonly memory: AgentMemoryService,
     private readonly pool: RealtimePoolService,
     private readonly credits: CreditsService,
+    private readonly settings: AgentSettingsService,
   ) {}
 
   // Resolve where the LLM brain runs for this run, per the user-chosen mode.
@@ -197,7 +199,14 @@ export class AgentOrchestratorService {
       'Stay strictly on the GOAL. Do NOT explore the network, nodes, credits or run',
       'jobs unless the goal explicitly asks for it. Prefer finishing quickly — when the',
       'goal is done, return {"final": ...}.',
-    ].join('\n') + cwdBlock + this.webGuidance(goal) + memBlock;
+    ].join('\n') + cwdBlock + this.userInstructions() + this.webGuidance(goal) + memBlock;
+  }
+
+  /** The user's own always-follow instructions (Settings) — high priority. */
+  private userInstructions(): string {
+    const ins = this.settings.get().instructions.trim();
+    if (!ins) return '';
+    return '\n\n=== USER INSTRUCTIONS (always follow these) ===\n' + ins + '\n=== END USER INSTRUCTIONS ===';
   }
 
   /** Design guidance so even a small local model makes a decent site (Tailwind does

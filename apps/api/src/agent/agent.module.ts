@@ -7,10 +7,11 @@ import { AgentToolsService } from './agent-tools.service';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
 import { AgentApprovalService } from './agent-approval.service';
 import { AgentMemoryService } from './agent-memory.service';
+import { AgentSettingsService } from './agent-settings.service';
 
 @Module({
   imports: [AiModule, JobsModule, NodesModule],
   controllers: [AgentController],
-  providers: [AgentToolsService, AgentOrchestratorService, AgentApprovalService, AgentMemoryService],
+  providers: [AgentToolsService, AgentOrchestratorService, AgentApprovalService, AgentMemoryService, AgentSettingsService],
 })
 export class AgentModule {}

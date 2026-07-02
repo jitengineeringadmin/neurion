@@ -486,5 +486,16 @@ const dict: Record<string, string> = {
   "agent.previewHint": "Muestra una vista previa en vivo de la página HTML de la carpeta",
   "agent.previewRefresh": "Actualizar",
   "agent.previewEmpty": "Aún no hay página HTML en la carpeta — la vista previa aparece cuando el agente crea una.",
+
+  "settings.title": "Ajustes",
+  "settings.instructionsTitle": "Tus instrucciones para el agente",
+  "settings.instructionsSub": "Reglas que el agente Code sigue siempre — tu stack, estilo, idioma, qué hacer y qué no. Corto y directo funciona mejor, sobre todo con modelos locales pequeños.",
+  "settings.save": "Guardar",
+  "settings.savedActive": "Guardado — el agente las sigue",
+  "settings.unsaved": "cambios sin guardar",
+  "settings.tip": "Consejo: da un ejemplo concreto para copiar, no reglas vagas. Los modelos pequeños siguen mejor los ejemplos.",
+  "settings.behaviorTitle": "Comportamiento predeterminado",
+  "settings.autoDefault": "Iniciar el agente Code en modo autónomo",
+  "settings.autoDefaultSub": "Las nuevas ejecuciones no pedirán aprobación en cada escritura/comando (puedes cambiarlo por ejecución).",
 };
 export default dict;
