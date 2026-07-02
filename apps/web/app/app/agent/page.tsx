@@ -62,6 +62,8 @@ export default function AgentPage() {
   const [netModel, setNetModel] = useState('qwen2.5-coder:7b');
   const [compute, setCompute] = useState<{ lane: string; model: string; nodeId: string | null } | null>(null);
   const [folder, setFolder] = useState<string>(''); // working directory (Claude-Code style)
+  const [models, setModels] = useState<string[]>([]);
+  const [model, setModel] = useState(''); // local-lane model (like the chat picker)
   const [touched, setTouched] = useState<{ path: string; icon: string }[]>([]); // files the run created/edited
   const [picking, setPicking] = useState(false);
 
@@ -73,11 +75,20 @@ export default function AgentPage() {
     if (nm) setNetModel(nm);
     const f = localStorage.getItem(FOLDER_KEY);
     if (f) setFolder(f);
+    // model picker, like chat: installed models + remembered choice
+    void api<{ models: string[]; agentDefault: string | null }>('/ai/models')
+      .then((r) => {
+        setModels(r.models || []);
+        const saved = localStorage.getItem('neurion_agent_model');
+        setModel((saved && r.models?.includes(saved) ? saved : null) || r.agentDefault || (r.models?.[0] ?? ''));
+      })
+      .catch(() => undefined);
     // stay in sync with the sidebar's project list
     const h = () => setFolder(localStorage.getItem(FOLDER_KEY) || '');
     window.addEventListener('neurion:agent-folder', h);
     return () => window.removeEventListener('neurion:agent-folder', h);
   }, []);
+  const pickLocalModel = (v: string) => { setModel(v); try { localStorage.setItem('neurion_agent_model', v); } catch { /* ignore */ } };
 
   const shortFolder = folder ? folder.replace(/\\/g, '/').split('/').filter(Boolean).slice(-2).join('/') : '';
   async function pickFolder() {
@@ -143,7 +154,7 @@ export default function AgentPage() {
             return s;
           });
         },
-      }, undefined, folder || undefined, {
+      }, model || undefined, folder || undefined, {
         computeMode: mode,
         networkModel: netModel,
         confineToCwd: !!folder, // Claude-Code style: only touch files inside the opened folder
@@ -198,6 +209,11 @@ export default function AgentPage() {
             <option value="local">{t('agent.modeLocal')}</option>
             <option value="network">{t('agent.modeNetwork')}</option>
           </select>
+          {models.length > 0 && (
+            <select value={model} onChange={(e) => pickLocalModel(e.target.value)} title={t('agent.model')} style={{ ...input, width: 'auto', maxWidth: 190, padding: '6px 8px', cursor: 'pointer' }}>
+              {models.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          )}
           {mode !== 'local' && (
             <input value={netModel} onChange={(e) => pickNet(e.target.value)} placeholder={t('agent.netModel')} title={t('agent.netModel')} style={{ ...input, width: 170, padding: '6px 8px' }} />
           )}

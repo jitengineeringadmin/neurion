@@ -13,7 +13,7 @@ const dict: Record<string, string> = {
   "login.submitLogin": "登录",
   "login.submitRegister": "注册",
   "nav.tabChat": "对话",
-  "nav.tabAgent": "智能体",
+  "nav.tabAgent": "Code",
   "nav.tabModels": "模型",
   "nav.tabNetwork": "网络",
   "nav.subnavDashboard": "仪表盘",
@@ -47,7 +47,7 @@ const dict: Record<string, string> = {
   "chat.sendButtonRun": "运行",
   "chat.sendButtonSend": "发送",
   "agent.defaultGoal": "查看我的积分和在线节点，然后用文本 \"hello\" 运行一个 echo 任务并总结。",
-  "agent.heading": "智能体",
+  "agent.heading": "Code",
   "agent.headingSubtitle": "多智能体 · ReAct",
   "agent.goalPlaceholder": "给智能体一个目标…",
   "agent.runningLabel": "运行中…",
@@ -452,5 +452,6 @@ const dict: Record<string, string> = {
 
   "gallery.delete": "删除",
   "gallery.confirmDelete": "永久删除？",
+  "agent.model": "模型",
 };
 export default dict;

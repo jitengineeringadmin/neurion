@@ -13,7 +13,7 @@ const dict: Record<string, string> = {
   "login.submitLogin": "Acceder",
   "login.submitRegister": "Registrarse",
   "nav.tabChat": "Chat",
-  "nav.tabAgent": "Agente",
+  "nav.tabAgent": "Code",
   "nav.tabModels": "Modelos",
   "nav.tabNetwork": "Red",
   "nav.subnavDashboard": "Panel",
@@ -47,7 +47,7 @@ const dict: Record<string, string> = {
   "chat.sendButtonRun": "Ejecutar",
   "chat.sendButtonSend": "Enviar",
   "agent.defaultGoal": "Revisa mis créditos y los nodos online, luego ejecuta un trabajo echo con el texto \"hello\" y haz un resumen.",
-  "agent.heading": "Agente",
+  "agent.heading": "Code",
   "agent.headingSubtitle": "multiagente · ReAct",
   "agent.goalPlaceholder": "Dale un objetivo al agente…",
   "agent.runningLabel": "ejecutando…",
@@ -452,5 +452,6 @@ const dict: Record<string, string> = {
 
   "gallery.delete": "Eliminar",
   "gallery.confirmDelete": "¿Eliminar definitivamente?",
+  "agent.model": "Modelo",
 };
 export default dict;

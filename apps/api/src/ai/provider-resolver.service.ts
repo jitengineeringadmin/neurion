@@ -84,7 +84,14 @@ export class ProviderResolverService {
     }
 
     if (await this.reachable(this.baseUrl)) {
-      return { provider: new OpenAICompatibleProvider(this.baseUrl, this.apiKey()), model: chatModel };
+      // Don't hand back a hardcoded model the user may not have (llama3.1:8b → ollama
+      // 404): if the configured default isn't installed, use the first REAL chat model.
+      const installed = await this.modelsOf(this.baseUrl);
+      let model = chatModel;
+      if (installed.length > 0 && !installed.includes(chatModel)) {
+        model = installed.find((m) => !/embed|rerank|bge|clip/i.test(m)) ?? installed[0] ?? chatModel;
+      }
+      return { provider: new OpenAICompatibleProvider(this.baseUrl, this.apiKey()), model };
     }
 
     this.logger.error('No AI provider reachable — using LABELED mock. Configure ollama (infra/scripts/setup-ollama.ps1) or a ds4-server (AI_DS4_BASE_URL).');
