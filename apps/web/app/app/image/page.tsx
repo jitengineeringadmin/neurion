@@ -116,6 +116,18 @@ export default function ImagePage() {
     } catch (e) { setErr((e as Error).message); setAiSetupPct(-1); }
   }
 
+  async function delImage(id: string) {
+    if (!window.confirm(t('gallery.confirmDelete'))) return;
+    await api(`/ai/image/gallery/${id}`, { method: 'DELETE' }).catch(() => undefined);
+    loadGallery();
+  }
+  async function delVideo(id: string) {
+    if (!window.confirm(t('gallery.confirmDelete'))) return;
+    if (playing?.id === id) { URL.revokeObjectURL(playing.url); setPlaying(null); }
+    await api(`/ai/video/gallery/${id}`, { method: 'DELETE' }).catch(() => undefined);
+    loadVideos();
+  }
+
   // The MP4 endpoint needs the bearer header, which <video src> can't send — fetch a blob.
   async function watch(id: string) {
     try {
@@ -407,7 +419,10 @@ export default function ImagePage() {
                   </div>
                 );
               })() : v.status === 'failed' ? (
-                <div style={{ fontSize: 13, color: '#e0533d' }}>⚠ {v.prompt} — {v.error || t('image.errFailed')}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 13, color: '#e0533d', flex: 1 }}>⚠ {v.prompt} — {v.error || t('image.errFailed')}</span>
+                  <button onClick={() => void delVideo(v.id)} title={t('gallery.delete')} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 15 }}>🗑</button>
+                </div>
               ) : (
                 <>
                   {playing?.id === v.id ? (
@@ -415,7 +430,10 @@ export default function ImagePage() {
                   ) : (
                     <button onClick={() => void watch(v.id)} style={{ ...button, padding: '8px 18px' }}>▶ {t('video.watch')}</button>
                   )}
-                  <div style={{ marginTop: 10, fontSize: 12, color: theme.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🎬 {v.prompt}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+                    <span style={{ flex: 1, fontSize: 12, color: theme.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🎬 {v.prompt}</span>
+                    <button onClick={() => void delVideo(v.id)} title={t('gallery.delete')} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 15 }}>🗑</button>
+                  </div>
                 </>
               )}
             </div>
@@ -440,14 +458,20 @@ export default function ImagePage() {
                 <div style={{ fontSize: 12, color: theme.muted, marginTop: 8 }}>{t('image.generating')}…</div>
               </div>
             ) : g.status === 'failed' ? (
-              <div style={{ fontSize: 13, color: '#e0533d' }}>⚠ {g.prompt} — {g.error || t('image.errFailed')}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 13, color: '#e0533d', flex: 1 }}>⚠ {g.prompt} — {g.error || t('image.errFailed')}</span>
+                <button onClick={() => void delImage(g.id)} title={t('gallery.delete')} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 15 }}>🗑</button>
+              </div>
             ) : g.image ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`data:image/png;base64,${g.image}`} alt={g.prompt} style={{ maxWidth: '100%', borderRadius: 8, display: 'block' }} />
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, fontSize: 12, color: theme.muted, gap: 12 }}>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.prompt}</span>
-                  <a href={`data:image/png;base64,${g.image}`} download={`neurion-${g.id}.png`} style={{ ...button, padding: '6px 14px', textDecoration: 'none', flexShrink: 0 }}>⬇ {t('image.download')}</a>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <a href={`data:image/png;base64,${g.image}`} download={`neurion-${g.id}.png`} style={{ ...button, padding: '6px 14px', textDecoration: 'none' }}>⬇ {t('image.download')}</a>
+                    <button onClick={() => void delImage(g.id)} title={t('gallery.delete')} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 15 }}>🗑</button>
+                  </span>
                 </div>
               </>
             ) : null}

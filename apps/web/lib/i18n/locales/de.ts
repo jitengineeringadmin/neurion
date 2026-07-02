@@ -449,5 +449,8 @@ const dict: Record<string, string> = {
 
   "video.step": "Schritt {c} von {t}",
   "video.left": "noch ~{m} Min",
+
+  "gallery.delete": "Löschen",
+  "gallery.confirmDelete": "Endgültig löschen?",
 };
 export default dict;

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { spawn, spawnSync } from 'node:child_process';
@@ -363,6 +363,18 @@ export class VideoController {
       .sort((x, y) => (Number(y.ts) || 0) - (Number(x.ts) || 0))
       .slice(0, 40);
     return { items };
+  }
+
+  /** Delete a clip from the gallery (meta + mp4 + any leftover frames dir). */
+  @Delete('gallery/:id')
+  deleteItem(@Param('id') id: string) {
+    const dir = this.dir();
+    if (!dir || !/^[a-f0-9-]{10,}$/i.test(id)) return { ok: false as const };
+    const gdir = this.galleryDir(dir);
+    rmSync(path.join(gdir, `${id}.json`), { force: true });
+    rmSync(path.join(gdir, `${id}.mp4`), { force: true });
+    rmSync(path.join(gdir, `${id}-frames`), { recursive: true, force: true });
+    return { ok: true as const };
   }
 
   @Get('file/:id')

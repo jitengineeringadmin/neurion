@@ -449,5 +449,8 @@ const dict: Record<string, string> = {
 
   "video.step": "第 {c}/{t} 步",
   "video.left": "约剩 {m} 分钟",
+
+  "gallery.delete": "删除",
+  "gallery.confirmDelete": "永久删除？",
 };
 export default dict;

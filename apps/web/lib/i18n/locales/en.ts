@@ -430,5 +430,8 @@ const dict: Record<string, string> = {
 
   "video.step": "Step {c} of {t}",
   "video.left": "~{m} min left",
+
+  "gallery.delete": "Delete",
+  "gallery.confirmDelete": "Delete permanently?",
 };
 export default dict;

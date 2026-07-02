@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { spawn } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -208,6 +208,17 @@ export class ImageController {
       else finish('failed', err.slice(-200) || `sd exited ${code}`);
     });
     return { ok: true as const, id };
+  }
+
+  /** Delete a generation from the gallery (meta + png). */
+  @Delete('gallery/:id')
+  deleteItem(@Param('id') id: string) {
+    const dir = this.dir();
+    if (!dir || !/^[a-f0-9-]{10,}$/i.test(id)) return { ok: false as const };
+    const gdir = this.galleryDir(dir);
+    rmSync(path.join(gdir, `${id}.json`), { force: true });
+    rmSync(path.join(gdir, `${id}.png`), { force: true });
+    return { ok: true as const };
   }
 
   /** Recent generations (newest first) — the persistent gallery / history. */
