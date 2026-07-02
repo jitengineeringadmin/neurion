@@ -446,5 +446,8 @@ const dict: Record<string, string> = {
   "video.aiWorking": "AI 视频生成中（最长可能需要一小时）",
   "video.reqRam": "未达到最低要求：{have} GB 内存（需要 {need} GB+）。你仍可使用快速短片，或等视频节点上线后使用网络。",
   "video.reqDisk": "磁盘空间不足：剩余 {have} GB（需要 {need} GB+）。",
+
+  "video.step": "第 {c}/{t} 步",
+  "video.left": "约剩 {m} 分钟",
 };
 export default dict;

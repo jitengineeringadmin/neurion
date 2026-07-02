@@ -122,6 +122,37 @@ textarea:focus {
   text-shadow: var(--glow);
 }
 
+/* "It's alive" card for long-running generations: breathing accent glow + an
+   indeterminate shimmer track (replaced by a real bar when steps are known). */
+@keyframes breatheGlow {
+  0%, 100% { box-shadow: 0 0 0 1px var(--accent-dim), 0 0 12px 0 color-mix(in srgb, var(--accent) 25%, transparent); }
+  50% { box-shadow: 0 0 0 1px var(--accent), 0 0 26px 2px color-mix(in srgb, var(--accent) 45%, transparent); }
+}
+.working-card {
+  animation: breatheGlow 2.2s ease-in-out infinite;
+  border-color: var(--accent-dim) !important;
+}
+@keyframes shimmerSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+.shimmer-track {
+  position: relative;
+  height: 8px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.shimmer-track::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: shimmerSlide 1.6s ease-in-out infinite;
+}
+
 /* Rendered markdown content (chat answers, agent results): proportional font for
    comfortable reading; code stays monospace on the surface color. */
 .md-body {

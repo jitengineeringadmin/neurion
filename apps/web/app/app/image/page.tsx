@@ -14,7 +14,17 @@ type Mode = 'local' | 'network';
 type Kind = 'image' | 'video';
 const CUSTOM = '__custom__';
 
-interface VideoItem { id: string; prompt: string; status: string; progress?: string; ts?: number; error?: string; model?: string }
+interface VideoItem { id: string; prompt: string; status: string; progress?: string; etaS?: number; ts?: number; error?: string; model?: string }
+
+// Live "how long has this been cooking" timer for running generations.
+function Elapsed({ since }: { since?: number }) {
+  const [, tick] = useState(0);
+  useEffect(() => { const id = setInterval(() => tick((v) => v + 1), 1000); return () => clearInterval(id); }, []);
+  if (!since) return null;
+  const s = Math.max(0, Math.floor((Date.now() - since) / 1000));
+  const txt = s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : `${s}s`;
+  return <span style={{ fontVariantNumeric: 'tabular-nums' }}>⏱ {txt}</span>;
+}
 
 export default function ImagePage() {
   const t = useT();
@@ -370,13 +380,33 @@ export default function ImagePage() {
       {kind === 'video' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {videos.map((v) => (
-            <div key={v.id} style={{ ...card }}>
-              {v.status === 'running' ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: theme.muted }}>
-                  <span className="flicker" style={{ color: theme.accent }}>●</span>
-                  {v.progress === 'ai' ? t('video.aiWorking') : v.progress === 'montage' ? t('video.montage') : `${t('video.frame')} ${v.progress || ''}`} — <span style={{ color: theme.text }}>{v.prompt}</span>
-                </div>
-              ) : v.status === 'failed' ? (
+            <div key={v.id} className={v.status === 'running' ? 'working-card' : undefined} style={{ ...card }}>
+              {v.status === 'running' ? (() => {
+                const sm = /^s(\d+)\/(\d+)$/.exec(v.progress || '');
+                const cur = sm ? Number(sm[1]) : 0, tot = sm ? Number(sm[2]) : 0;
+                const label = sm
+                  ? t('video.step', { c: cur, t: tot }) + (v.etaS ? ` · ${t('video.left', { m: Math.max(1, Math.round(v.etaS / 60)) })}` : '')
+                  : v.progress === 'ai' ? t('video.aiWorking')
+                  : v.progress === 'montage' ? t('video.montage')
+                  : `${t('video.frame')} ${v.progress || ''}`;
+                return (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: theme.muted, marginBottom: 10, flexWrap: 'wrap' }}>
+                      <span className="flicker" style={{ color: theme.accent }}>●</span>
+                      <span style={{ color: theme.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.prompt}</span>
+                      <Elapsed since={v.ts} />
+                    </div>
+                    {sm && tot > 0 ? (
+                      <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 6, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.max(3, Math.round((cur / tot) * 100))}%`, background: theme.accent, transition: 'width .5s' }} />
+                      </div>
+                    ) : (
+                      <div className="shimmer-track" />
+                    )}
+                    <div style={{ fontSize: 12, color: theme.muted, marginTop: 8 }}>{label}</div>
+                  </div>
+                );
+              })() : v.status === 'failed' ? (
                 <div style={{ fontSize: 13, color: '#e0533d' }}>⚠ {v.prompt} — {v.error || t('image.errFailed')}</div>
               ) : (
                 <>
@@ -398,10 +428,16 @@ export default function ImagePage() {
       {kind === 'image' && (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {gallery.map((g) => (
-          <div key={g.id} style={{ ...card }}>
+          <div key={g.id} className={g.status === 'running' ? 'working-card' : undefined} style={{ ...card }}>
             {g.status === 'running' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: theme.muted }}>
-                <span className="flicker" style={{ color: theme.accent }}>●</span> {t('image.generating')} — <span style={{ color: theme.text }}>{g.prompt}</span>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: theme.muted, marginBottom: 10 }}>
+                  <span className="flicker" style={{ color: theme.accent }}>●</span>
+                  <span style={{ color: theme.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.prompt}</span>
+                  <Elapsed since={g.ts} />
+                </div>
+                <div className="shimmer-track" />
+                <div style={{ fontSize: 12, color: theme.muted, marginTop: 8 }}>{t('image.generating')}…</div>
               </div>
             ) : g.status === 'failed' ? (
               <div style={{ fontSize: 13, color: '#e0533d' }}>⚠ {g.prompt} — {g.error || t('image.errFailed')}</div>

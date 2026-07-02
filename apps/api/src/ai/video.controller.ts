@@ -241,9 +241,24 @@ export class VideoController {
         '-W', '480', '-H', '480', '--video-frames', String(AI_FRAMES), '--flow-shift', '3.0',
         '--diffusion-fa', '-o', path.join(tmp, 'out.avi'),
       ];
-      // hours-scale on CPU-class hardware — generous timeout, progress stays 'ai'
-      await this.run(this.sdBin(dir), args, path.join(dir, 'bin'), 3 * 3600 * 1000);
-      meta.progress = 'montage'; save();
+      // hours-scale on CPU-class hardware — sd.cpp prints "|====| cur/tot - Xs/it"
+      // sampling lines; surface them as REAL progress (step + ETA) instead of a blind
+      // spinner. Saved throttled (only when the step advances).
+      let lastStep = -1;
+      await this.run(this.sdBin(dir), args, path.join(dir, 'bin'), 3 * 3600 * 1000, (line) => {
+        const m = line.match(/\|\s*(\d+)\/(\d+)\s*-\s*([\d.]+)\s*(s\/it|it\/s)/);
+        if (!m) return;
+        const cur = Number(m[1]), tot = Number(m[2]);
+        const rate = Number(m[3]);
+        const secPerIt = m[4] === 's/it' ? rate : rate > 0 ? 1 / rate : 0;
+        if (cur !== lastStep && tot > 0) {
+          lastStep = cur;
+          meta.progress = `s${cur}/${tot}`;
+          meta.etaS = Math.round(Math.max(0, tot - cur) * secPerIt);
+          save();
+        }
+      });
+      meta.progress = 'montage'; delete meta.etaS; save();
       const outMp4 = path.join(gdir, `${id}.mp4`);
       // vid_gen saves an MJPEG .avi — transcode to a web-playable MP4. (Fallback: some
       // builds emit PNG frames instead.)
@@ -321,11 +336,13 @@ export class VideoController {
     }
   }
 
-  private run(bin: string, args: string[], cwd: string, timeoutMs: number): Promise<void> {
+  private run(bin: string, args: string[], cwd: string, timeoutMs: number, onLine?: (line: string) => void): Promise<void> {
     return new Promise((resolve, reject) => {
       const cp = spawn(bin, args, { cwd, windowsHide: true });
       let err = '';
-      cp.stderr.on('data', (d) => { err += d.toString(); if (err.length > 8000) err = err.slice(-4000); });
+      const feed = (d: Buffer) => { if (onLine) for (const l of d.toString().split(/[\r\n]+/)) if (l) onLine(l); };
+      cp.stdout.on('data', feed);
+      cp.stderr.on('data', (d) => { feed(d); err += d.toString(); if (err.length > 8000) err = err.slice(-4000); });
       const to = setTimeout(() => { cp.kill(); reject(new Error('timed out')); }, timeoutMs);
       cp.on('error', (e) => { clearTimeout(to); reject(e); });
       cp.on('close', (code) => { clearTimeout(to); code === 0 ? resolve() : reject(new Error(err.slice(-200) || `exited ${code}`)); });

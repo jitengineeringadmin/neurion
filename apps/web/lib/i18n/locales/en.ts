@@ -427,5 +427,8 @@ const dict: Record<string, string> = {
   "agent.useNetwork": "Use network",
   "agent.useLocal": "Use local",
   "agent.computeFallback": "network node failed — switched to your local model",
+
+  "video.step": "Step {c} of {t}",
+  "video.left": "~{m} min left",
 };
 export default dict;

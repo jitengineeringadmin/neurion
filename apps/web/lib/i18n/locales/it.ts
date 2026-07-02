@@ -440,5 +440,8 @@ const dict: Record<string, string> = {
   "video.aiWorking": "Video AI in lavorazione (può richiedere fino a un’ora)",
   "video.reqRam": "Requisiti minimi non soddisfatti: {have} GB di RAM (servono {need} GB+). Puoi usare la Clip rapida, o la rete quando arriveranno i nodi video.",
   "video.reqDisk": "Spazio su disco insufficiente: {have} GB liberi (servono {need} GB+).",
+
+  "video.step": "Passo {c} di {t}",
+  "video.left": "~{m} min rimanenti",
 };
 export default dict;
