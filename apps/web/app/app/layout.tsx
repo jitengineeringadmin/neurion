@@ -8,6 +8,8 @@ import { theme } from '../../lib/ui';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { LangToggle } from '../../components/LangToggle';
 import { SessionsSidebar } from '../../components/SessionsSidebar';
+import { AgentSidebar } from '../../components/AgentSidebar';
+import { GallerySidebar } from '../../components/GallerySidebar';
 import { Onboarding } from '../../components/Onboarding';
 import { useT } from '../../lib/i18n';
 
@@ -92,34 +94,36 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* first-run wizard: guides a new user to a working model (skips itself otherwise) */}
       {!restricted && <Onboarding />}
-      {/* top bar: logo + segmented tabs */}
+      {/* top bar: logo + segmented tabs + account (account lives here so tabs without
+          a sidebar keep theme/lang/logout) */}
       <header style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '10px 16px', borderBottom: `1px solid ${theme.border}` }}>
         <div className="display neon" style={{ fontSize: 18, letterSpacing: '0.1em', color: theme.accent }}>NEURION</div>
         <div style={{ display: 'flex', gap: 4, background: 'var(--surface-2)', borderRadius: 10, padding: 3 }}>
           {(restricted ? TABS.filter(([h]) => h === '/app/forum') : TABS).map(([h, l]) => tab(h, t(l)))}
         </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Link href="/app/account" title="Account" style={{ fontSize: 11, color: theme.muted, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none' }}>{user.email}</Link>
+          <ThemeToggle />
+          <LangToggle />
+          <button
+            onClick={() => void logout().then(() => router.replace('/login'))}
+            style={{ background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.text, padding: '6px 8px', cursor: 'pointer', fontSize: 11 }}
+          >
+            {t('nav.logout')}
+          </button>
+        </div>
       </header>
 
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        {/* single left sidebar: sessions tree + user */}
-        <aside style={{ width: 250, flexShrink: 0, borderRight: `1px solid ${theme.border}`, padding: 12, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <Suspense fallback={<div style={{ color: theme.muted, fontSize: 12 }}>…</div>}>
-            <SessionsSidebar />
-          </Suspense>
-          <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 10, marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <Link href="/app/account" title="Account" style={{ fontSize: 11, color: theme.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none' }}>{user.email}</Link>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <ThemeToggle />
-              <LangToggle />
-              <button
-                onClick={() => void logout().then(() => router.replace('/login'))}
-                style={{ background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.text, padding: '6px 8px', cursor: 'pointer', fontSize: 11 }}
-              >
-                {t('nav.logout')}
-              </button>
-            </div>
-          </div>
-        </aside>
+        {/* contextual left sidebar: chat → sessions, agent → project folders,
+            image → generation history; other tabs get the full width */}
+        {(activeTab === '/app/chat' || activeTab === '/app/agent' || activeTab === '/app/image') && !restricted && (
+          <aside style={{ width: 250, flexShrink: 0, borderRight: `1px solid ${theme.border}`, padding: 12, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <Suspense fallback={<div style={{ color: theme.muted, fontSize: 12 }}>…</div>}>
+              {activeTab === '/app/chat' ? <SessionsSidebar /> : activeTab === '/app/agent' ? <AgentSidebar /> : <GallerySidebar />}
+            </Suspense>
+          </aside>
+        )}
 
         {/* main */}
         <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>

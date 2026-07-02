@@ -409,5 +409,11 @@ const dict: Record<string, string> = {
   "agent.noFolderHint": "Scegli una cartella in cui far lavorare l’agente",
   "agent.chooseFolderFirst": "Scegli prima una cartella di lavoro",
   "agent.filesChanged": "File modificati",
+
+  "sidebar.openFolder": "Apri cartella",
+  "sidebar.projectsHeading": "Progetti",
+  "sidebar.noProjects": "Nessun progetto — apri una cartella e l’agente lavorerà lì dentro.",
+  "sidebar.galleryHeading": "Le tue immagini",
+  "sidebar.galleryEmpty": "Le immagini generate appariranno qui.",
 };
 export default dict;

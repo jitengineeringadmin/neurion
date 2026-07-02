@@ -415,5 +415,11 @@ const dict: Record<string, string> = {
   "agent.noFolderHint": "选择一个让智能体工作的文件夹",
   "agent.chooseFolderFirst": "请先选择一个工作文件夹",
   "agent.filesChanged": "已修改的文件",
+
+  "sidebar.openFolder": "打开文件夹",
+  "sidebar.projectsHeading": "项目",
+  "sidebar.noProjects": "还没有项目——打开一个文件夹，智能体将在其中工作。",
+  "sidebar.galleryHeading": "你的图片",
+  "sidebar.galleryEmpty": "生成的图片会显示在这里。",
 };
 export default dict;

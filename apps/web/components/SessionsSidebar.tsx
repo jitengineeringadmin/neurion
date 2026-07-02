@@ -116,11 +116,7 @@ export function SessionsSidebar() {
       onDrop={onDrop}
       style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, paddingRight: 4, borderRadius: 8, background: dragOver ? theme.surface : 'transparent' }}
     >
-      <button onClick={newSession} style={{ ...ghostButton, textAlign: 'left', marginBottom: 6 }}>＋ {t('sessions.newSessionButton')}</button>
-      <button onClick={() => void createProject()} style={{ ...ghostButton, textAlign: 'left', marginBottom: 4, fontSize: 12 }}>＋ {t('sessions.newProjectFolderButton')}</button>
-      <div style={{ fontSize: 10, color: dragOver ? theme.accent : theme.muted, marginBottom: 8, textAlign: 'center' }}>
-        {dragOver ? t('sessions.dropFolderHint') : t('sessions.dragFolderHint')}
-      </div>
+      <button onClick={newSession} style={{ ...ghostButton, textAlign: 'left', marginBottom: 8 }}>＋ {t('sessions.newSessionButton')}</button>
 
       {pinned.length > 0 && (
         <>

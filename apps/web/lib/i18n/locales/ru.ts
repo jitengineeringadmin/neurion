@@ -415,5 +415,11 @@ const dict: Record<string, string> = {
   "agent.noFolderHint": "Выберите папку, в которой будет работать агент",
   "agent.chooseFolderFirst": "Сначала выберите рабочую папку",
   "agent.filesChanged": "Изменённые файлы",
+
+  "sidebar.openFolder": "Открыть папку",
+  "sidebar.projectsHeading": "Проекты",
+  "sidebar.noProjects": "Пока нет проектов — откройте папку, и агент будет работать в ней.",
+  "sidebar.galleryHeading": "Ваши изображения",
+  "sidebar.galleryEmpty": "Сгенерированные изображения появятся здесь.",
 };
 export default dict;

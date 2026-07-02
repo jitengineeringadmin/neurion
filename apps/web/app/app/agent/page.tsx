@@ -73,6 +73,10 @@ export default function AgentPage() {
     if (nm) setNetModel(nm);
     const f = localStorage.getItem(FOLDER_KEY);
     if (f) setFolder(f);
+    // stay in sync with the sidebar's project list
+    const h = () => setFolder(localStorage.getItem(FOLDER_KEY) || '');
+    window.addEventListener('neurion:agent-folder', h);
+    return () => window.removeEventListener('neurion:agent-folder', h);
   }, []);
 
   const shortFolder = folder ? folder.replace(/\\/g, '/').split('/').filter(Boolean).slice(-2).join('/') : '';
@@ -84,7 +88,12 @@ export default function AgentPage() {
       let path: string | null = null;
       if (neurion?.pickFolder) path = (await neurion.pickFolder(folder || undefined))?.path ?? null;
       else path = (await api<{ path: string | null }>('/projects/pick-folder', { method: 'POST', body: JSON.stringify({ initial: folder || undefined }) })).path;
-      if (path) { const p = path.replace(/\\/g, '/'); setFolder(p); try { localStorage.setItem(FOLDER_KEY, p); } catch { /* ignore */ } }
+      if (path) {
+        const p = path.replace(/\\/g, '/');
+        setFolder(p);
+        try { localStorage.setItem(FOLDER_KEY, p); } catch { /* ignore */ }
+        window.dispatchEvent(new Event('neurion:agent-folder')); // sidebar highlights it
+      }
     } catch { /* cancelled / unavailable */ } finally { setPicking(false); }
   }
   const pickMode = (m: Mode) => { setMode(m); try { localStorage.setItem('neurion_compute', m); } catch {} };
