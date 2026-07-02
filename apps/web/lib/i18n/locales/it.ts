@@ -474,5 +474,6 @@ const dict: Record<string, string> = {
   "agent.autoOn": "Autonomo",
   "agent.autoOff": "Chiedi ogni azione",
   "agent.autoHint": "Autonomo = l’agente scrive file ed esegue comandi senza chiedere. Off = approvi ogni azione.",
+  "agent.clearHist": "Pulisci lo storico",
 };
 export default dict;

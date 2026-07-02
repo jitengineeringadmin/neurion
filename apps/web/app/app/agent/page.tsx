@@ -61,12 +61,30 @@ function writeContent(tool: string, args: any): string | null {
   return typeof c === 'string' && c.length ? c : null;
 }
 
+// Per-folder transcript history, so the Code conversation survives tab switches /
+// reloads (like chat). Kept in localStorage keyed by the working folder.
+const HIST_KEY = (f: string) => 'neurion_code_hist_' + f;
+function loadHist(f: string): Step[] {
+  if (!f || typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem(HIST_KEY(f)) || '[]') as Step[]; } catch { return []; }
+}
+function saveHist(f: string, s: Step[]): void {
+  if (!f || typeof window === 'undefined' || s.length === 0) return; // never wipe with empty
+  try {
+    let arr = s.slice(-400);
+    let str = JSON.stringify(arr);
+    while (str.length > 2_000_000 && arr.length > 2) { arr = arr.slice(Math.ceil(arr.length / 3)); str = JSON.stringify(arr); }
+    localStorage.setItem(HIST_KEY(f), str);
+  } catch { /* quota — drop silently */ }
+}
+
 export default function AgentPage() {
   const t = useT();
   const [goal, setGoal] = useState('');
   const [steps, setSteps] = useState<Step[]>([]);
   const [autonomous, setAutonomous] = useState(false); // Claude-Code autonomous mode (no approvals)
   const endRef = useRef<HTMLDivElement>(null);
+  const stepsFolderRef = useRef(''); // which folder the current `steps` belong to (for correct persistence)
   const [plan, setPlan] = useState<{ text: string; done: boolean }[] | null>(null);
   const [running, setRunning] = useState(false);
   const [mode, setMode] = useState<Mode>('ask');
@@ -86,7 +104,7 @@ export default function AgentPage() {
     if (nm) setNetModel(nm);
     setAutonomous(localStorage.getItem('neurion_agent_auto') === '1');
     const f = localStorage.getItem(FOLDER_KEY);
-    if (f) setFolder(f);
+    if (f) { setFolder(f); setSteps(loadHist(f)); stepsFolderRef.current = f; } // restore this project's transcript
     // model picker, like chat: installed models + remembered choice
     void api<{ models: string[]; agentDefault: string | null }>('/ai/models')
       .then((r) => {
@@ -95,11 +113,14 @@ export default function AgentPage() {
         setModel((saved && r.models?.includes(saved) ? saved : null) || r.agentDefault || (r.models?.[0] ?? ''));
       })
       .catch(() => undefined);
-    // stay in sync with the sidebar's project list
-    const h = () => setFolder(localStorage.getItem(FOLDER_KEY) || '');
+    // sidebar switched project → load that folder + its transcript
+    const h = () => { const nf = localStorage.getItem(FOLDER_KEY) || ''; setFolder(nf); setSteps(loadHist(nf)); stepsFolderRef.current = nf; };
     window.addEventListener('neurion:agent-folder', h);
     return () => window.removeEventListener('neurion:agent-folder', h);
   }, []);
+  // persist the transcript under the folder it belongs to (ref, not `folder`, to avoid
+  // saving stale steps under a just-switched folder)
+  useEffect(() => { saveHist(stepsFolderRef.current, steps); }, [steps]);
   const pickLocalModel = (v: string) => { setModel(v); try { localStorage.setItem('neurion_agent_model', v); } catch { /* ignore */ } };
   const toggleAuto = () => setAutonomous((a) => { const n = !a; try { localStorage.setItem('neurion_agent_auto', n ? '1' : '0'); } catch { /* ignore */ } return n; });
   // auto-scroll the transcript as the agent works (chat-style)
@@ -221,6 +242,16 @@ export default function AgentPage() {
 
       {/* transcript scrolls in the middle; the input is pinned below, chat-style */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 4 }}>
+      {steps.length > 0 && !running && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+          <button
+            onClick={() => { setSteps([]); setPlan(null); setTouched([]); try { if (folder) localStorage.removeItem(HIST_KEY(folder)); } catch { /* ignore */ } }}
+            style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}
+          >
+            🗑 {t('agent.clearHist')}
+          </button>
+        </div>
+      )}
       {plan && plan.length > 0 && (
         <div style={{ ...card, marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: theme.muted, marginBottom: 8 }}>{t('agent.planLabel')}</div>

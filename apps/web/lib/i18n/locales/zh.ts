@@ -480,5 +480,6 @@ const dict: Record<string, string> = {
   "agent.autoOn": "自主",
   "agent.autoOff": "每步询问",
   "agent.autoHint": "自主 = 智能体无需询问即可写文件、执行命令。关闭 = 每步都需你批准。",
+  "agent.clearHist": "清除历史",
 };
 export default dict;

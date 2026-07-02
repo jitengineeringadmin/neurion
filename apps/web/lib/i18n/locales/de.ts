@@ -480,5 +480,6 @@ const dict: Record<string, string> = {
   "agent.autoOn": "Autonom",
   "agent.autoOff": "Jede Aktion fragen",
   "agent.autoHint": "Autonom = der Agent schreibt Dateien und führt Befehle ohne Nachfrage aus. Aus = du bestätigst jede Aktion.",
+  "agent.clearHist": "Verlauf löschen",
 };
 export default dict;
