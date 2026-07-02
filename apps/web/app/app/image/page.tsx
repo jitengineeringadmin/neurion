@@ -36,6 +36,9 @@ export default function ImagePage() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [vSetupPct, setVSetupPct] = useState(-1); // -1 = not installing
   const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
+  const [vKind, setVKind] = useState<'clip' | 'ai'>('clip');
+  const [aiInfo, setAiInfo] = useState<{ aiInstalled: boolean; requirements: { ramGb: number; freeDiskGb: number; minRamGb: number; minDiskGb: number; ramOk: boolean; diskOk: boolean } | null } | null>(null);
+  const [aiSetupPct, setAiSetupPct] = useState(-1);
 
   const loadAll = () => {
     void api<EngineStatus>('/ai/image/status').then(setSt).catch(() => setSt({ engine: 'down' }));
@@ -43,12 +46,14 @@ export default function ImagePage() {
   };
   const loadGallery = () => void api<{ items: GalleryItem[] }>('/ai/image/gallery').then((r) => setGallery(r.items || [])).catch(() => undefined);
   const loadVideoStatus = () => void api<{ status: string }>('/ai/video/status').then((r) => setVStatus(r.status)).catch(() => setVStatus('unavailable'));
+  const loadAiInfo = () => void api<typeof aiInfo>('/ai/video/models').then(setAiInfo).catch(() => undefined);
   const loadVideos = () => void api<{ items: VideoItem[] }>('/ai/video/gallery').then((r) => setVideos(r.items || [])).catch(() => undefined);
   useEffect(() => {
     loadAll();
     loadGallery();
     loadVideoStatus();
     loadVideos();
+    loadAiInfo();
     if (typeof window !== 'undefined') { const m = localStorage.getItem('neurion_image_mode'); if (m === 'local' || m === 'network') setMode(m); }
   }, []);
   // While a generation is running server-side, poll the gallery so it updates even if
@@ -81,9 +86,24 @@ export default function ImagePage() {
 
   async function generateVideo() {
     try {
-      const r = await api<{ ok: boolean; id?: string; error?: string }>('/ai/video', { method: 'POST', body: JSON.stringify({ prompt, negative }) });
+      const r = await api<{ ok: boolean; id?: string; error?: string }>('/ai/video', { method: 'POST', body: JSON.stringify({ prompt, negative, mode: vKind }) });
       if (r.ok) { loadVideos(); loadVideoStatus(); } else setErr(r.error || t('image.errFailed'));
     } catch (e) { setErr((e as Error).message); }
+  }
+
+  // One-time AI-video bundle (~6.7GB) download with weighted progress.
+  async function setupAi() {
+    if (aiSetupPct >= 0) return;
+    setErr(''); setAiSetupPct(0);
+    try {
+      await streamSSE('/ai/video/model/setup-ai', {}, {
+        onEvent: (event, d) => {
+          if (event === 'progress') setAiSetupPct(d.percent ?? 0);
+          else if (event === 'done') { setAiSetupPct(-1); loadAiInfo(); }
+          else if (event === 'error') { setErr(d.message || t('image.errFailed')); setAiSetupPct(-1); }
+        },
+      });
+    } catch (e) { setErr((e as Error).message); setAiSetupPct(-1); }
   }
 
   // The MP4 endpoint needs the bearer header, which <video src> can't send — fetch a blob.
@@ -175,7 +195,12 @@ export default function ImagePage() {
   }
 
   const videoRunning = videos.some((v) => v.status === 'running');
-  const ready = kind === 'video' ? vStatus === 'ready' : mode === 'network' || st.engine === 'ready';
+  const req = aiInfo?.requirements ?? null;
+  const reqOk = !req || (req.ramOk && req.diskOk);
+  const aiReady = !!aiInfo?.aiInstalled && reqOk;
+  const ready = kind === 'video'
+    ? vStatus === 'ready' && (vKind === 'clip' || aiReady)
+    : mode === 'network' || st.engine === 'ready';
   const formBlocked = kind === 'video'
     ? videoRunning || !prompt.trim() || !ready
     : busy || localRunning || !prompt.trim() || !ready;
@@ -212,7 +237,12 @@ export default function ImagePage() {
       {/* Video: needs the image engine (frames) + one-time ffmpeg setup (montage). */}
       {kind === 'video' && (
         <div style={{ ...card, marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: theme.muted, marginBottom: 6 }}>{t('video.note')}</div>
+          {/* which kind of video: fast montage clip, or true (slow) text-to-video */}
+          <div style={{ display: 'inline-flex', gap: 4, background: 'var(--surface-2)', borderRadius: 10, padding: 3, marginBottom: 10 }}>
+            <button onClick={() => setVKind('clip')} style={{ padding: '5px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', border: 'none', background: vKind === 'clip' ? theme.accent : 'transparent', color: vKind === 'clip' ? 'var(--bg)' : theme.muted }}>⚡ {t('video.kindClip')}</button>
+            <button onClick={() => setVKind('ai')} style={{ padding: '5px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer', border: 'none', background: vKind === 'ai' ? theme.accent : 'transparent', color: vKind === 'ai' ? 'var(--bg)' : theme.muted }}>🧠 {t('video.kindAi')}</button>
+          </div>
+          <div style={{ fontSize: 12, color: theme.muted, marginBottom: 6 }}>{vKind === 'clip' ? t('video.note') : t('video.aiNote')}</div>
           {vStatus === 'engine_missing' && <div style={{ fontSize: 13, color: theme.amber }}>⚠ {t('video.engineMissing')}</div>}
           {vStatus === 'unsupported' && <div style={{ fontSize: 13, color: theme.amber }}>⚠ {t('video.unsupported')}</div>}
           {vStatus === 'needs_setup' && vSetupPct < 0 && (
@@ -228,7 +258,32 @@ export default function ImagePage() {
               </div>
             </div>
           )}
-          {vStatus === 'ready' && <div style={{ fontSize: 13, color: theme.green }}>✓ {t('video.ready')}</div>}
+          {/* True AI video: minimum-requirements gate + one-time model bundle */}
+          {vKind === 'ai' && vStatus !== 'engine_missing' && vStatus !== 'unavailable' && (
+            <div style={{ marginTop: 8 }}>
+              {req && !req.ramOk && (
+                <div style={{ fontSize: 13, color: theme.amber, marginBottom: 8 }}>⚠ {t('video.reqRam', { have: req.ramGb, need: req.minRamGb })}</div>
+              )}
+              {req && req.ramOk && !req.diskOk && (
+                <div style={{ fontSize: 13, color: theme.amber, marginBottom: 8 }}>⚠ {t('video.reqDisk', { have: req.freeDiskGb, need: req.minDiskGb })}</div>
+              )}
+              {reqOk && !aiInfo?.aiInstalled && aiSetupPct < 0 && (
+                <button style={{ ...button, padding: '8px 18px' }} onClick={() => void setupAi()}>⬇ {t('video.aiSetupBtn')}</button>
+              )}
+              {aiSetupPct >= 0 && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+                    <span>⏳ {t('video.aiInstalling')}…</span><span style={{ color: theme.accent }}>{aiSetupPct}%</span>
+                  </div>
+                  <div style={{ height: 8, background: theme.surface, borderRadius: 6, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.max(3, aiSetupPct)}%`, background: theme.accent, transition: 'width .3s' }} />
+                  </div>
+                </div>
+              )}
+              {aiReady && <div style={{ fontSize: 13, color: theme.green }}>✓ {t('video.aiReady')}</div>}
+            </div>
+          )}
+          {vKind === 'clip' && vStatus === 'ready' && <div style={{ fontSize: 13, color: theme.green }}>✓ {t('video.ready')}</div>}
         </div>
       )}
 
@@ -319,7 +374,7 @@ export default function ImagePage() {
               {v.status === 'running' ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: theme.muted }}>
                   <span className="flicker" style={{ color: theme.accent }}>●</span>
-                  {v.progress === 'montage' ? t('video.montage') : `${t('video.frame')} ${v.progress || ''}`} — <span style={{ color: theme.text }}>{v.prompt}</span>
+                  {v.progress === 'ai' ? t('video.aiWorking') : v.progress === 'montage' ? t('video.montage') : `${t('video.frame')} ${v.progress || ''}`} — <span style={{ color: theme.text }}>{v.prompt}</span>
                 </div>
               ) : v.status === 'failed' ? (
                 <div style={{ fontSize: 13, color: '#e0533d' }}>⚠ {v.prompt} — {v.error || t('image.errFailed')}</div>

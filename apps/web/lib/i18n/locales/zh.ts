@@ -436,5 +436,15 @@ const dict: Record<string, string> = {
   "video.montage": "剪辑",
   "video.watch": "观看",
   "video.empty": "你的短片会显示在这里。",
+
+  "video.kindClip": "快速短片",
+  "video.kindAi": "AI 视频 · 实验性",
+  "video.aiNote": "真正的文本生成视频（Wan 2.1），在你自己的电脑上运行——用内存代替大显卡。慢（480p 约2秒需20–60+分钟），但真实、离线、免费。",
+  "video.aiSetupBtn": "下载 AI 视频模型（约6.7 GB，一次性）",
+  "video.aiInstalling": "正在下载 AI 视频模型",
+  "video.aiReady": "AI 视频就绪——每段短片需要较长等待",
+  "video.aiWorking": "AI 视频生成中（最长可能需要一小时）",
+  "video.reqRam": "未达到最低要求：{have} GB 内存（需要 {need} GB+）。你仍可使用快速短片，或等视频节点上线后使用网络。",
+  "video.reqDisk": "磁盘空间不足：剩余 {have} GB（需要 {need} GB+）。",
 };
 export default dict;

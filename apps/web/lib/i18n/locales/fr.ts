@@ -436,5 +436,15 @@ const dict: Record<string, string> = {
   "video.montage": "Montage",
   "video.watch": "Regarder",
   "video.empty": "Vos clips apparaîtront ici.",
+
+  "video.kindClip": "Clip rapide",
+  "video.kindAi": "Vidéo IA · expérimental",
+  "video.aiNote": "Du vrai text-to-video (Wan 2.1) sur VOTRE machine — la RAM remplace un gros GPU. Lent (20–60+ min pour ~2s en 480p), mais réel, hors ligne et gratuit.",
+  "video.aiSetupBtn": "Télécharger le modèle vidéo IA (~6,7 Go, une fois)",
+  "video.aiInstalling": "Téléchargement du modèle vidéo IA",
+  "video.aiReady": "Vidéo IA prête — longue attente par clip",
+  "video.aiWorking": "Vidéo IA en cours (jusqu’à une heure)",
+  "video.reqRam": "Configuration minimale non atteinte : {have} Go de RAM (il faut {need} Go+). Utilisez le Clip rapide, ou le réseau quand les nœuds vidéo arriveront.",
+  "video.reqDisk": "Espace disque insuffisant : {have} Go libres (il faut {need} Go+).",
 };
 export default dict;
