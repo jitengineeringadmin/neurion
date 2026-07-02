@@ -13,6 +13,7 @@ export interface ToolCtx {
   model?: string;
   cwd?: string; // project working directory; relative paths + run_command resolve here
   confine?: boolean; // when true (+cwd set), the agent may only touch files inside cwd (per-request sandbox)
+  autoApprove?: boolean; // Claude-Code "autonomous" mode: run write/shell tools without pausing for approval
   // compute selection (set by the controller from the client):
   computeMode?: ComputeMode;
   networkModel?: string; // the bigger model to look for on a network node

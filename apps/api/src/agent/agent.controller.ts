@@ -44,6 +44,11 @@ class RunAgentDto {
   @IsOptional()
   @IsBoolean()
   confineToCwd?: boolean;
+
+  // Claude-Code "autonomous" mode: don't pause for per-action approval.
+  @IsOptional()
+  @IsBoolean()
+  autoApprove?: boolean;
 }
 
 class ApproveDto {
@@ -81,6 +86,7 @@ export class AgentController {
         model: dto.model,
         cwd: dto.cwd,
         confine: dto.confineToCwd,
+        autoApprove: dto.autoApprove,
         computeMode: dto.computeMode,
         networkModel: dto.networkModel,
         relayBase: dto.relayBase,

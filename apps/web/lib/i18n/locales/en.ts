@@ -457,5 +457,9 @@ const dict: Record<string, string> = {
   "audio.foleyComing": "Synced sound effects (AI foley) arrive with GPU nodes on the network.",
   "audio.credit": "Music: Kevin MacLeod (incompetech.com) · CC BY 4.0",
   "agent.modelDied": "The model stopped unexpectedly (likely out of memory). Try again, or pick a smaller model from the dropdown.",
+
+  "agent.autoOn": "Autonomous",
+  "agent.autoOff": "Ask each action",
+  "agent.autoHint": "Autonomous = the agent writes files and runs commands without asking. Off = approve each action.",
 };
 export default dict;

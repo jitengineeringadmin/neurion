@@ -476,5 +476,9 @@ const dict: Record<string, string> = {
   "audio.foleyComing": "同步音效（AI 拟音）将随网络 GPU 节点推出。",
   "audio.credit": "音乐：Kevin MacLeod（incompetech.com）· CC BY 4.0",
   "agent.modelDied": "模型意外停止（可能内存不足）。请重试，或从菜单选择更小的模型。",
+
+  "agent.autoOn": "自主",
+  "agent.autoOff": "每步询问",
+  "agent.autoHint": "自主 = 智能体无需询问即可写文件、执行命令。关闭 = 每步都需你批准。",
 };
 export default dict;

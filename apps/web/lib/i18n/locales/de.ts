@@ -476,5 +476,9 @@ const dict: Record<string, string> = {
   "audio.foleyComing": "Synchronisierte Soundeffekte (KI-Foley) kommen mit GPU-Nodes im Netzwerk.",
   "audio.credit": "Musik: Kevin MacLeod (incompetech.com) · CC BY 4.0",
   "agent.modelDied": "Das Modell wurde unerwartet beendet (vermutlich zu wenig Speicher). Versuch es erneut oder wähle ein kleineres Modell.",
+
+  "agent.autoOn": "Autonom",
+  "agent.autoOff": "Jede Aktion fragen",
+  "agent.autoHint": "Autonom = der Agent schreibt Dateien und führt Befehle ohne Nachfrage aus. Aus = du bestätigst jede Aktion.",
 };
 export default dict;

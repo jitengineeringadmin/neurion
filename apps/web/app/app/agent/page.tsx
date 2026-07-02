@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api, streamAgent, isDesktop, getProdToken, PROD_BASE } from '../../../lib/api';
 import { theme, card, input, button, ghostButton } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
@@ -47,15 +47,26 @@ function humanTool(tool: string, args: Record<string, unknown> | undefined, t: (
 type Mode = 'ask' | 'auto' | 'local' | 'network';
 
 interface Step {
-  kind: 'start' | 'tool_call' | 'tool_result' | 'sub_start' | 'sub_end' | 'final' | 'error' | 'approval' | 'compute_ask' | 'note';
+  kind: 'goal' | 'start' | 'tool_call' | 'tool_result' | 'sub_start' | 'sub_end' | 'final' | 'error' | 'approval' | 'compute_ask' | 'note';
   depth: number;
   data: any;
 }
 
+// The code/content a write tool is about to put on disk — shown inline so you can
+// watch the agent write, Claude-Code style.
+function writeContent(tool: string, args: any): string | null {
+  if (!args) return null;
+  if (tool === 'apply_patch') return typeof args.patch === 'string' ? args.patch : null;
+  const c = args.content ?? args.text ?? args.new_content ?? args.new_str ?? args.data;
+  return typeof c === 'string' && c.length ? c : null;
+}
+
 export default function AgentPage() {
   const t = useT();
-  const [goal, setGoal] = useState(t('agent.defaultGoal'));
+  const [goal, setGoal] = useState('');
   const [steps, setSteps] = useState<Step[]>([]);
+  const [autonomous, setAutonomous] = useState(false); // Claude-Code autonomous mode (no approvals)
+  const endRef = useRef<HTMLDivElement>(null);
   const [plan, setPlan] = useState<{ text: string; done: boolean }[] | null>(null);
   const [running, setRunning] = useState(false);
   const [mode, setMode] = useState<Mode>('ask');
@@ -73,6 +84,7 @@ export default function AgentPage() {
     if (m === 'ask' || m === 'auto' || m === 'local' || m === 'network') setMode(m);
     const nm = localStorage.getItem('neurion_netmodel');
     if (nm) setNetModel(nm);
+    setAutonomous(localStorage.getItem('neurion_agent_auto') === '1');
     const f = localStorage.getItem(FOLDER_KEY);
     if (f) setFolder(f);
     // model picker, like chat: installed models + remembered choice
@@ -89,6 +101,9 @@ export default function AgentPage() {
     return () => window.removeEventListener('neurion:agent-folder', h);
   }, []);
   const pickLocalModel = (v: string) => { setModel(v); try { localStorage.setItem('neurion_agent_model', v); } catch { /* ignore */ } };
+  const toggleAuto = () => setAutonomous((a) => { const n = !a; try { localStorage.setItem('neurion_agent_auto', n ? '1' : '0'); } catch { /* ignore */ } return n; });
+  // auto-scroll the transcript as the agent works (chat-style)
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [steps]);
 
   const shortFolder = folder ? folder.replace(/\\/g, '/').split('/').filter(Boolean).slice(-2).join('/') : '';
   async function pickFolder() {
@@ -119,14 +134,15 @@ export default function AgentPage() {
   const pickNet = (v: string) => { setNetModel(v); try { localStorage.setItem('neurion_netmodel', v); } catch {} };
 
   async function run() {
-    if (running || !goal.trim()) return;
-    setSteps([]);
+    const g = goal.trim();
+    if (running || !g) return;
+    setGoal(''); // clear the box; the goal becomes a bubble (chat-style)
+    setSteps((s) => [...s, { kind: 'goal', depth: 0, data: { text: g } }]);
     setPlan(null);
     setCompute(null);
-    setTouched([]);
     setRunning(true);
     try {
-      await streamAgent(goal, {
+      await streamAgent(g, {
         onEvent: (event, d) => {
           if (event === 'agent.compute') { setCompute(d); return; }
           if (event === 'agent.compute_fallback') {
@@ -166,6 +182,7 @@ export default function AgentPage() {
         computeMode: mode,
         networkModel: netModel,
         confineToCwd: !!folder, // Claude-Code style: only touch files inside the opened folder
+        autoApprove: autonomous, // autonomous mode = run write/shell tools without asking
         // Desktop: relay the network LLM step to the production pool.
         ...(mode !== 'local' && isDesktop() && getProdToken() ? { relayBase: PROD_BASE, relayToken: getProdToken() as string } : {}),
       });
@@ -230,6 +247,11 @@ export default function AgentPage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {steps.map((s, i) => (
           <div key={i} style={{ marginLeft: s.depth * 22 }}>
+            {s.kind === 'goal' && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '6px 0' }}>
+                <div style={{ background: theme.accent, color: 'var(--bg)', borderRadius: 12, padding: '8px 14px', fontSize: 14, maxWidth: '80%', whiteSpace: 'pre-wrap' }}>{s.data.text}</div>
+              </div>
+            )}
             {s.kind === 'start' && <Dim>▸ {t('agent.goalPrefix')} {s.data.goal}</Dim>}
             {s.kind === 'sub_start' && <div style={{ color: theme.accent, fontSize: 13 }}>↳ {t('agent.subAgentPrefix')} {s.data.goal}</div>}
             {s.kind === 'sub_end' && <Dim>↳ {t('agent.subAgentDone')}</Dim>}
@@ -281,6 +303,12 @@ export default function AgentPage() {
                     <span>{h.icon} </span>
                     <span style={{ color: theme.text }}>{h.text}</span>
                   </div>
+                  {(() => {
+                    const code = writeContent(String(s.data.tool), s.data.args);
+                    return code ? (
+                      <pre style={{ fontSize: 12, lineHeight: 1.5, background: 'var(--bg-deep)', border: `1px solid ${theme.border}`, borderRadius: 8, padding: '8px 10px', margin: '6px 0 0', maxHeight: 260, overflow: 'auto', fontFamily: 'var(--font-mono), monospace' }}>{code}</pre>
+                    ) : null;
+                  })()}
                   <details style={{ marginTop: 4 }}>
                     <summary style={{ fontSize: 11, color: theme.muted, cursor: 'pointer', listStylePosition: 'inside' }}>{t('agent.details')}</summary>
                     <pre style={{ fontSize: 11, color: theme.muted, margin: '4px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{s.data.tool}({JSON.stringify(s.data.args, null, 1)})</pre>
@@ -311,6 +339,7 @@ export default function AgentPage() {
           </div>
         ))}
         {running && <div style={{ color: theme.accent, fontSize: 13 }}>{t('agent.thinkingStatus')}</div>}
+        <div ref={endRef} />
       </div>
       </div>
 
@@ -342,6 +371,13 @@ export default function AgentPage() {
           {mode !== 'local' && (
             <input value={netModel} onChange={(e) => pickNet(e.target.value)} placeholder={t('agent.netModel')} title={t('agent.netModel')} style={{ ...input, width: 170, padding: '6px 8px' }} />
           )}
+          <button
+            onClick={toggleAuto}
+            title={t('agent.autoHint')}
+            style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${autonomous ? theme.accent : theme.border}`, background: autonomous ? theme.accent : 'transparent', color: autonomous ? 'var(--bg)' : theme.muted }}
+          >
+            {autonomous ? `🤖 ${t('agent.autoOn')}` : `✋ ${t('agent.autoOff')}`}
+          </button>
           {compute && (
             <span style={{ fontSize: 12, color: compute.lane === 'network' ? theme.accent : theme.muted }}>
               {compute.lane === 'network' ? '⚡' : '💻'} {compute.model}

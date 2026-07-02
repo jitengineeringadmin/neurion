@@ -300,7 +300,7 @@ export class AgentOrchestratorService {
       let observation: string;
       if (!tool) {
         observation = `error: unknown tool "${action.tool}". Available: ${[...byName.keys()].join(', ')}`;
-      } else if (this.requireApproval() && DANGEROUS.has(tool.name)) {
+      } else if (this.requireApproval() && !ctx.autoApprove && DANGEROUS.has(tool.name)) {
         // human-in-the-loop: pause until the user approves or denies this action.
         const approvalId = randomUUID();
         const pending = this.approvals.wait(approvalId); // register BEFORE emit to avoid a fast-approve race
