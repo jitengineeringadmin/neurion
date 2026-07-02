@@ -475,5 +475,6 @@ const dict: Record<string, string> = {
   "audio.ttsUnsupported": "旁白目前仅支持 Windows 自动安装（其他系统请手动安装 piper）。",
   "audio.foleyComing": "同步音效（AI 拟音）将随网络 GPU 节点推出。",
   "audio.credit": "音乐：Kevin MacLeod（incompetech.com）· CC BY 4.0",
+  "agent.modelDied": "模型意外停止（可能内存不足）。请重试，或从菜单选择更小的模型。",
 };
 export default dict;

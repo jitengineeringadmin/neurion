@@ -475,5 +475,6 @@ const dict: Record<string, string> = {
   "audio.ttsUnsupported": "Die Sprecherstimme installiert sich derzeit nur unter Windows automatisch (sonst piper manuell installieren).",
   "audio.foleyComing": "Synchronisierte Soundeffekte (KI-Foley) kommen mit GPU-Nodes im Netzwerk.",
   "audio.credit": "Musik: Kevin MacLeod (incompetech.com) · CC BY 4.0",
+  "agent.modelDied": "Das Modell wurde unerwartet beendet (vermutlich zu wenig Speicher). Versuch es erneut oder wähle ein kleineres Modell.",
 };
 export default dict;

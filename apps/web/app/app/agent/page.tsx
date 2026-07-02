@@ -103,7 +103,15 @@ export default function AgentPage() {
         const p = path.replace(/\\/g, '/');
         setFolder(p);
         try { localStorage.setItem(FOLDER_KEY, p); } catch { /* ignore */ }
-        window.dispatchEvent(new Event('neurion:agent-folder')); // sidebar highlights it
+        // register it as a Project so the sidebar lists it (idempotent server-side check is cheap)
+        const name = p.split('/').filter(Boolean).pop() || p;
+        try {
+          const list = await api<{ id: string; path: string }[]>('/projects');
+          if (!list.some((x) => String(x.path).replace(/\\/g, '/') === p)) {
+            await api('/projects', { method: 'POST', body: JSON.stringify({ name, path: p }) });
+          }
+        } catch { /* best effort */ }
+        window.dispatchEvent(new Event('neurion:agent-folder')); // sidebar highlights + reloads
       }
     } catch { /* cancelled / unavailable */ } finally { setPicking(false); }
   }
@@ -324,7 +332,14 @@ export default function AgentPage() {
               </div>
             )}
             {s.kind === 'final' && s.depth > 0 && <Dim>↳ {t('agent.subAnswerPrefix')} {String(s.data.text).slice(0, 200)}</Dim>}
-            {s.kind === 'error' && <div style={{ color: theme.red, fontSize: 13 }}>⚠ {s.data.message}</div>}
+            {s.kind === 'error' && (
+              <div style={{ color: theme.red, fontSize: 13 }}>
+                ⚠ {/terminated|ECONNRESET|EPIPE|socket|connection/i.test(String(s.data.message)) ? t('agent.modelDied') : s.data.message}
+                {/terminated|ECONNRESET|EPIPE|socket|connection/i.test(String(s.data.message)) && (
+                  <details style={{ marginTop: 4 }}><summary style={{ fontSize: 11, color: theme.muted, cursor: 'pointer' }}>{t('agent.details')}</summary><span style={{ fontSize: 11, color: theme.muted }}>{s.data.message}</span></details>
+                )}
+              </div>
+            )}
           </div>
         ))}
         {running && <div style={{ color: theme.accent, fontSize: 13 }}>{t('agent.thinkingStatus')}</div>}

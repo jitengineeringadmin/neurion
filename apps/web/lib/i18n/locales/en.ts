@@ -456,5 +456,6 @@ const dict: Record<string, string> = {
   "audio.ttsUnsupported": "Voice-over needs ffmpeg-style setup available on Windows only for now (install piper manually elsewhere).",
   "audio.foleyComing": "Synced sound effects (AI foley) arrive with GPU nodes on the network.",
   "audio.credit": "Music: Kevin MacLeod (incompetech.com) · CC BY 4.0",
+  "agent.modelDied": "The model stopped unexpectedly (likely out of memory). Try again, or pick a smaller model from the dropdown.",
 };
 export default dict;

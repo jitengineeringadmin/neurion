@@ -20,7 +20,7 @@ export function AgentSidebar() {
   useEffect(() => {
     load();
     setActive(localStorage.getItem(FOLDER_KEY) || '');
-    const h = () => setActive(localStorage.getItem(FOLDER_KEY) || '');
+    const h = () => { setActive(localStorage.getItem(FOLDER_KEY) || ''); load(); };
     window.addEventListener('neurion:agent-folder', h);
     return () => window.removeEventListener('neurion:agent-folder', h);
   }, []);

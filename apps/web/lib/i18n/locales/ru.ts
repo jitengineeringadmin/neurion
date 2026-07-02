@@ -475,5 +475,6 @@ const dict: Record<string, string> = {
   "audio.ttsUnsupported": "Голос пока авто-устанавливается только в Windows (иначе установите piper вручную).",
   "audio.foleyComing": "Синхронные звуковые эффекты (ИИ-фоли) появятся с GPU-узлами сети.",
   "audio.credit": "Музыка: Kevin MacLeod (incompetech.com) · CC BY 4.0",
+  "agent.modelDied": "Модель неожиданно остановилась (вероятно, не хватило памяти). Повторите или выберите модель поменьше.",
 };
 export default dict;
