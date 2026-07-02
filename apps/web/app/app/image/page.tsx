@@ -4,8 +4,9 @@ import { api, prodApi, isDesktop, getProdToken, streamSSE, API_BASE, getToken } 
 import { theme, card, button, input } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
 import { NetworkConnect } from '../../../components/NetworkConnect';
+import { AuthImage, downloadImage } from '../../../components/AuthImage';
 
-interface GalleryItem { id: string; prompt: string; status: string; seed?: number; ts?: number; error?: string; model?: string; image?: string }
+interface GalleryItem { id: string; prompt: string; status: string; seed?: number; ts?: number; error?: string; model?: string; hasImage?: boolean; image?: string }
 interface EngineStatus { engine: string; percent?: number; stage?: string; model?: { id: string; label: string } }
 interface ModelItem { id: string; label: string; desc: string; sizeMb: number; recommended: boolean; installed: boolean }
 interface ModelList { bin: boolean; custom: boolean; active: { id: string; label: string } | null; models: ModelItem[] }
@@ -263,6 +264,18 @@ export default function ImagePage() {
     ? videoRunning || !prompt.trim() || !ready || audioBlocked
     : busy || localRunning || !prompt.trim() || !ready;
   const installing = st.engine === 'installing';
+  // still checking engine/status on first load — or (video) status not resolved yet
+  const booting = (kind === 'image' && mode === 'local' && st.engine === '…') || (kind === 'video' && vStatus === '');
+  // Why the Generate button is disabled (for anything the user can act on) — empty if ready or just missing prompt.
+  function whyDisabled(): string {
+    if (booting) return t('image.checking');
+    if (kind === 'video') {
+      if (!ready) return audioBlocked ? t('image.needAudio') : t('image.needVideo');
+    } else if (mode === 'local' && st.engine !== 'ready') {
+      return t('image.needModel');
+    }
+    return '';
+  }
   const kindBtn = (k: Kind, label: string): React.CSSProperties => ({
     padding: '6px 16px', borderRadius: 8, fontSize: 13, cursor: 'pointer', border: 'none',
     background: kind === k ? theme.accent : 'transparent', color: kind === k ? 'var(--bg)' : theme.muted, fontWeight: kind === k ? 500 : 400,
@@ -442,9 +455,14 @@ export default function ImagePage() {
       )}
 
       <div style={{ ...card, marginBottom: 16 }}>
-        <textarea style={{ ...input, minHeight: 84, resize: 'vertical', fontSize: 15 }} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t('image.promptPlaceholder')} />
+        {booting && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: theme.muted, marginBottom: 8 }}>
+            <span className="flicker" style={{ color: theme.accent }}>●</span> {t('image.checking')}
+          </div>
+        )}
+        <textarea autoFocus style={{ ...input, minHeight: 84, resize: 'vertical', fontSize: 15 }} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t('image.promptPlaceholder')} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 12 }}>
-          <button onClick={() => void generate()} disabled={formBlocked} style={{ ...button, padding: '9px 22px', fontSize: 15, opacity: formBlocked ? 0.5 : 1 }}>
+          <button onClick={() => void generate()} disabled={formBlocked} title={whyDisabled()} style={{ ...button, padding: '9px 22px', fontSize: 15, opacity: formBlocked ? 0.5 : 1 }}>
             {kind === 'video'
               ? videoRunning ? t('image.generating') : `🎬 ${t('video.generate')}`
               : busy || localRunning ? t('image.generating') : `✨ ${t('image.generate')}`}
@@ -477,6 +495,9 @@ export default function ImagePage() {
           </div>
         )}
         {(busy || localRunning) && <div style={{ fontSize: 12, color: theme.muted, marginTop: 10 }}>⏳ {status || t('image.genNoteGpu')}</div>}
+        {!busy && !localRunning && !videoRunning && prompt.trim() && whyDisabled() && (
+          <div style={{ fontSize: 12, color: booting ? theme.muted : theme.amber, marginTop: 10 }}>{booting ? '⏳' : '⚠'} {whyDisabled()}</div>
+        )}
       </div>
 
       {err && <div style={{ color: '#e0533d', fontSize: 13, marginBottom: 12 }}>⚠ {err}</div>}
@@ -556,14 +577,23 @@ export default function ImagePage() {
                 <span style={{ fontSize: 13, color: '#e0533d', flex: 1 }}>⚠ {g.prompt} — {g.error || t('image.errFailed')}</span>
                 <button onClick={() => void delImage(g.id)} title={t('gallery.delete')} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 15 }}>🗑</button>
               </div>
-            ) : g.image ? (
+            ) : g.hasImage || g.image ? (
               <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`data:image/png;base64,${g.image}`} alt={g.prompt} style={{ maxWidth: '100%', borderRadius: 8, display: 'block' }} />
+                {g.image ? (
+                  // network result — base64 in state (not on local disk)
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`data:image/png;base64,${g.image}`} alt={g.prompt} style={{ maxWidth: '100%', borderRadius: 8, display: 'block' }} />
+                ) : (
+                  <AuthImage id={g.id} alt={g.prompt} style={{ maxWidth: '100%', borderRadius: 8, display: 'block', minHeight: 120 }} />
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, fontSize: 12, color: theme.muted, gap: 12 }}>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.prompt}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    <a href={`data:image/png;base64,${g.image}`} download={`neurion-${g.id}.png`} style={{ ...button, padding: '6px 14px', textDecoration: 'none' }}>⬇ {t('image.download')}</a>
+                    {g.image ? (
+                      <a href={`data:image/png;base64,${g.image}`} download={`neurion-${g.id}.png`} style={{ ...button, padding: '6px 14px', textDecoration: 'none' }}>⬇ {t('image.download')}</a>
+                    ) : (
+                      <button onClick={() => void downloadImage(g.id, `neurion-${g.id}.png`)} style={{ ...button, padding: '6px 14px' }}>⬇ {t('image.download')}</button>
+                    )}
                     <button onClick={() => void delImage(g.id)} title={t('gallery.delete')} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 15 }}>🗑</button>
                   </span>
                 </div>

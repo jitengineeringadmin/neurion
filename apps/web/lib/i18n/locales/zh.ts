@@ -502,5 +502,10 @@ const dict: Record<string, string> = {
   "agent.rulesSub": "仅针对本项目的规则，叠加在全局设置之上。保存为文件夹中的 NEURION.md；智能体每次运行都会读取。",
   "agent.rulesSave": "保存 NEURION.md",
   "agent.rulesClose": "关闭",
+
+  "image.checking": "正在准备图像引擎…",
+  "image.needModel": "请在上方选择或下载模型后再生成。",
+  "image.needVideo": "请先在上方设置视频引擎。",
+  "image.needAudio": "请先在上方完成音频设置。",
 };
 export default dict;

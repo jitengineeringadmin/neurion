@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { spawn } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
@@ -234,12 +234,25 @@ export class ImageController {
       .filter((m): m is Record<string, unknown> => !!m)
       .sort((x, y) => (Number(y.ts) || 0) - (Number(x.ts) || 0))
       .slice(0, 24);
+    // Metadata only — no inlined base64. The image bytes stream from /file/:id on
+    // demand, so the gallery response stays tiny and fast (it's also polled every 2s
+    // while a generation runs; inlining ~24 images each time was the slow part).
     const items = metas.map((m) => {
       const png = path.join(gdir, `${String(m.id)}.png`);
-      const image = m.status === 'done' && existsSync(png) ? readFileSync(png).toString('base64') : undefined;
-      return { id: m.id, prompt: m.prompt, status: m.status, seed: m.seed, ts: m.ts, error: m.error, model: m.model, image };
+      return { id: m.id, prompt: m.prompt, status: m.status, seed: m.seed, ts: m.ts, error: m.error, model: m.model, hasImage: m.status === 'done' && existsSync(png) };
     });
     return { items };
+  }
+
+  /** Stream a gallery image (referenced by the gallery's hasImage flag). */
+  @Get('file/:id')
+  file(@Param('id') id: string, @Res() res: Response) {
+    const dir = this.dir();
+    const png = dir && /^[a-f0-9-]{10,}$/i.test(id) ? path.join(this.galleryDir(dir), `${id}.png`) : '';
+    if (!png || !existsSync(png)) { res.status(404).end(); return; }
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'private, max-age=31536000, immutable'); // id is unique → cache forever
+    createReadStream(png).pipe(res);
   }
 
   // --- helpers ---

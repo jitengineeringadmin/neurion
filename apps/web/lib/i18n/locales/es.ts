@@ -502,5 +502,10 @@ const dict: Record<string, string> = {
   "agent.rulesSub": "Reglas solo para ESTE proyecto, además de tus ajustes globales. Se guardan como NEURION.md en la carpeta; el agente las lee en cada ejecución.",
   "agent.rulesSave": "Guardar NEURION.md",
   "agent.rulesClose": "Cerrar",
+
+  "image.checking": "Preparando el motor de imágenes…",
+  "image.needModel": "Elige o descarga un modelo arriba para generar.",
+  "image.needVideo": "Primero configura el motor de vídeo arriba.",
+  "image.needAudio": "Primero completa la configuración de audio arriba.",
 };
 export default dict;

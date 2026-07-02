@@ -483,5 +483,10 @@ const dict: Record<string, string> = {
   "agent.rulesSub": "Rules just for THIS project, on top of your global Settings. Saved as NEURION.md in the folder; the agent reads it every run.",
   "agent.rulesSave": "Save NEURION.md",
   "agent.rulesClose": "Close",
+
+  "image.checking": "Getting the image engine ready…",
+  "image.needModel": "Choose or download a model above to generate.",
+  "image.needVideo": "Set up the video engine above first.",
+  "image.needAudio": "Finish the audio setup above first.",
 };
 export default dict;
