@@ -209,6 +209,13 @@ export class AgentOrchestratorService {
     return '\n\n=== USER INSTRUCTIONS (always follow these) ===\n' + ins + '\n=== END USER INSTRUCTIONS ===';
   }
 
+  /** Same rules, restated in the user turn (where small models actually obey them). */
+  private userRulesForTurn(): string {
+    const ins = this.settings.get().instructions.trim();
+    if (!ins) return '';
+    return `RULES I must follow for everything below:\n${ins}\n\n`;
+  }
+
   /** Design guidance so even a small local model makes a decent site (Tailwind does
    * the visual heavy lifting; the model just fills structure + content). */
   private webGuidance(goal: string): string {
@@ -351,7 +358,9 @@ export class AgentOrchestratorService {
     const memories = ctx.depth === 0 ? (await this.memory.recent(ctx.user.sub, 15)).map((m) => m.content) : [];
     const messages: ChatMsg[] = [
       { role: 'system', content: this.systemPrompt(tools, memories, ctx.cwd, goal) },
-      { role: 'user', content: `GOAL: ${goal}` },
+      // Reinforce the user's own rules right next to the GOAL — small models weight the
+      // user turn far more than the system prompt, so this is where instructions stick.
+      { role: 'user', content: `${this.userRulesForTurn()}GOAL: ${goal}` },
     ];
     const maxSteps = isSub ? SUB_MAX_STEPS : MAX_STEPS;
 
