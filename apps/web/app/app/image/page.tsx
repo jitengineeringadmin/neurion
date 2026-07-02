@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { api, prodApi, isDesktop, getProdToken, streamSSE } from '../../../lib/api';
+import { api, prodApi, isDesktop, getProdToken, streamSSE, API_BASE, getToken } from '../../../lib/api';
 import { theme, card, button, input } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
 import { NetworkConnect } from '../../../components/NetworkConnect';
@@ -11,7 +11,10 @@ interface ModelItem { id: string; label: string; desc: string; sizeMb: number; r
 interface ModelList { bin: boolean; custom: boolean; active: { id: string; label: string } | null; models: ModelItem[] }
 
 type Mode = 'local' | 'network';
+type Kind = 'image' | 'video';
 const CUSTOM = '__custom__';
+
+interface VideoItem { id: string; prompt: string; status: string; progress?: string; ts?: number; error?: string; model?: string }
 
 export default function ImagePage() {
   const t = useT();
@@ -28,15 +31,24 @@ export default function ImagePage() {
   const [status, setStatus] = useState('');
   const [err, setErr] = useState('');
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [kind, setKind] = useState<Kind>('image');
+  const [vStatus, setVStatus] = useState('');
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [vSetupPct, setVSetupPct] = useState(-1); // -1 = not installing
+  const [playing, setPlaying] = useState<{ id: string; url: string } | null>(null);
 
   const loadAll = () => {
     void api<EngineStatus>('/ai/image/status').then(setSt).catch(() => setSt({ engine: 'down' }));
     void api<ModelList>('/ai/image/models').then(setMl).catch(() => setMl(null));
   };
   const loadGallery = () => void api<{ items: GalleryItem[] }>('/ai/image/gallery').then((r) => setGallery(r.items || [])).catch(() => undefined);
+  const loadVideoStatus = () => void api<{ status: string }>('/ai/video/status').then((r) => setVStatus(r.status)).catch(() => setVStatus('unavailable'));
+  const loadVideos = () => void api<{ items: VideoItem[] }>('/ai/video/gallery').then((r) => setVideos(r.items || [])).catch(() => undefined);
   useEffect(() => {
     loadAll();
     loadGallery();
+    loadVideoStatus();
+    loadVideos();
     if (typeof window !== 'undefined') { const m = localStorage.getItem('neurion_image_mode'); if (m === 'local' || m === 'network') setMode(m); }
   }, []);
   // While a generation is running server-side, poll the gallery so it updates even if
@@ -46,6 +58,43 @@ export default function ImagePage() {
     const id = setInterval(loadGallery, 2000);
     return () => clearInterval(id);
   }, [gallery]);
+  useEffect(() => {
+    if (!videos.some((v) => v.status === 'running')) return;
+    const id = setInterval(() => { loadVideos(); }, 3000);
+    return () => clearInterval(id);
+  }, [videos]);
+
+  // One-time ffmpeg setup (like the image engine): SSE progress.
+  async function setupVideo() {
+    if (vSetupPct >= 0) return;
+    setErr(''); setVSetupPct(0);
+    try {
+      await streamSSE('/ai/video/setup', {}, {
+        onEvent: (event, d) => {
+          if (event === 'progress') setVSetupPct(d.percent ?? 0);
+          else if (event === 'done') { setVSetupPct(-1); loadVideoStatus(); }
+          else if (event === 'error') { setErr(d.message || t('image.errFailed')); setVSetupPct(-1); }
+        },
+      });
+    } catch (e) { setErr((e as Error).message); setVSetupPct(-1); }
+  }
+
+  async function generateVideo() {
+    try {
+      const r = await api<{ ok: boolean; id?: string; error?: string }>('/ai/video', { method: 'POST', body: JSON.stringify({ prompt, negative }) });
+      if (r.ok) { loadVideos(); loadVideoStatus(); } else setErr(r.error || t('image.errFailed'));
+    } catch (e) { setErr((e as Error).message); }
+  }
+
+  // The MP4 endpoint needs the bearer header, which <video src> can't send — fetch a blob.
+  async function watch(id: string) {
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/video/file/${id}`, { headers: { authorization: `Bearer ${getToken() ?? ''}` } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const url = URL.createObjectURL(await res.blob());
+      setPlaying((p) => { if (p) URL.revokeObjectURL(p.url); return { id, url }; });
+    } catch (e) { setErr((e as Error).message); }
+  }
   const pickMode = (m: Mode) => { setMode(m); try { localStorage.setItem('neurion_image_mode', m); } catch {} };
 
   // Pick a curated model: downloads the engine + model if needed, then activates it.
@@ -87,6 +136,7 @@ export default function ImagePage() {
 
   async function generate() {
     if (!prompt.trim()) return;
+    if (kind === 'video') { setErr(''); await generateVideo(); return; }
     if (mode === 'local' && localRunning) return;
     setErr('');
     if (mode === 'network') {
@@ -124,31 +174,69 @@ export default function ImagePage() {
     setErr(t('image.errFailed'));
   }
 
-  const ready = mode === 'network' || st.engine === 'ready';
-  const formBlocked = busy || localRunning || !prompt.trim() || !ready;
+  const videoRunning = videos.some((v) => v.status === 'running');
+  const ready = kind === 'video' ? vStatus === 'ready' : mode === 'network' || st.engine === 'ready';
+  const formBlocked = kind === 'video'
+    ? videoRunning || !prompt.trim() || !ready
+    : busy || localRunning || !prompt.trim() || !ready;
   const installing = st.engine === 'installing';
+  const kindBtn = (k: Kind, label: string): React.CSSProperties => ({
+    padding: '6px 16px', borderRadius: 8, fontSize: 13, cursor: 'pointer', border: 'none',
+    background: kind === k ? theme.accent : 'transparent', color: kind === k ? 'var(--bg)' : theme.muted, fontWeight: kind === k ? 500 : 400,
+  });
 
   return (
     <div style={{ maxWidth: 820 }}>
       <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>{t('image.pageTitle')}</h2>
       <p style={{ color: theme.muted, fontSize: 13, marginTop: 0 }}>{t('image.pageSubtitle')}</p>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0' }}>
-        <label style={{ fontSize: 12, color: theme.muted }}>{t('image.compute')}</label>
-        <select value={mode} onChange={(e) => pickMode(e.target.value as Mode)} style={{ ...input, width: 'auto', padding: '5px 8px', cursor: 'pointer' }}>
-          <option value="local">{t('image.modeLocal')}</option>
-          <option value="network">{t('image.modeNetwork')}</option>
-        </select>
-        {mode === 'network' && <span style={{ fontSize: 12, color: theme.muted }}>⚡ {t('image.networkNote')}</span>}
+      {/* what to create: a picture, or an animated clip built from AI keyframes */}
+      <div style={{ display: 'inline-flex', gap: 4, background: 'var(--surface-2)', borderRadius: 10, padding: 3, margin: '10px 0' }}>
+        <button style={kindBtn('image', '')} onClick={() => setKind('image')}>🖼 {t('image.kindImage')}</button>
+        <button style={kindBtn('video', '')} onClick={() => setKind('video')}>🎬 {t('image.kindVideo')}</button>
       </div>
 
-      {mode === 'network' && isDesktop() && <NetworkConnect />}
+      {kind === 'image' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 14px' }}>
+          <label style={{ fontSize: 12, color: theme.muted }}>{t('image.compute')}</label>
+          <select value={mode} onChange={(e) => pickMode(e.target.value as Mode)} style={{ ...input, width: 'auto', padding: '5px 8px', cursor: 'pointer' }}>
+            <option value="local">{t('image.modeLocal')}</option>
+            <option value="network">{t('image.modeNetwork')}</option>
+          </select>
+          {mode === 'network' && <span style={{ fontSize: 12, color: theme.muted }}>⚡ {t('image.networkNote')}</span>}
+        </div>
+      )}
+
+      {kind === 'image' && mode === 'network' && isDesktop() && <NetworkConnect />}
+
+      {/* Video: needs the image engine (frames) + one-time ffmpeg setup (montage). */}
+      {kind === 'video' && (
+        <div style={{ ...card, marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: theme.muted, marginBottom: 6 }}>{t('video.note')}</div>
+          {vStatus === 'engine_missing' && <div style={{ fontSize: 13, color: theme.amber }}>⚠ {t('video.engineMissing')}</div>}
+          {vStatus === 'unsupported' && <div style={{ fontSize: 13, color: theme.amber }}>⚠ {t('video.unsupported')}</div>}
+          {vStatus === 'needs_setup' && vSetupPct < 0 && (
+            <button style={{ ...button, padding: '8px 18px' }} onClick={() => void setupVideo()}>⬇ {t('video.setupBtn')}</button>
+          )}
+          {vSetupPct >= 0 && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+                <span>⏳ {t('video.installing')}…</span><span style={{ color: theme.accent }}>{vSetupPct}%</span>
+              </div>
+              <div style={{ height: 8, background: theme.surface, borderRadius: 6, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.max(3, vSetupPct)}%`, background: theme.accent, transition: 'width .3s' }} />
+              </div>
+            </div>
+          )}
+          {vStatus === 'ready' && <div style={{ fontSize: 13, color: theme.green }}>✓ {t('video.ready')}</div>}
+        </div>
+      )}
 
       {/* Local: model picker (curated + your own file). */}
-      {mode === 'local' && st.engine === 'unsupported' && (
+      {kind === 'image' && mode === 'local' && st.engine === 'unsupported' && (
         <div style={{ border: `1px solid ${theme.amber}`, borderRadius: 10, padding: 12, fontSize: 13, marginBottom: 16 }}>{t('image.unsupported')}</div>
       )}
-      {mode === 'local' && st.engine !== 'unsupported' && st.engine !== 'unavailable' && (
+      {(kind === 'video' || mode === 'local') && st.engine !== 'unsupported' && st.engine !== 'unavailable' && (
         <div style={{ ...card, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <label style={{ fontSize: 12, color: theme.muted }}>{t('image.model')}</label>
@@ -187,21 +275,28 @@ export default function ImagePage() {
         <textarea style={{ ...input, minHeight: 84, resize: 'vertical', fontSize: 15 }} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t('image.promptPlaceholder')} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 12 }}>
           <button onClick={() => void generate()} disabled={formBlocked} style={{ ...button, padding: '9px 22px', fontSize: 15, opacity: formBlocked ? 0.5 : 1 }}>
-            {busy || localRunning ? t('image.generating') : `✨ ${t('image.generate')}`}
+            {kind === 'video'
+              ? videoRunning ? t('image.generating') : `🎬 ${t('video.generate')}`
+              : busy || localRunning ? t('image.generating') : `✨ ${t('image.generate')}`}
           </button>
-          <label style={{ fontSize: 12, color: theme.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
-            {t('image.size')}
-            <select value={size} onChange={(e) => setSize(Number(e.target.value))} style={{ ...input, width: 'auto', padding: '5px 8px', cursor: 'pointer' }}>
-              <option value={512}>{t('image.sizeSmall')}</option>
-              <option value={768}>{t('image.sizeMedium')}</option>
-              <option value={1024}>{t('image.sizeLarge')}</option>
-            </select>
-          </label>
-          <button onClick={() => setAdvanced((v) => !v)} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 12, textDecoration: 'underline', marginLeft: 'auto' }}>
-            {advanced ? '▾' : '▸'} {t('image.advanced')}
-          </button>
+          {kind === 'image' && (
+            <label style={{ fontSize: 12, color: theme.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {t('image.size')}
+              <select value={size} onChange={(e) => setSize(Number(e.target.value))} style={{ ...input, width: 'auto', padding: '5px 8px', cursor: 'pointer' }}>
+                <option value={512}>{t('image.sizeSmall')}</option>
+                <option value={768}>{t('image.sizeMedium')}</option>
+                <option value={1024}>{t('image.sizeLarge')}</option>
+              </select>
+            </label>
+          )}
+          {kind === 'video' && videoRunning && <span style={{ fontSize: 12, color: theme.muted }}>⏳ {t('video.takesAWhile')}</span>}
+          {kind === 'image' && (
+            <button onClick={() => setAdvanced((v) => !v)} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 12, textDecoration: 'underline', marginLeft: 'auto' }}>
+              {advanced ? '▾' : '▸'} {t('image.advanced')}
+            </button>
+          )}
         </div>
-        {advanced && (
+        {kind === 'image' && advanced && (
           <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <textarea style={{ ...input, minHeight: 40, resize: 'vertical' }} value={negative} onChange={(e) => setNegative(e.target.value)} placeholder={t('image.negativePlaceholder')} />
             <label style={{ fontSize: 12, color: theme.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -216,7 +311,36 @@ export default function ImagePage() {
 
       {err && <div style={{ color: '#e0533d', fontSize: 13, marginBottom: 12 }}>⚠ {err}</div>}
 
+      {/* Video history — same persistence model as images. */}
+      {kind === 'video' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {videos.map((v) => (
+            <div key={v.id} style={{ ...card }}>
+              {v.status === 'running' ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: theme.muted }}>
+                  <span className="flicker" style={{ color: theme.accent }}>●</span>
+                  {v.progress === 'montage' ? t('video.montage') : `${t('video.frame')} ${v.progress || ''}`} — <span style={{ color: theme.text }}>{v.prompt}</span>
+                </div>
+              ) : v.status === 'failed' ? (
+                <div style={{ fontSize: 13, color: '#e0533d' }}>⚠ {v.prompt} — {v.error || t('image.errFailed')}</div>
+              ) : (
+                <>
+                  {playing?.id === v.id ? (
+                    <video src={playing.url} controls autoPlay loop style={{ maxWidth: '100%', borderRadius: 8, display: 'block' }} />
+                  ) : (
+                    <button onClick={() => void watch(v.id)} style={{ ...button, padding: '8px 18px' }}>▶ {t('video.watch')}</button>
+                  )}
+                  <div style={{ marginTop: 10, fontSize: 12, color: theme.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🎬 {v.prompt}</div>
+                </>
+              )}
+            </div>
+          ))}
+          {videos.length === 0 && <div style={{ fontSize: 13, color: theme.muted }}>{t('video.empty')}</div>}
+        </div>
+      )}
+
       {/* Gallery / history — persists server-side, so it survives navigating away. */}
+      {kind === 'image' && (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {gallery.map((g) => (
           <div key={g.id} style={{ ...card }}>
@@ -239,6 +363,7 @@ export default function ImagePage() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

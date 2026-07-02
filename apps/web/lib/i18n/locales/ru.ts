@@ -421,5 +421,20 @@ const dict: Record<string, string> = {
   "sidebar.noProjects": "Пока нет проектов — откройте папку, и агент будет работать в ней.",
   "sidebar.galleryHeading": "Ваши изображения",
   "sidebar.galleryEmpty": "Сгенерированные изображения появятся здесь.",
+
+  "image.kindImage": "Картинка",
+  "image.kindVideo": "Видео · бета",
+  "video.note": "Анимированный клип (~10с): сцены от ИИ с кинематографичным зумом и переходами. Работает на вашем ПК.",
+  "video.engineMissing": "Сначала настройте модель изображений (вкладка Картинка) — клип собирается из ИИ-кадров.",
+  "video.unsupported": "Установите ffmpeg, чтобы включить видео в этой системе.",
+  "video.setupBtn": "Подготовить видео (~170 МБ, один раз)",
+  "video.installing": "Подготовка видео",
+  "video.ready": "Видеодвижок готов",
+  "video.generate": "Создать клип",
+  "video.takesAWhile": "Клип занимает несколько минут (4 сцены + монтаж).",
+  "video.frame": "Сцена",
+  "video.montage": "Монтаж",
+  "video.watch": "Смотреть",
+  "video.empty": "Ваши клипы появятся здесь.",
 };
 export default dict;

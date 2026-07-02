@@ -421,5 +421,20 @@ const dict: Record<string, string> = {
   "sidebar.noProjects": "Noch keine Projekte — öffne einen Ordner, und der Agent arbeitet darin.",
   "sidebar.galleryHeading": "Deine Bilder",
   "sidebar.galleryEmpty": "Erzeugte Bilder erscheinen hier.",
+
+  "image.kindImage": "Bild",
+  "image.kindVideo": "Video · Beta",
+  "video.note": "Ein animierter Clip (~10s): KI-generierte Szenen mit filmischen Zooms und Überblendungen. Läuft auf deinem PC.",
+  "video.engineMissing": "Richte zuerst ein Bildmodell ein (Tab Bild) — der Clip entsteht aus KI-Bildern.",
+  "video.unsupported": "Installiere ffmpeg, um Video auf diesem System zu aktivieren.",
+  "video.setupBtn": "Video einrichten (~170 MB, einmalig)",
+  "video.installing": "Richte Video ein",
+  "video.ready": "Video-Engine bereit",
+  "video.generate": "Clip erstellen",
+  "video.takesAWhile": "Ein Clip dauert einige Minuten (4 Szenen + Montage).",
+  "video.frame": "Szene",
+  "video.montage": "Montage",
+  "video.watch": "Ansehen",
+  "video.empty": "Deine Clips erscheinen hier.",
 };
 export default dict;

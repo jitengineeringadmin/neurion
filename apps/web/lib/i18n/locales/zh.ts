@@ -421,5 +421,20 @@ const dict: Record<string, string> = {
   "sidebar.noProjects": "还没有项目——打开一个文件夹，智能体将在其中工作。",
   "sidebar.galleryHeading": "你的图片",
   "sidebar.galleryEmpty": "生成的图片会显示在这里。",
+
+  "image.kindImage": "图片",
+  "image.kindVideo": "视频 · 测试版",
+  "video.note": "一段动画短片（约10秒）：AI 生成的场景，配电影式缩放和淡入淡出。在你的电脑上运行。",
+  "video.engineMissing": "请先设置图片模型（图片标签页）——短片由 AI 帧构成。",
+  "video.unsupported": "请安装 ffmpeg 以在此系统上启用视频。",
+  "video.setupBtn": "准备视频（约170 MB，一次性）",
+  "video.installing": "正在准备视频",
+  "video.ready": "视频引擎就绪",
+  "video.generate": "创建短片",
+  "video.takesAWhile": "一段短片需要几分钟（4个场景+剪辑）。",
+  "video.frame": "场景",
+  "video.montage": "剪辑",
+  "video.watch": "观看",
+  "video.empty": "你的短片会显示在这里。",
 };
 export default dict;

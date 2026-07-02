@@ -421,5 +421,20 @@ const dict: Record<string, string> = {
   "sidebar.noProjects": "Aucun projet — ouvrez un dossier et l’agent y travaillera.",
   "sidebar.galleryHeading": "Vos images",
   "sidebar.galleryEmpty": "Les images générées apparaîtront ici.",
+
+  "image.kindImage": "Image",
+  "image.kindVideo": "Vidéo · bêta",
+  "video.note": "Un clip animé (~10s) : des scènes générées par l’IA avec zooms cinématiques et fondus. Tourne sur votre PC.",
+  "video.engineMissing": "Configurez d’abord un modèle d’image (onglet Image) — le clip naît des images IA.",
+  "video.unsupported": "Installez ffmpeg pour activer la vidéo sur ce système.",
+  "video.setupBtn": "Préparer la vidéo (~170 Mo, une fois)",
+  "video.installing": "Préparation de la vidéo",
+  "video.ready": "Moteur vidéo prêt",
+  "video.generate": "Créer le clip",
+  "video.takesAWhile": "Un clip prend quelques minutes (4 scènes + montage).",
+  "video.frame": "Scène",
+  "video.montage": "Montage",
+  "video.watch": "Regarder",
+  "video.empty": "Vos clips apparaîtront ici.",
 };
 export default dict;
