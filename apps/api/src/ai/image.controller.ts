@@ -43,6 +43,9 @@ const NAME_RE = /^[^<>|?*"']+\.(safetensors|gguf|ckpt)$/i; // custom model path 
 
 let setup = { installing: false, percent: 0, stage: '', modelId: '' };
 let generating = false;
+let imgRunningId: string | null = null; // the image currently generating (for cancel)
+let imgProc: ReturnType<typeof spawn> | null = null;
+const imgCancelled = new Set<string>(); // ids stopped by the user — suppress their meta
 
 /**
  * Local text-to-image. A stable-diffusion.cpp engine + a user-chosen model are
@@ -193,11 +196,14 @@ export class ImageController {
       '-W', String(width), '-H', String(height), '--seed', String(seed), '-o', outPng,
     ];
     generating = true;
+    imgRunningId = id;
     const finish = (status: string, error = '') => {
-      generating = false;
+      generating = false; imgRunningId = null; imgProc = null;
+      if (imgCancelled.has(id)) { imgCancelled.delete(id); return; } // stopped — leave no meta
       try { writeFileSync(path.join(gdir, `${id}.json`), JSON.stringify({ ...meta, status, error })); } catch { /* ignore */ }
     };
     const cp = spawn(this.binPath(dir), args, { cwd: path.join(dir, 'bin'), windowsHide: true });
+    imgProc = cp;
     let err = '';
     cp.stderr.on('data', (d) => (err += d.toString()));
     const to = setTimeout(() => { cp.kill(); finish('failed', 'timed out'); }, 600000);
@@ -210,15 +216,19 @@ export class ImageController {
     return { ok: true as const, id };
   }
 
-  /** Delete a generation from the gallery (meta + png). */
+  /** Stop (if running) + delete a generation from the gallery (meta + png). */
   @Delete('gallery/:id')
   deleteItem(@Param('id') id: string) {
     const dir = this.dir();
     if (!dir || !/^[a-f0-9-]{10,}$/i.test(id)) return { ok: false as const };
+    if (id === imgRunningId) {
+      imgCancelled.add(id);
+      try { imgProc?.kill(); } catch { /* already gone */ }
+    }
     const gdir = this.galleryDir(dir);
     rmSync(path.join(gdir, `${id}.json`), { force: true });
     rmSync(path.join(gdir, `${id}.png`), { force: true });
-    return { ok: true as const };
+    return { ok: true as const, stopped: id === imgRunningId };
   }
 
   /** Recent generations (newest first) — the persistent gallery / history. */

@@ -164,6 +164,17 @@ export default function ImagePage() {
     await api(`/ai/video/gallery/${id}`, { method: 'DELETE' }).catch(() => undefined);
     loadVideos();
   }
+  // Stop a running generation (same DELETE endpoint kills the process + removes it).
+  async function stopVideo(id: string) {
+    if (!window.confirm(t('gallery.confirmStop'))) return;
+    await api(`/ai/video/gallery/${id}`, { method: 'DELETE' }).catch(() => undefined);
+    loadVideos(); loadVideoStatus();
+  }
+  async function stopImage(id: string) {
+    if (!window.confirm(t('gallery.confirmStop'))) return;
+    await api(`/ai/image/gallery/${id}`, { method: 'DELETE' }).catch(() => undefined);
+    loadGallery();
+  }
 
   // The MP4 endpoint needs the bearer header, which <video src> can't send — fetch a blob.
   async function watch(id: string) {
@@ -522,6 +533,7 @@ export default function ImagePage() {
                       <span className="flicker" style={{ color: theme.accent }}>●</span>
                       <span style={{ color: theme.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.prompt}</span>
                       <Elapsed since={v.ts} />
+                      <button onClick={() => void stopVideo(v.id)} title={t('gallery.stop')} style={{ background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 8, color: '#e0533d', cursor: 'pointer', fontSize: 12, padding: '3px 10px' }}>⏹ {t('gallery.stop')}</button>
                     </div>
                     {sm && tot > 0 ? (
                       <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 6, overflow: 'hidden' }}>
@@ -568,6 +580,7 @@ export default function ImagePage() {
                   <span className="flicker" style={{ color: theme.accent }}>●</span>
                   <span style={{ color: theme.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.prompt}</span>
                   <Elapsed since={g.ts} />
+                  <button onClick={() => void stopImage(g.id)} title={t('gallery.stop')} style={{ background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 8, color: '#e0533d', cursor: 'pointer', fontSize: 12, padding: '3px 10px' }}>⏹ {t('gallery.stop')}</button>
                 </div>
                 <div className="shimmer-track" />
                 <div style={{ fontSize: 12, color: theme.muted, marginTop: 8 }}>{t('image.generating')}…</div>

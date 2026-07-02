@@ -103,7 +103,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
           <Link href="/app/account" title="Account" style={{ fontSize: 11, color: theme.muted, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none' }}>{user.email}</Link>
-          <Link href="/app/settings" title={t('settings.title')} style={{ fontSize: 15, textDecoration: 'none', color: pathname.startsWith('/app/settings') ? theme.accent : theme.muted }}>⚙</Link>
+          <Link href="/app/settings" title={t('settings.title')} style={{ fontSize: 22, lineHeight: 1, textDecoration: 'none', color: pathname.startsWith('/app/settings') ? theme.accent : theme.muted }}>⚙</Link>
           <ThemeToggle />
           <LangToggle />
           <button

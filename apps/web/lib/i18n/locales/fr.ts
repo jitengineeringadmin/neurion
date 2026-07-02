@@ -507,5 +507,8 @@ const dict: Record<string, string> = {
   "image.needModel": "Choisissez ou téléchargez un modèle ci-dessus pour générer.",
   "image.needVideo": "Configurez d’abord le moteur vidéo ci-dessus.",
   "image.needAudio": "Terminez d’abord la configuration audio ci-dessus.",
+
+  "gallery.stop": "Arrêter",
+  "gallery.confirmStop": "Arrêter et supprimer cette génération ?",
 };
 export default dict;

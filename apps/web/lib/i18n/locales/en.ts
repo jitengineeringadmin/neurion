@@ -488,5 +488,8 @@ const dict: Record<string, string> = {
   "image.needModel": "Choose or download a model above to generate.",
   "image.needVideo": "Set up the video engine above first.",
   "image.needAudio": "Finish the audio setup above first.",
+
+  "gallery.stop": "Stop",
+  "gallery.confirmStop": "Stop and discard this generation?",
 };
 export default dict;

@@ -81,6 +81,9 @@ class VideoDto {
 interface AudioOpts { mode: 'none' | 'music' | 'tts' | 'both' | 'gen'; mood: Mood; voiceText: string; musicPrompt: string }
 
 let busy = false; // one clip at a time (frames hit the same GPU as images)
+let runningId: string | null = null; // the clip currently generating (for cancel)
+let activeProc: ReturnType<typeof spawn> | null = null; // its current child process
+const cancelled = new Set<string>(); // ids the user stopped — suppress their meta writes
 
 @Controller('ai/video')
 export class VideoController {
@@ -235,9 +238,11 @@ export class VideoController {
     const gdir = this.galleryDir(dir);
     mkdirSync(gdir, { recursive: true });
     const meta: Record<string, unknown> = { id, kind: 'video', ai, prompt, model: ai ? 'Wan 2.1' : a?.label ?? '', status: 'running', progress: ai ? 'ai' : '0/' + FRAMES, ts: Date.now(), error: '' };
-    const save = () => { try { writeFileSync(path.join(gdir, `${id}.json`), JSON.stringify(meta)); } catch { /* ignore */ } };
+    // don't re-write meta once the user cancelled this id (delete already removed it)
+    const save = () => { if (cancelled.has(id)) return; try { writeFileSync(path.join(gdir, `${id}.json`), JSON.stringify(meta)); } catch { /* ignore */ } };
     save();
     busy = true;
+    runningId = id;
     const audio: AudioOpts = {
       mode: dto.audioMode ?? 'none',
       mood: dto.mood ?? 'epic',
@@ -247,7 +252,7 @@ export class VideoController {
     const work = ai
       ? this.renderAi(dir, ff, id, prompt, (dto.negative ?? '').trim(), meta, save, audio)
       : this.render(dir, ff, a as Active, id, prompt, (dto.negative ?? '').trim(), meta, save, audio);
-    void work.finally(() => { busy = false; });
+    void work.finally(() => { busy = false; runningId = null; activeProc = null; cancelled.delete(id); });
     return { ok: true as const, id };
   }
 
@@ -424,13 +429,15 @@ export class VideoController {
   private run(bin: string, args: string[], cwd: string, timeoutMs: number, onLine?: (line: string) => void): Promise<void> {
     return new Promise((resolve, reject) => {
       const cp = spawn(bin, args, { cwd, windowsHide: true });
+      activeProc = cp; // so a cancel can kill the current step
       let err = '';
       const feed = (d: Buffer) => { if (onLine) for (const l of d.toString().split(/[\r\n]+/)) if (l) onLine(l); };
-      cp.stdout.on('data', feed);
-      cp.stderr.on('data', (d) => { feed(d); err += d.toString(); if (err.length > 8000) err = err.slice(-4000); });
+      cp.stdout?.on('data', feed);
+      cp.stderr?.on('data', (d) => { feed(d); err += d.toString(); if (err.length > 8000) err = err.slice(-4000); });
+      const done = () => { if (activeProc === cp) activeProc = null; };
       const to = setTimeout(() => { cp.kill(); reject(new Error('timed out')); }, timeoutMs);
-      cp.on('error', (e) => { clearTimeout(to); reject(e); });
-      cp.on('close', (code) => { clearTimeout(to); code === 0 ? resolve() : reject(new Error(err.slice(-200) || `exited ${code}`)); });
+      cp.on('error', (e) => { clearTimeout(to); done(); reject(e); });
+      cp.on('close', (code) => { clearTimeout(to); done(); code === 0 ? resolve() : reject(new Error(err.slice(-200) || `exited ${code}`)); });
     });
   }
 
@@ -450,16 +457,21 @@ export class VideoController {
     return { items };
   }
 
-  /** Delete a clip from the gallery (meta + mp4 + any leftover frames dir). */
+  /** Stop (if running) + delete a clip from the gallery (meta + mp4 + frames). */
   @Delete('gallery/:id')
   deleteItem(@Param('id') id: string) {
     const dir = this.dir();
     if (!dir || !/^[a-f0-9-]{10,}$/i.test(id)) return { ok: false as const };
+    if (id === runningId) {
+      // stop the in-progress generation: suppress its meta writes, then kill the child
+      cancelled.add(id);
+      try { activeProc?.kill(); } catch { /* already gone */ }
+    }
     const gdir = this.galleryDir(dir);
     rmSync(path.join(gdir, `${id}.json`), { force: true });
     rmSync(path.join(gdir, `${id}.mp4`), { force: true });
     rmSync(path.join(gdir, `${id}-frames`), { recursive: true, force: true });
-    return { ok: true as const };
+    return { ok: true as const, stopped: id === runningId };
   }
 
   @Get('file/:id')
