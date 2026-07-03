@@ -77,6 +77,16 @@ const RECOMMENDED = [
   { name: 'llama3.3:70b', label: 'Llama 3.3 70B', size: '~43 GB', note: 'Meta flagship, very heavy', group: 'Other' },
   { name: 'gemma2:2b', label: 'Gemma 2 2B', size: '~1.6 GB', note: 'Google, smallest, lightest', group: 'Other' },
   { name: 'phi3.5:3.8b', label: 'Phi 3.5', size: '~2.2 GB', note: 'Microsoft, strong reasoning', group: 'Other' },
+  // Newest top picks (verified on ollama)
+  { name: 'qwen3-coder:30b', label: 'Qwen 3 Coder 30B (MoE)', size: '~19 GB', note: 'Newest top open coder — fast for its size, strong GPU', group: 'Top coders · newest' },
+  { name: 'codestral:22b', label: 'Codestral 22B', size: '~13 GB', note: 'Mistral code specialist, excellent for code', group: 'Top coders · newest' },
+  { name: 'starcoder2:7b', label: 'StarCoder2 7B', size: '~4.0 GB', note: 'Code completion, 600+ languages', group: 'Top coders · newest' },
+  { name: 'starcoder2:15b', label: 'StarCoder2 15B', size: '~9.1 GB', note: 'Stronger code completion, GPU', group: 'Top coders · newest' },
+  { name: 'phi4:14b', label: 'Phi 4 14B', size: '~9.1 GB', note: 'Microsoft, excellent reasoning', group: 'Other' },
+  { name: 'mistral-small:24b', label: 'Mistral Small 3 24B', size: '~14 GB', note: 'High quality all-round, GPU', group: 'Mistral' },
+  { name: 'granite3.3:8b', label: 'Granite 3.3 8B', size: '~4.9 GB', note: 'IBM, business + coding', group: 'Other' },
+  { name: 'command-r7b:latest', label: 'Command R7B', size: '~5.0 GB', note: 'Cohere, great for RAG / documents', group: 'Other' },
+  { name: 'minicpm-v:8b', label: 'MiniCPM-V 8B', size: '~5.5 GB', note: 'Strong vision, sees images', group: 'Vision · sees images' },
   // Embedding — for search / RAG (not for chat)
   { name: 'nomic-embed-text:latest', label: 'Nomic Embed', size: '~0.3 GB', note: 'For search / document memory', group: 'Embedding · search' },
   { name: 'mxbai-embed-large:latest', label: 'MxBai Embed Large', size: '~0.7 GB', note: 'Higher-quality search embeddings', group: 'Embedding · search' },

@@ -514,5 +514,8 @@ const dict: Record<string, string> = {
   "chat.attachImage": "Bild anhängen",
   "chat.imageAttached": "Bild angehängt",
   "chat.imagePromptPlaceholder": "Frag zum Bild… (leer = beschreiben)",
+
+  "models.searchPlaceholder": "🔎 Modelle suchen (z. B. coder, vision, 7b, deepseek)…",
+  "models.noMatch": "Kein Treffer — versuche eine Familie (qwen, llama, mistral) oder Größe (7b, 14b).",
 };
 export default dict;

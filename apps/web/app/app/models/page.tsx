@@ -28,6 +28,7 @@ export default function ModelsPage() {
   const [pulling, setPulling] = useState<Pulling | null>(null);
   const [def, setDef] = useState<string>('');
   const [sel, setSel] = useState('');
+  const [search, setSearch] = useState('');
   const [err, setErr] = useState('');
   const nodeApi: NodeApi | null =
     typeof window !== 'undefined' ? (window as unknown as { neurion?: { node?: NodeApi } }).neurion?.node ?? null : null;
@@ -144,8 +145,23 @@ export default function ModelsPage() {
       {(() => {
         const groups = reco.reduce<string[]>((acc, r) => (acc.includes(r.group) ? acc : [...acc, r.group]), []);
         const selModel = reco.find((m) => m.name === sel) || null;
+        const q = search.trim().toLowerCase();
+        const matches = q ? reco.filter((m) => (m.label + ' ' + m.name + ' ' + m.note + ' ' + m.group).toLowerCase().includes(q)) : [];
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 520 }}>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('models.searchPlaceholder')} style={{ ...input }} />
+            {q ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 260, overflowY: 'auto', border: `1px solid ${theme.border}`, borderRadius: 10, padding: 6 }}>
+                {matches.length === 0 && <div style={{ fontSize: 13, color: theme.muted, padding: 8 }}>{t('models.noMatch')}</div>}
+                {matches.map((m) => (
+                  <div key={m.name} onClick={() => { setSel(m.name); setSearch(''); }}
+                    style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', background: sel === m.name ? theme.surface : 'transparent' }}>
+                    <span style={{ fontSize: 13 }}>{m.label}{has(m.name) ? ' ✓' : ''} <span style={{ color: theme.muted, fontSize: 11 }}>· {m.group}</span></span>
+                    <span style={{ fontSize: 11, color: theme.muted, flexShrink: 0 }}>{m.size}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
             <select value={sel} onChange={(e) => setSel(e.target.value)} style={{ ...input, cursor: 'pointer' }}>
               <option value="">{t('models.choose')}</option>
               {groups.map((g) => (
@@ -156,6 +172,7 @@ export default function ModelsPage() {
                 </optgroup>
               ))}
             </select>
+            )}
             {selModel && (() => {
               // Real installed name is base-infix-quant (e.g. qwen2.5:7b-instruct-q8_0),
               // so match loosely by base prefix + quant token rather than an exact guess.

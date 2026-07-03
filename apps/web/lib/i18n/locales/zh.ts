@@ -514,5 +514,8 @@ const dict: Record<string, string> = {
   "chat.attachImage": "附加图片",
   "chat.imageAttached": "已附加图片",
   "chat.imagePromptPlaceholder": "询问这张图片…（留空 = 描述它）",
+
+  "models.searchPlaceholder": "🔎 搜索模型（如 coder、vision、7b、deepseek）…",
+  "models.noMatch": "无匹配——试试模型家族（qwen、llama、mistral）或规模（7b、14b）。",
 };
 export default dict;
