@@ -524,5 +524,28 @@ const dict: Record<string, string> = {
 
   "sidebar.rename": "重命名",
   "sidebar.renamePrompt": "新的项目名称：",
+
+  // --- skills ---
+  "skills.title": "技能",
+  "skills.sub": "可复用的指令包，当请求匹配时代理会自动应用。为每种常做的工作各建一个——模型只加载相关的。",
+  "skills.new": "新建技能",
+  "skills.empty": "还没有技能。添加一个，教代理一种可重复的工作方式。",
+  "skills.name": "名称",
+  "skills.namePh": "例如：落地页",
+  "skills.desc": "描述",
+  "skills.descPh": "它做什么／何时使用",
+  "skills.triggers": "触发关键词",
+  "skills.triggersPh": "landing、网站、website——用逗号分隔",
+  "skills.triggersHelp": "仅当请求包含其中一个词时才加载该技能。留空则始终应用。",
+  "skills.body": "指令",
+  "skills.bodyPh": "写下代理应遵循的步骤，例如：\n- 始终通过 CDN 使用 Tailwind 和一个 Google 字体。\n- 单个 index.html，无需构建。\n- 配色：陶土色、米色、橄榄色。不要 lorem ipsum。",
+  "skills.save": "保存技能",
+  "skills.cancel": "取消",
+  "skills.edit": "编辑",
+  "skills.delete": "删除",
+  "skills.enabled": "启用",
+  "skills.on": "开",
+  "skills.off": "关",
+  "skills.always": "始终启用",
 };
 export default dict;

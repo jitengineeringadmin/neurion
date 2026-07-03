@@ -86,7 +86,7 @@ export function SessionsSidebar() {
       onClick={() => open(c.id)}
       style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 8, cursor: 'pointer', background: activeId === c.id ? theme.surface : 'transparent' }}
     >
-      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: activeId === c.id ? theme.text : theme.muted }}>
+      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14.5, color: activeId === c.id ? theme.text : theme.muted }}>
         {c.title || t('sessions.newChatTitle')}
       </span>
       <span style={{ position: 'relative', display: 'inline-flex' }}>
@@ -97,7 +97,7 @@ export function SessionsSidebar() {
             setAssignFor(assignFor === c.id ? '' : c.id);
           }}
           title={t('sessions.assignProjectTooltip')}
-          style={{ color: theme.muted, fontSize: 12, cursor: 'pointer' }}
+          style={{ color: theme.muted, fontSize: 14, cursor: 'pointer' }}
         >
           📁
         </span>
@@ -118,8 +118,8 @@ export function SessionsSidebar() {
           </div>
         )}
       </span>
-      <span onClick={(e) => { e.stopPropagation(); void pinConv(c.id, !c.pinned); }} title={t('sessions.pinTooltip')} style={{ color: c.pinned ? theme.accent : theme.muted, fontSize: 12 }}>{c.pinned ? '★' : '☆'}</span>
-      <span onClick={(e) => { e.stopPropagation(); void delConv(c.id); }} title={t('sessions.deleteTooltip')} style={{ color: theme.muted, fontSize: 12 }}>✕</span>
+      <span onClick={(e) => { e.stopPropagation(); void pinConv(c.id, !c.pinned); }} title={t('sessions.pinTooltip')} style={{ color: c.pinned ? theme.accent : theme.muted, fontSize: 14 }}>{c.pinned ? '★' : '☆'}</span>
+      <span onClick={(e) => { e.stopPropagation(); void delConv(c.id); }} title={t('sessions.deleteTooltip')} style={{ color: theme.muted, fontSize: 14 }}>✕</span>
     </div>
   );
 
@@ -134,7 +134,7 @@ export function SessionsSidebar() {
 
       {pinned.length > 0 && (
         <>
-          <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '8px 0 4px' }}>{t('sessions.pinnedHeading')}</div>
+          <div style={{ fontSize: 12, letterSpacing: 0.4, color: theme.muted, textTransform: 'uppercase', margin: '8px 0 4px' }}>{t('sessions.pinnedHeading')}</div>
           {pinned.map(Item)}
         </>
       )}
@@ -143,7 +143,7 @@ export function SessionsSidebar() {
         return (
           <div key={p.id}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '10px 0 4px', gap: 6 }}>
-              <span title={p.path} style={{ fontSize: 11, color: theme.accent, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📂 {p.name}</span>
+              <span title={p.path} style={{ fontSize: 12, letterSpacing: 0.3, color: theme.accent, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📂 {p.name}</span>
               <span
                 onClick={async () => {
                   const conv = await api<any>('/chat/conversations', { method: 'POST', body: JSON.stringify({ title: t('sessions.newChatTitle') }) });
@@ -161,9 +161,9 @@ export function SessionsSidebar() {
           </div>
         );
       })}
-      <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '10px 0 4px' }}>{t('sessions.ungroupedHeading')}</div>
+      <div style={{ fontSize: 12, letterSpacing: 0.4, color: theme.muted, textTransform: 'uppercase', margin: '10px 0 4px' }}>{t('sessions.ungroupedHeading')}</div>
       {conversations.filter((c) => !c.pinned && !c.projectId).map(Item)}
-      {conversations.length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 8px' }}>{t('sessions.noSessionsEmptyState')}</div>}
+      {conversations.length === 0 && <div style={{ fontSize: 13.5, color: theme.muted, padding: '4px 8px' }}>{t('sessions.noSessionsEmptyState')}</div>}
     </div>
   );
 }

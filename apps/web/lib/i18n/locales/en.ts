@@ -505,5 +505,28 @@ const dict: Record<string, string> = {
 
   "sidebar.rename": "Rename",
   "sidebar.renamePrompt": "New project name:",
+
+  // --- skills ---
+  "skills.title": "Skills",
+  "skills.sub": "Reusable instruction packs the agent applies on its own when a request matches. Add one per kind of work you do often — the model loads only the relevant ones.",
+  "skills.new": "New skill",
+  "skills.empty": "No skills yet. Add one to teach the agent a repeatable way of working.",
+  "skills.name": "Name",
+  "skills.namePh": "e.g. Landing page",
+  "skills.desc": "Description",
+  "skills.descPh": "What it does / when to use it",
+  "skills.triggers": "Trigger words",
+  "skills.triggersPh": "landing, site, website — comma separated",
+  "skills.triggersHelp": "The skill loads only when the request contains one of these words. Leave empty to always apply it.",
+  "skills.body": "Instructions",
+  "skills.bodyPh": "Write the steps the agent should follow, e.g.:\n- Always use Tailwind via CDN and a Google Font.\n- One single index.html, no build step.\n- Palette: terracotta, cream, olive. No lorem ipsum.",
+  "skills.save": "Save skill",
+  "skills.cancel": "Cancel",
+  "skills.edit": "Edit",
+  "skills.delete": "Delete",
+  "skills.enabled": "Enabled",
+  "skills.on": "On",
+  "skills.off": "Off",
+  "skills.always": "always on",
 };
 export default dict;

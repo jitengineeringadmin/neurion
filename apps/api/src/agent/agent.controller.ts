@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Post, Put, Res } from '@nestjs/common';
-import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Body, Controller, Delete, Get, Param, Post, Put, Res } from '@nestjs/common';
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Response } from 'express';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
 import { AgentApprovalService } from './agent-approval.service';
 import { AgentSettingsService } from './agent-settings.service';
+import { AgentSkillsService } from './agent-skills.service';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 
 class RunAgentDto {
@@ -67,12 +68,40 @@ class SettingsDto {
   instructions?: string;
 }
 
+class SkillDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(16)
+  @IsString({ each: true })
+  triggers?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(8000)
+  body?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+}
+
 @Controller('agent')
 export class AgentController {
   constructor(
     private readonly orchestrator: AgentOrchestratorService,
     private readonly approvals: AgentApprovalService,
     private readonly settings: AgentSettingsService,
+    private readonly skills: AgentSkillsService,
   ) {}
 
   @Get('settings')
@@ -83,6 +112,26 @@ export class AgentController {
   @Put('settings')
   setSettings(@Body() dto: SettingsDto) {
     return this.settings.set(dto.instructions ?? '');
+  }
+
+  @Get('skills')
+  listSkills() {
+    return this.skills.list();
+  }
+
+  @Post('skills')
+  createSkill(@Body() dto: SkillDto) {
+    return this.skills.create(dto);
+  }
+
+  @Put('skills/:id')
+  updateSkill(@Param('id') id: string, @Body() dto: SkillDto) {
+    return this.skills.update(id, dto);
+  }
+
+  @Delete('skills/:id')
+  removeSkill(@Param('id') id: string) {
+    return this.skills.remove(id);
   }
 
   @Post('stream')

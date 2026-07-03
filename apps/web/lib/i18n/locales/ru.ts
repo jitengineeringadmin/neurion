@@ -524,5 +524,28 @@ const dict: Record<string, string> = {
 
   "sidebar.rename": "Переименовать",
   "sidebar.renamePrompt": "Новое имя проекта:",
+
+  // --- skills ---
+  "skills.title": "Навыки",
+  "skills.sub": "Многоразовые наборы инструкций, которые агент применяет сам, когда запрос подходит. Добавьте по одному на каждый частый тип работы — модель загружает только подходящие.",
+  "skills.new": "Новый навык",
+  "skills.empty": "Пока нет навыков. Добавьте один, чтобы научить агента повторяемому способу работы.",
+  "skills.name": "Название",
+  "skills.namePh": "напр. Лендинг",
+  "skills.desc": "Описание",
+  "skills.descPh": "Что делает / когда использовать",
+  "skills.triggers": "Ключевые слова",
+  "skills.triggersPh": "landing, сайт, website — через запятую",
+  "skills.triggersHelp": "Навык загружается, только если запрос содержит одно из этих слов. Оставьте пустым, чтобы применять всегда.",
+  "skills.body": "Инструкции",
+  "skills.bodyPh": "Опишите шаги, которым должен следовать агент, напр.:\n- Всегда использовать Tailwind через CDN и Google Font.\n- Один index.html, без сборки.\n- Палитра: терракота, кремовый, оливковый. Без lorem ipsum.",
+  "skills.save": "Сохранить",
+  "skills.cancel": "Отмена",
+  "skills.edit": "Изменить",
+  "skills.delete": "Удалить",
+  "skills.enabled": "Включён",
+  "skills.on": "Вкл",
+  "skills.off": "Выкл",
+  "skills.always": "всегда активен",
 };
 export default dict;

@@ -524,5 +524,28 @@ const dict: Record<string, string> = {
 
   "sidebar.rename": "Renommer",
   "sidebar.renamePrompt": "Nouveau nom du projet :",
+
+  // --- skills ---
+  "skills.title": "Skills",
+  "skills.sub": "Des blocs d’instructions réutilisables que l’agent applique de lui-même quand une demande correspond. Ajoutez-en un par type de travail récurrent — le modèle ne charge que ceux qui sont pertinents.",
+  "skills.new": "Nouvelle skill",
+  "skills.empty": "Aucune skill pour l’instant. Ajoutez-en une pour apprendre à l’agent une façon de travailler réutilisable.",
+  "skills.name": "Nom",
+  "skills.namePh": "ex. Landing page",
+  "skills.desc": "Description",
+  "skills.descPh": "Ce qu’elle fait / quand l’utiliser",
+  "skills.triggers": "Mots-clés",
+  "skills.triggersPh": "landing, site, website — séparés par des virgules",
+  "skills.triggersHelp": "La skill se charge uniquement quand la demande contient l’un de ces mots. Laissez vide pour l’appliquer toujours.",
+  "skills.body": "Instructions",
+  "skills.bodyPh": "Écrivez les étapes que l’agent doit suivre, ex. :\n- Toujours utiliser Tailwind via CDN et une Google Font.\n- Un seul index.html, sans build.\n- Palette : terracotta, crème, olive. Pas de lorem ipsum.",
+  "skills.save": "Enregistrer",
+  "skills.cancel": "Annuler",
+  "skills.edit": "Modifier",
+  "skills.delete": "Supprimer",
+  "skills.enabled": "Activée",
+  "skills.on": "On",
+  "skills.off": "Off",
+  "skills.always": "toujours active",
 };
 export default dict;

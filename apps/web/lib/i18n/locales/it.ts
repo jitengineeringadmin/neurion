@@ -518,5 +518,28 @@ const dict: Record<string, string> = {
 
   "sidebar.rename": "Rinomina",
   "sidebar.renamePrompt": "Nuovo nome del progetto:",
+
+  // --- skills ---
+  "skills.title": "Skills",
+  "skills.sub": "Pacchetti di istruzioni riutilizzabili che l’agente applica da solo quando una richiesta corrisponde. Aggiungine uno per ogni tipo di lavoro ricorrente — il modello carica solo quelli rilevanti.",
+  "skills.new": "Nuova skill",
+  "skills.empty": "Ancora nessuna skill. Aggiungine una per insegnare all’agente un modo di lavorare ripetibile.",
+  "skills.name": "Nome",
+  "skills.namePh": "es. Landing page",
+  "skills.desc": "Descrizione",
+  "skills.descPh": "Cosa fa / quando usarla",
+  "skills.triggers": "Parole chiave",
+  "skills.triggersPh": "landing, sito, website — separate da virgola",
+  "skills.triggersHelp": "La skill si carica solo quando la richiesta contiene una di queste parole. Lascia vuoto per applicarla sempre.",
+  "skills.body": "Istruzioni",
+  "skills.bodyPh": "Scrivi i passi che l’agente deve seguire, es.:\n- Usa sempre Tailwind via CDN e un Google Font.\n- Un solo index.html, senza build.\n- Palette: terracotta, crema, oliva. Niente lorem ipsum.",
+  "skills.save": "Salva skill",
+  "skills.cancel": "Annulla",
+  "skills.edit": "Modifica",
+  "skills.delete": "Elimina",
+  "skills.enabled": "Attiva",
+  "skills.on": "On",
+  "skills.off": "Off",
+  "skills.always": "sempre attiva",
 };
 export default dict;

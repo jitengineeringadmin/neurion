@@ -8,6 +8,7 @@ import { ProviderResolverService } from '../ai/provider-resolver.service';
 import { RealtimePoolService, WarmMatch } from '../ai/realtime-pool.service';
 import { CreditsService } from '../credits/credits.service';
 import { AgentSettingsService } from './agent-settings.service';
+import { AgentSkillsService } from './agent-skills.service';
 import { AiProvider, ChatMsg } from '../ai/providers/ai-provider.interface';
 import { RelayProvider } from '../ai/providers/relay.provider';
 import { AgentToolsService } from './agent-tools.service';
@@ -36,6 +37,7 @@ export class AgentOrchestratorService {
     private readonly pool: RealtimePoolService,
     private readonly credits: CreditsService,
     private readonly settings: AgentSettingsService,
+    private readonly skills: AgentSkillsService,
   ) {}
 
   // Resolve where the LLM brain runs for this run, per the user-chosen mode.
@@ -201,15 +203,17 @@ export class AgentOrchestratorService {
       'Stay strictly on the GOAL. Do NOT explore the network, nodes, credits or run',
       'jobs unless the goal explicitly asks for it. Prefer finishing quickly — when the',
       'goal is done, return {"final": ...}.',
-    ].join('\n') + cwdBlock + this.userInstructions(cwd) + this.webGuidance(goal) + memBlock;
+    ].join('\n') + cwdBlock + this.userInstructions(cwd, goal) + this.webGuidance(goal) + memBlock;
   }
 
   /** Global Settings instructions + a per-project rules file (NEURION.md etc.) if the
-   * open folder has one. Project rules come after the global ones (more specific). */
-  private allRules(cwd?: string): string {
+   * open folder has one + any user skills whose triggers match the goal. Order = least
+   * to most specific (global → project → matched skills). */
+  private allRules(cwd?: string, goal = ''): string {
     const global = this.settings.get().instructions.trim();
     const project = this.projectRules(cwd);
-    return [global, project].filter(Boolean).join('\n\n');
+    const skills = this.skills.rulesFor(goal);
+    return [global, project, skills].filter(Boolean).join('\n\n');
   }
   /** First recognised instruction file in the working folder, if any. */
   private projectRules(cwd?: string): string {
@@ -226,15 +230,15 @@ export class AgentOrchestratorService {
   }
 
   /** The always-follow rules — high priority (system prompt copy). */
-  private userInstructions(cwd?: string): string {
-    const rules = this.allRules(cwd);
+  private userInstructions(cwd?: string, goal = ''): string {
+    const rules = this.allRules(cwd, goal);
     if (!rules) return '';
     return '\n\n=== USER INSTRUCTIONS (always follow these) ===\n' + rules + '\n=== END USER INSTRUCTIONS ===';
   }
 
   /** Same rules, restated in the user turn (where small models actually obey them). */
-  private userRulesForTurn(cwd?: string): string {
-    const rules = this.allRules(cwd);
+  private userRulesForTurn(cwd?: string, goal = ''): string {
+    const rules = this.allRules(cwd, goal);
     if (!rules) return '';
     return `RULES I must follow for everything below:\n${rules}\n\n`;
   }
@@ -383,7 +387,7 @@ export class AgentOrchestratorService {
       { role: 'system', content: this.systemPrompt(tools, memories, ctx.cwd, goal) },
       // Reinforce the user's own rules right next to the GOAL — small models weight the
       // user turn far more than the system prompt, so this is where instructions stick.
-      { role: 'user', content: `${this.userRulesForTurn(ctx.cwd)}GOAL: ${goal}` },
+      { role: 'user', content: `${this.userRulesForTurn(ctx.cwd, goal)}GOAL: ${goal}` },
     ];
     const maxSteps = isSub ? SUB_MAX_STEPS : MAX_STEPS;
 
