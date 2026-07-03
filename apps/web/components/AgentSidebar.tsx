@@ -15,6 +15,8 @@ export function AgentSidebar() {
   const t = useT();
   const [projects, setProjects] = useState<any[]>([]);
   const [active, setActive] = useState('');
+  const [editingId, setEditingId] = useState('');
+  const [editName, setEditName] = useState('');
 
   const load = () => void api<any[]>('/projects').then(setProjects).catch(() => undefined);
   useEffect(() => {
@@ -53,10 +55,15 @@ export function AgentSidebar() {
     await api(`/projects/${id}`, { method: 'DELETE' }).catch(() => undefined);
     load();
   }
-  async function rename(id: string, current: string) {
-    const name = window.prompt(t('sidebar.renamePrompt'), current);
-    if (name === null || !name.trim() || name.trim() === current) return;
-    await api(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify({ name: name.trim() }) }).catch(() => undefined);
+  function startRename(id: string, current: string) {
+    setEditingId(id);
+    setEditName(current);
+  }
+  async function commitRename(id: string, current: string) {
+    const name = editName.trim();
+    setEditingId('');
+    if (!name || name === current) return;
+    await api(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }).catch(() => undefined);
     load();
   }
 
@@ -71,8 +78,16 @@ export function AgentSidebar() {
           <div key={p.id} onClick={() => select(p.path)} title={p.path}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', background: isActive ? theme.surface : 'transparent', borderLeft: `2px solid ${isActive ? theme.accent : 'transparent'}` }}>
             <span style={{ fontSize: 13 }}>📁</span>
-            <span onDoubleClick={(e) => { e.stopPropagation(); void rename(p.id, p.name); }} style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: isActive ? theme.text : theme.muted }}>{p.name}</span>
-            <span onClick={(e) => { e.stopPropagation(); void rename(p.id, p.name); }} title={t('sidebar.rename')} style={{ color: theme.muted, fontSize: 12, cursor: 'pointer' }}>✎</span>
+            {editingId === p.id ? (
+              <input autoFocus value={editName} onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={() => void commitRename(p.id, p.name)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void commitRename(p.id, p.name); } else if (e.key === 'Escape') { setEditingId(''); } }}
+                style={{ flex: 1, minWidth: 0, fontSize: 13, background: theme.bg, color: theme.text, border: `1px solid ${theme.accent}`, borderRadius: 6, padding: '2px 6px', outline: 'none' }} />
+            ) : (
+              <span onDoubleClick={(e) => { e.stopPropagation(); startRename(p.id, p.name); }} style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: isActive ? theme.text : theme.muted }}>{p.name}</span>
+            )}
+            <span onClick={(e) => { e.stopPropagation(); startRename(p.id, p.name); }} title={t('sidebar.rename')} style={{ color: theme.muted, fontSize: 12, cursor: 'pointer' }}>✎</span>
             <span onClick={(e) => { e.stopPropagation(); void del(p.id); }} title={t('gallery.delete')} style={{ color: theme.muted, fontSize: 12, cursor: 'pointer' }}>✕</span>
           </div>
         );

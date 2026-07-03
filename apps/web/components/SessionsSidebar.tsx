@@ -13,6 +13,7 @@ export function SessionsSidebar() {
   const [conversations, setConversations] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [assignFor, setAssignFor] = useState('');
 
   const load = () => {
     void api<any[]>('/chat/conversations').then(setConversations).catch(() => undefined);
@@ -24,6 +25,12 @@ export function SessionsSidebar() {
     window.addEventListener('neurion:sessions-changed', h);
     return () => window.removeEventListener('neurion:sessions-changed', h);
   }, []);
+  useEffect(() => {
+    if (!assignFor) return;
+    const close = () => setAssignFor('');
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [assignFor]);
 
   const open = (id: string) => router.push(`/app/chat?c=${id}`);
   const newSession = () => router.push('/app/chat?new=1'); // explicit: start empty, don't restore the last one
@@ -46,27 +53,19 @@ export function SessionsSidebar() {
     load();
   }
   async function createProject(prefillName?: string) {
-    const name = prefillName || window.prompt(t('sessions.promptProjectName'));
-    if (!name) return;
+    // Pick the folder first; derive the project name from its basename (no window.prompt — unsupported in Electron).
     let path: string | null = null;
     const initial = projects[0]?.path;
     const neurion = (window as any).neurion;
     if (neurion?.pickFolder) {
-      try {
-        path = (await neurion.pickFolder(initial))?.path ?? null;
-      } catch {
-        /* cancelled */
-      }
+      try { path = (await neurion.pickFolder(initial))?.path ?? null; } catch { /* cancelled */ }
     } else {
-      try {
-        path = (await api<{ path: string | null }>('/projects/pick-folder', { method: 'POST', body: JSON.stringify({ initial }) })).path;
-      } catch {
-        /* unavailable */
-      }
+      try { path = (await api<{ path: string | null }>('/projects/pick-folder', { method: 'POST', body: JSON.stringify({ initial }) })).path; } catch { /* unavailable */ }
     }
-    if (!path) path = window.prompt(t('sessions.promptProjectFolder'));
     if (!path) return;
-    await createProjectWithPath(name, path);
+    const p = path.replace(/\\/g, '/');
+    const name = prefillName || p.split('/').filter(Boolean).pop() || p;
+    await createProjectWithPath(name, p);
   }
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -90,19 +89,34 @@ export function SessionsSidebar() {
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: activeId === c.id ? theme.text : theme.muted }}>
         {c.title || t('sessions.newChatTitle')}
       </span>
-      <span
-        onClick={(e) => {
-          e.stopPropagation();
-          if (projects.length === 0) return void createProject();
-          const list = projects.map((p, i) => `${i + 1}. ${p.name}`).join('\n');
-          const sel = window.prompt(t('sessions.promptAssignToProject') + '\n' + list);
-          if (sel === null) return;
-          void assignProject(c.id, projects[parseInt(sel, 10) - 1]?.id ?? null);
-        }}
-        title={t('sessions.assignProjectTooltip')}
-        style={{ color: theme.muted, fontSize: 12 }}
-      >
-        📁
+      <span style={{ position: 'relative', display: 'inline-flex' }}>
+        <span
+          onClick={(e) => {
+            e.stopPropagation();
+            if (projects.length === 0) return void createProject();
+            setAssignFor(assignFor === c.id ? '' : c.id);
+          }}
+          title={t('sessions.assignProjectTooltip')}
+          style={{ color: theme.muted, fontSize: 12, cursor: 'pointer' }}
+        >
+          📁
+        </span>
+        {assignFor === c.id && (
+          <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 30, background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 8, padding: 4, minWidth: 150, maxHeight: 260, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+            {projects.map((p) => (
+              <div key={p.id} onClick={() => { void assignProject(c.id, p.id); setAssignFor(''); }}
+                style={{ padding: '6px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: c.projectId === p.id ? theme.accent : theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {c.projectId === p.id ? '✓ ' : ''}{p.name}
+              </div>
+            ))}
+            {c.projectId && (
+              <div onClick={() => { void assignProject(c.id, null); setAssignFor(''); }}
+                style={{ padding: '6px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 13, color: theme.muted, borderTop: `1px solid ${theme.border}`, marginTop: 2 }}>
+                ✕ {t('sessions.assignRemove')}
+              </div>
+            )}
+          </div>
+        )}
       </span>
       <span onClick={(e) => { e.stopPropagation(); void pinConv(c.id, !c.pinned); }} title={t('sessions.pinTooltip')} style={{ color: c.pinned ? theme.accent : theme.muted, fontSize: 12 }}>{c.pinned ? '★' : '☆'}</span>
       <span onClick={(e) => { e.stopPropagation(); void delConv(c.id); }} title={t('sessions.deleteTooltip')} style={{ color: theme.muted, fontSize: 12 }}>✕</span>

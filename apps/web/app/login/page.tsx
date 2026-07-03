@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
+import { API_BASE } from '../../lib/api';
 import { theme, card, input, button } from '../../lib/ui';
 import { MatrixRain } from '../../components/MatrixRain';
 import { ThemeToggle } from '../../components/ThemeToggle';
@@ -21,9 +22,39 @@ export default function LoginPage() {
   const [password, setPassword] = useState(demo ? 'ChangeMe!User2026' : '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // The desktop API takes ~30-60s to boot (embedded Postgres init + migrations) on the
+  // very first launch. Poll /health so the form shows "starting up…" instead of letting the
+  // user submit early and hit a raw "Failed to fetch".
+  const [ready, setReady] = useState(false);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    let tries = 0;
+    const ping = async () => {
+      tries += 1;
+      if (tries > 10 && alive) setSlow(true); // ~15s in
+      try {
+        const res = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
+        if (res.ok) {
+          if (alive) setReady(true);
+          return;
+        }
+      } catch {
+        /* API not up yet */
+      }
+      if (alive) timer = setTimeout(ping, 1500);
+    };
+    void ping();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!ready) return;
     setError('');
     setBusy(true);
     try {
@@ -81,9 +112,15 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
           {error && <div style={{ color: theme.red, fontSize: 13 }}>{error}</div>}
-          <button type="submit" style={{ ...button, opacity: busy ? 0.6 : 1 }} disabled={busy}>
-            {busy ? t('login.submitBusy') : mode === 'login' ? t('login.submitLogin') : t('login.submitRegister')}
+          <button type="submit" style={{ ...button, opacity: busy || !ready ? 0.6 : 1, cursor: ready ? 'pointer' : 'wait' }} disabled={busy || !ready}>
+            {!ready ? t('login.startingUp') : busy ? t('login.submitBusy') : mode === 'login' ? t('login.submitLogin') : t('login.submitRegister')}
           </button>
+          {!ready && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: theme.amber, fontSize: 12, lineHeight: 1.5 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: theme.amber, animation: 'pulse 1.2s ease-in-out infinite', flexShrink: 0 }} />
+              <span>{slow ? t('login.startingUpSlow') : t('login.startingUpHint')}</span>
+            </div>
+          )}
         </form>
         {mode === 'login' && (
           <div style={{ marginTop: 12, textAlign: 'center' }}>
