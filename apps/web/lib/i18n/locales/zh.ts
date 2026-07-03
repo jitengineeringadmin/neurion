@@ -517,5 +517,8 @@ const dict: Record<string, string> = {
 
   "models.searchPlaceholder": "🔎 搜索模型（如 coder、vision、7b、deepseek）…",
   "models.noMatch": "无匹配——试试模型家族（qwen、llama、mistral）或规模（7b、14b）。",
+
+  "sidebar.rename": "重命名",
+  "sidebar.renamePrompt": "新的项目名称：",
 };
 export default dict;

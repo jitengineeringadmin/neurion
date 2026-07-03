@@ -511,5 +511,8 @@ const dict: Record<string, string> = {
 
   "models.searchPlaceholder": "🔎 Cerca modelli (es. coder, vision, 7b, deepseek)…",
   "models.noMatch": "Nessun modello trovato — prova una famiglia (qwen, llama, mistral) o una taglia (7b, 14b).",
+
+  "sidebar.rename": "Rinomina",
+  "sidebar.renamePrompt": "Nuovo nome del progetto:",
 };
 export default dict;

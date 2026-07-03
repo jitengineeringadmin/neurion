@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Injectable, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Injectable, Param, Patch, Post, Put } from '@nestjs/common';
 import { IsString, MaxLength } from 'class-validator';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -42,6 +42,12 @@ export class ProjectsService {
 
   create(user: AuthUser, name: string, path: string) {
     return this.prisma.project.create({ data: { workspaceId: user.workspaceId, userId: user.sub, name, path } });
+  }
+  async rename(user: AuthUser, id: string, name: string) {
+    const p = await this.prisma.project.findUnique({ where: { id } });
+    if (!p || p.userId !== user.sub) throw new ForbiddenException('not your project');
+    const clean = String(name ?? '').trim().slice(0, 120) || p.name;
+    return this.prisma.project.update({ where: { id }, data: { name: clean } });
   }
   list(user: AuthUser) {
     return this.prisma.project.findMany({ where: { userId: user.sub }, orderBy: { createdAt: 'desc' } });
@@ -161,6 +167,11 @@ export class ProjectsController {
   @Put('rules')
   setRules(@CurrentUser() user: AuthUser, @Body() dto: { dir: string; content: string }) {
     return this.projects.setRules(user, dto?.dir ?? '', dto?.content ?? '');
+  }
+
+  @Patch(':id')
+  rename(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: { name: string }) {
+    return this.projects.rename(user, id, dto?.name ?? '');
   }
 
   @Delete(':id')

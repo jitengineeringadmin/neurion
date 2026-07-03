@@ -53,6 +53,12 @@ export function AgentSidebar() {
     await api(`/projects/${id}`, { method: 'DELETE' }).catch(() => undefined);
     load();
   }
+  async function rename(id: string, current: string) {
+    const name = window.prompt(t('sidebar.renamePrompt'), current);
+    if (name === null || !name.trim() || name.trim() === current) return;
+    await api(`/projects/${id}`, { method: 'PATCH', body: JSON.stringify({ name: name.trim() }) }).catch(() => undefined);
+    load();
+  }
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: 4 }}>
@@ -65,8 +71,9 @@ export function AgentSidebar() {
           <div key={p.id} onClick={() => select(p.path)} title={p.path}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', background: isActive ? theme.surface : 'transparent', borderLeft: `2px solid ${isActive ? theme.accent : 'transparent'}` }}>
             <span style={{ fontSize: 13 }}>📁</span>
-            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: isActive ? theme.text : theme.muted }}>{p.name}</span>
-            <span onClick={(e) => { e.stopPropagation(); void del(p.id); }} style={{ color: theme.muted, fontSize: 12, cursor: 'pointer' }}>✕</span>
+            <span onDoubleClick={(e) => { e.stopPropagation(); void rename(p.id, p.name); }} style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: isActive ? theme.text : theme.muted }}>{p.name}</span>
+            <span onClick={(e) => { e.stopPropagation(); void rename(p.id, p.name); }} title={t('sidebar.rename')} style={{ color: theme.muted, fontSize: 12, cursor: 'pointer' }}>✎</span>
+            <span onClick={(e) => { e.stopPropagation(); void del(p.id); }} title={t('gallery.delete')} style={{ color: theme.muted, fontSize: 12, cursor: 'pointer' }}>✕</span>
           </div>
         );
       })}

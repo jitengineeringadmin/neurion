@@ -517,5 +517,8 @@ const dict: Record<string, string> = {
 
   "models.searchPlaceholder": "🔎 Поиск моделей (напр. coder, vision, 7b, deepseek)…",
   "models.noMatch": "Ничего не найдено — попробуйте семейство (qwen, llama, mistral) или размер (7b, 14b).",
+
+  "sidebar.rename": "Переименовать",
+  "sidebar.renamePrompt": "Новое имя проекта:",
 };
 export default dict;
