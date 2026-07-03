@@ -510,5 +510,9 @@ const dict: Record<string, string> = {
 
   "gallery.stop": "停止",
   "gallery.confirmStop": "停止并丢弃这次生成？",
+
+  "chat.attachImage": "附加图片",
+  "chat.imageAttached": "已附加图片",
+  "chat.imagePromptPlaceholder": "询问这张图片…（留空 = 描述它）",
 };
 export default dict;

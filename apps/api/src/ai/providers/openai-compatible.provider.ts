@@ -22,13 +22,20 @@ export class OpenAICompatibleProvider implements AiProvider {
 
   async *streamChat(messages: ChatMsg[], model: string, signal?: AbortSignal): AsyncIterable<string> {
     this.usage = null;
+    // Vision: a message with images becomes the OpenAI content-array format
+    // (text part + image_url parts) that ollama's /v1 endpoint accepts for llava etc.
+    const wire = messages.map((m) =>
+      m.images && m.images.length
+        ? { role: m.role, content: [{ type: 'text', text: m.content }, ...m.images.map((url) => ({ type: 'image_url', image_url: { url } }))] }
+        : { role: m.role, content: m.content },
+    );
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify({ model, messages, stream: true, stream_options: { include_usage: true } }),
+      body: JSON.stringify({ model, messages: wire, stream: true, stream_options: { include_usage: true } }),
       signal,
     });
     if (!res.ok || !res.body) {

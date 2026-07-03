@@ -510,5 +510,9 @@ const dict: Record<string, string> = {
 
   "gallery.stop": "Detener",
   "gallery.confirmStop": "¿Detener y descartar esta generación?",
+
+  "chat.attachImage": "Adjuntar una imagen",
+  "chat.imageAttached": "Imagen adjunta",
+  "chat.imagePromptPlaceholder": "Pregunta sobre la imagen… (vacío = descríbela)",
 };
 export default dict;

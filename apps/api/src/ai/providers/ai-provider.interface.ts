@@ -1,6 +1,7 @@
 export interface ChatMsg {
   role: 'system' | 'user' | 'assistant';
   content: string;
+  images?: string[]; // base64 data URLs (data:image/...;base64,…) for vision models
 }
 
 export interface TokenUsage {

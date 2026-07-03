@@ -17,6 +17,7 @@ interface Msg {
   agent?: boolean;
   trace?: string[];
   approval?: Approval | null;
+  image?: string; // base64 data URL shown in the user bubble (vision)
 }
 
 function ChatInner() {
@@ -35,6 +36,7 @@ function ChatInner() {
   const [balance, setBalance] = useState<number | null>(null);
   const [convId, setConvId] = useState<string | undefined>(cParam);
   const [cwd, setCwd] = useState<string | undefined>();
+  const [image, setImage] = useState<string | null>(null); // attached image (base64 data URL) for vision
   const endRef = useRef<HTMLDivElement>(null);
 
   const refreshBalance = () => api<{ balance: number }>('/credits/balance').then((b) => setBalance(b.balance)).catch(() => undefined);
@@ -126,18 +128,37 @@ function ChatInner() {
     void refreshBalance();
   }
 
+  // Downscale to ≤1024px JPEG so vision payloads (and llava) stay fast + small.
+  function pickImage(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onload = () => {
+        const max = 1024;
+        let w = img.width, h = img.height;
+        if (w > max || h > max) { const s = max / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d')?.drawImage(img, 0, 0, w, h);
+        try { setImage(c.toDataURL('image/jpeg', 0.85)); } catch { setImage(reader.result as string); }
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
   async function send() {
     const msg = text.trim();
-    if (!msg || busy) return;
-    setText('');
+    if ((!msg && !image) || busy) return;
+    const img = image;
+    setText(''); setImage(null);
     setBusy(true);
-    setMessages((m) => [...m, { role: 'user', content: msg }, { role: 'assistant', content: '', agent: agentMode, trace: [], approval: null }]);
+    setMessages((m) => [...m, { role: 'user', content: msg, image: img ?? undefined }, { role: 'assistant', content: '', agent: agentMode && !img, trace: [], approval: null }]);
     const idx = messages.length + 1;
     try {
-      if (agentMode) {
+      if (agentMode && !img) {
         await streamAgentInto(idx, msg);
       } else {
-        await streamChat({ message: msg, conversationId: convId, preferredModel: model || undefined }, {
+        await streamChat({ message: msg || 'Descrivi questa immagine.', conversationId: convId, preferredModel: model || undefined, ...(img ? { image: img } : {}) }, {
           onEvent: (event, data) => patch(idx, (a) => {
             if (event === 'routing') a.badge = data;
             else if (event === 'token') a.content += data.text;
@@ -224,6 +245,8 @@ function ChatInner() {
             )}
             {(m.content || !m.agent) && (
               <div style={{ background: m.role === 'user' ? theme.accent : theme.surface, border: m.role === 'user' ? 'none' : `1px solid ${theme.border}`, color: m.role === 'user' ? 'var(--bg)' : theme.text, borderRadius: 12, padding: '10px 14px', fontSize: m.role === 'user' ? 14 : 15, whiteSpace: m.role === 'user' ? 'pre-wrap' : 'normal', lineHeight: 1.5 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {m.image && <img src={m.image} alt="" style={{ maxWidth: 240, borderRadius: 8, display: 'block', marginBottom: m.content ? 8 : 0 }} />}
                 {m.content
                   ? m.role === 'assistant'
                     ? <Markdown>{m.content}</Markdown>
@@ -248,9 +271,23 @@ function ChatInner() {
         <div ref={endRef} />
       </div>
 
+      {image && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={image} alt="" style={{ height: 56, borderRadius: 8, border: `1px solid ${theme.border}` }} />
+          <span style={{ fontSize: 12, color: theme.muted }}>{t('chat.imageAttached')}</span>
+          <button onClick={() => setImage(null)} style={{ background: 'transparent', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 14 }}>✕</button>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-        <input style={input} placeholder={agentMode ? t('chat.inputPlaceholderAgent') : t('chat.inputPlaceholderChat')} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} />
-        <button style={{ ...button, opacity: busy ? 0.6 : 1 }} onClick={() => void send()} disabled={busy}>{agentMode ? t('chat.sendButtonRun') : t('chat.sendButtonSend')}</button>
+        {!agentMode && (
+          <label title={t('chat.attachImage')} style={{ ...button, background: 'transparent', color: theme.muted, border: `1px solid ${theme.border}`, padding: '0 12px', display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: 18 }}>
+            🖼
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) pickImage(f); e.currentTarget.value = ''; }} />
+          </label>
+        )}
+        <input style={input} placeholder={image ? t('chat.imagePromptPlaceholder') : agentMode ? t('chat.inputPlaceholderAgent') : t('chat.inputPlaceholderChat')} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void send(); }} />
+        <button style={{ ...button, opacity: busy ? 0.6 : 1 }} onClick={() => void send()} disabled={busy}>{agentMode && !image ? t('chat.sendButtonRun') : t('chat.sendButtonSend')}</button>
       </div>
     </div>
   );

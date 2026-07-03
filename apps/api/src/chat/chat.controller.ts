@@ -6,6 +6,8 @@ import { ChatService } from './chat.service';
 import { AiRouterService, RoutePlan } from '../ai/ai-router.service';
 import { CreditsService } from '../credits/credits.service';
 import { MockProvider } from '../ai/providers/mock.provider';
+import { ProviderResolverService } from '../ai/provider-resolver.service';
+import { JobPrivacyLevel } from '@prisma/client';
 import { CreateConversationDto, EstimateDto, StreamChatDto } from './dto/chat.dto';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 
@@ -31,7 +33,62 @@ export class ChatController {
     private readonly router: AiRouterService,
     private readonly credits: CreditsService,
     private readonly config: ConfigService,
+    private readonly resolver: ProviderResolverService,
   ) {}
+
+  /** Answer a message that carries an image, locally, with a vision model (llava …). */
+  private async streamVision(
+    user: AuthUser,
+    dto: StreamChatDto,
+    convId: string,
+    send: (event: string, data: unknown) => void,
+    flush: () => Promise<void>,
+  ): Promise<void> {
+    const model = await this.resolver.pickVisionModel();
+    if (!model) {
+      send('error', { message: 'No vision model installed. Download one (e.g. llava) from the Models tab to chat about images.' });
+      return;
+    }
+    const plan = await this.router.plan({
+      message: dto.message,
+      conversationPrivacy: dto.privacyLevel ?? JobPrivacyLevel.VERIFIED_ONLY,
+      hasLiveOpenTierConsent: false,
+      preferredModel: model,
+    });
+    const cost = plan.estimate.estCredits;
+    const balance = await this.credits.getBalance(user.sub);
+    if (balance < cost) { send('error', { message: 'insufficient credits', balance, cost }); return; }
+
+    await this.chat.addUserMessage(convId, dto.message);
+    send('routing', { lane: 'FALLBACK', provider: 'openai_compatible', model, labeled: false, effectivePrivacy: plan.effectivePrivacy, routeReason: 'VISION_LOCAL', estCredits: cost });
+
+    const context = await this.chat.buildContext(convId);
+    // attach the image to the last user message (the one we just added)
+    for (let i = context.length - 1; i >= 0; i--) {
+      const m = context[i];
+      if (m && m.role === 'user') { m.images = [dto.image as string]; break; }
+    }
+    const provider = this.resolver.localProvider();
+    const vPlan: RoutePlan = { ...plan, provider, model, lane: 'FALLBACK', responseTrusted: true };
+
+    let full = '';
+    let firstTokenMs: number | null = null;
+    const t0 = Date.now();
+    try {
+      for await (const text of provider.streamChat(context, model)) {
+        if (firstTokenMs === null) firstTokenMs = Date.now() - t0;
+        full += text;
+        send('token', { text });
+        await flush();
+      }
+    } catch (e) {
+      send('error', { message: `vision model failed: ${(e as Error).message}` });
+      return;
+    }
+    const assistant = await this.chat.addAssistantMessage(convId, full, vPlan, cost, firstTokenMs, provider.getUsage?.() ?? null);
+    await this.credits.spend(user.sub, cost, 'chat.vision', { chatMessageId: assistant.id });
+    send('final', { messageId: assistant.id, conversationId: convId, costCredits: cost, lane: 'FALLBACK', balance: await this.credits.getBalance(user.sub) });
+  }
 
   @Post('conversations')
   createConversation(@CurrentUser() user: AuthUser, @Body() dto: CreateConversationDto) {
@@ -114,6 +171,12 @@ export class ChatController {
         dto.message,
         dto.privacyLevel,
       );
+
+      // Vision: an attached image is answered locally by a vision model (llava etc.).
+      if (dto.image) {
+        await this.streamVision(user, dto, conv.id, send, flush);
+        return res.end();
+      }
 
       const plan = await this.router.plan({
         message: dto.message,

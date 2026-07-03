@@ -36,6 +36,17 @@ export class ProviderResolverService {
     return this.config.get<string>('AI_OPENAI_COMPATIBLE_API_KEY') ?? 'local-dev';
   }
 
+  /** A local OpenAI-compatible provider (ollama) — used for vision chat. */
+  localProvider(): OpenAICompatibleProvider {
+    return new OpenAICompatibleProvider(this.baseUrl, this.apiKey());
+  }
+
+  /** First installed vision-capable model (llava, moondream, …), or null. */
+  async pickVisionModel(): Promise<string | null> {
+    const models = await this.listModels();
+    return models.find((m) => /llava|moondream|vision|minicpm-?v|bakllava|llama3\.2-vision/i.test(m)) ?? null;
+  }
+
   /** True if an OpenAI-compatible /models endpoint answers ok within a short timeout. */
   private async reachable(base: string): Promise<boolean> {
     try {

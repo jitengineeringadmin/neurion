@@ -491,5 +491,9 @@ const dict: Record<string, string> = {
 
   "gallery.stop": "Stop",
   "gallery.confirmStop": "Stop and discard this generation?",
+
+  "chat.attachImage": "Attach an image",
+  "chat.imageAttached": "Image attached",
+  "chat.imagePromptPlaceholder": "Ask about the image… (empty = describe it)",
 };
 export default dict;

@@ -32,6 +32,13 @@ export class StreamChatDto {
   @IsOptional()
   @IsString()
   preferredModel?: string;
+
+  // Vision: a single image as a base64 data URL (data:image/...;base64,…). When set,
+  // the message is answered by a local vision model (llava etc.).
+  @IsOptional()
+  @IsString()
+  @MaxLength(15_000_000)
+  image?: string;
 }
 
 export class EstimateDto {
