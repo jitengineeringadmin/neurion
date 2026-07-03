@@ -41,6 +41,8 @@ let pg = null;
 let mainWindow = null;
 let splash = null;
 let nodeProc = null;
+let apiProc = null; // current API child process (the watchdog's restart target)
+let restartingApi = false; // guard so only one API restart runs at a time
 let tray = null;
 let isQuitting = false;
 
@@ -197,6 +199,64 @@ function nodeRun(args, opts) {
 
 function setStatus(text) {
   if (splash && !splash.isDestroyed()) splash.webContents.executeJavaScript(`window.setStatus && window.setStatus(${JSON.stringify(text)})`).catch(() => {});
+}
+
+// --- API watchdog -----------------------------------------------------------
+// A hung API (accepts the TCP connect but never answers) or a crashed one leaves
+// the UI unable to load its data. waitHttp() cannot see a hung API (it gets neither
+// a response nor an error), so probe with a HARD per-request timeout and, after a
+// sustained outage, restart just the API process so the user is never stranded on an
+// empty UI waiting for a manual relaunch.
+function probeApi(timeoutMs = 6000) {
+  return new Promise((resolve) => {
+    const req = http.get(API_HEALTH, (res) => {
+      const ok = res.statusCode === 200;
+      res.resume();
+      resolve(ok);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(timeoutMs, () => { req.destroy(); resolve(false); });
+  });
+}
+
+async function restartApi() {
+  if (restartingApi || isQuitting) return;
+  restartingApi = true;
+  try {
+    if (apiProc && apiProc.pid) {
+      try {
+        if (process.platform === 'win32') sh('taskkill', ['/pid', String(apiProc.pid), '/f', '/t']);
+        else apiProc.kill('SIGTERM');
+      } catch { /* already gone */ }
+    }
+    await waitPortFree('localhost', 8091, 8000);
+    if (isQuitting) return;
+    const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV });
+    apiProc = api;
+    children.push(api);
+    let healthy = false;
+    const deadline = Date.now() + 45000;
+    while (Date.now() < deadline && !isQuitting) {
+      if (await probeApi(5000)) { healthy = true; break; }
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    // Once the API answers again, reload the window so every page refetches its data.
+    if (healthy && !isQuitting && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.reload();
+  } finally {
+    restartingApi = false;
+  }
+}
+
+function startApiWatchdog() {
+  let fails = 0;
+  setInterval(async () => {
+    if (restartingApi || isQuitting) return;
+    if (await probeApi(6000)) { fails = 0; return; }
+    fails += 1;
+    // Only act after ~3 consecutive misses (~60-75s of real outage) so a brief
+    // hiccup or one slow request never triggers a needless restart.
+    if (fails >= 3) { fails = 0; await restartApi(); }
+  }, 20000);
 }
 
 async function loadEmbeddedPostgres() {
@@ -375,6 +435,7 @@ async function startStack() {
   let apiUp = false;
   for (let attempt = 0; attempt < 2 && !apiUp; attempt++) {
     const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV });
+    apiProc = api;
     children.push(api);
     apiUp = await waitHttp(API_HEALTH, 45000);
     if (!apiUp) {
@@ -624,6 +685,7 @@ if (!app.requestSingleInstanceLock()) {
     }
     createMainWindow();
     createTray();
+    startApiWatchdog();
   });
 }
 
