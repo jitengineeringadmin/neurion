@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { theme, ghostButton } from '../lib/ui';
 import { useT } from '../lib/i18n';
@@ -18,13 +18,22 @@ export function AgentSidebar() {
   const [editingId, setEditingId] = useState('');
   const [editName, setEditName] = useState('');
 
-  const load = () => void api<any[]>('/projects').then(setProjects).catch(() => undefined);
+  const alive = useRef(true);
+  // Retry while the API is still booting (desktop cold start ~40s). A silent one-shot
+  // load would otherwise leave "no projects" until the user reselects a folder — even
+  // though their projects exist. Stops on the first success (an empty list included).
+  const load = (retries = 30) => {
+    api<any[]>('/projects')
+      .then((r) => { if (alive.current) setProjects(Array.isArray(r) ? r : []); })
+      .catch(() => { if (alive.current && retries > 0) setTimeout(() => load(retries - 1), 2000); });
+  };
   useEffect(() => {
+    alive.current = true;
     load();
     setActive(localStorage.getItem(FOLDER_KEY) || '');
     const h = () => { setActive(localStorage.getItem(FOLDER_KEY) || ''); load(); };
     window.addEventListener('neurion:agent-folder', h);
-    return () => window.removeEventListener('neurion:agent-folder', h);
+    return () => { alive.current = false; window.removeEventListener('neurion:agent-folder', h); };
   }, []);
 
   function select(path: string) {

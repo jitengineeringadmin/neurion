@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '../lib/api';
 import { theme, ghostButton } from '../lib/ui';
@@ -15,15 +15,24 @@ export function SessionsSidebar() {
   const [dragOver, setDragOver] = useState(false);
   const [assignFor, setAssignFor] = useState('');
 
-  const load = () => {
-    void api<any[]>('/chat/conversations').then(setConversations).catch(() => undefined);
-    void api<any[]>('/projects').then(setProjects).catch(() => undefined);
+  const alive = useRef(true);
+  // Retry while the API is still booting (desktop cold start ~40s): auto-logged-in
+  // users skip the login health-gate and can hit this before the API is up, which
+  // would otherwise show an empty history until a manual refresh.
+  const load = (retries = 30) => {
+    api<any[]>('/chat/conversations')
+      .then((r) => { if (alive.current) setConversations(Array.isArray(r) ? r : []); })
+      .catch(() => { if (alive.current && retries > 0) setTimeout(() => load(retries - 1), 2000); });
+    api<any[]>('/projects')
+      .then((r) => { if (alive.current) setProjects(Array.isArray(r) ? r : []); })
+      .catch(() => undefined);
   };
   useEffect(() => {
+    alive.current = true;
     load();
     const h = () => load();
     window.addEventListener('neurion:sessions-changed', h);
-    return () => window.removeEventListener('neurion:sessions-changed', h);
+    return () => { alive.current = false; window.removeEventListener('neurion:sessions-changed', h); };
   }, []);
   useEffect(() => {
     if (!assignFor) return;
