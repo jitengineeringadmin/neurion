@@ -44,8 +44,23 @@ export async function prodApi<T = unknown>(path: string, init: RequestInit = {})
     headers: { 'Content-Type': 'application/json', ...(getProdToken() ? { Authorization: `Bearer ${getProdToken()}` } : {}), ...(init.headers ?? {}) },
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(text || res.statusText);
+  if (!res.ok) throw new Error(errMessage(text, res.statusText));
   return (text ? JSON.parse(text) : {}) as T;
+}
+
+// Turn an API error response body into a clean human message instead of dumping raw
+// JSON (e.g. `{"message":"invalid credentials",...}`) into the UI.
+function errMessage(text: string, statusText: string): string {
+  if (!text) return statusText || 'Request failed';
+  try {
+    const j = JSON.parse(text) as { message?: unknown; error?: unknown };
+    const m = j.message ?? j.error;
+    if (Array.isArray(m)) return m.filter(Boolean).join(', ');
+    if (typeof m === 'string' && m.trim()) return m;
+  } catch {
+    /* not JSON — fall through to raw text */
+  }
+  return text;
 }
 
 let accessToken: string | null = null;
@@ -84,7 +99,7 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}, ret
   });
   if (res.status === 401 && retry && (await refresh())) return api<T>(path, init, false);
   const text = await res.text();
-  if (!res.ok) throw new Error(text || res.statusText);
+  if (!res.ok) throw new Error(errMessage(text, res.statusText));
   return (text ? JSON.parse(text) : {}) as T;
 }
 
@@ -93,7 +108,7 @@ export async function api<T = unknown>(path: string, init: RequestInit = {}, ret
 export async function publicApi<T = unknown>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}/api${path}`, { headers: { 'Content-Type': 'application/json' } });
   const text = await res.text();
-  if (!res.ok) throw new Error(text || res.statusText);
+  if (!res.ok) throw new Error(errMessage(text, res.statusText));
   return (text ? JSON.parse(text) : {}) as T;
 }
 
