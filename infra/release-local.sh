@@ -7,8 +7,10 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VER="$(node -p "require('$ROOT/apps/desktop/package.json').version")"
-KEY="${NEURION_VPS_KEY:-$HOME/.ssh/github_actions_sapius}"
-VPS="${NEURION_VPS:-root@80.211.141.173}"
+# Deploy target comes from your environment — no server details are baked into this
+# repo. Set them for your own host, e.g.:  export NEURION_VPS=root@your-server-ip
+KEY="${NEURION_VPS_KEY:-$HOME/.ssh/id_ed25519}"
+VPS="${NEURION_VPS:?set NEURION_VPS=user@host to publish (e.g. export NEURION_VPS=root@1.2.3.4)}"
 
 echo "=== building Neurion v$VER ($(uname -s)) ==="
 ( cd "$ROOT/apps/desktop" && pnpm run pack ) || { echo "BUILD FAILED"; exit 1; }
