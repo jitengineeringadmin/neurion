@@ -387,6 +387,18 @@ function clearStalePgLock() {
   }
 }
 
+// A stable fingerprint of the applied migration set: count + latest folder name.
+// Changes only when a new migration ships, so an unchanged install can skip `migrate`.
+function migrationsFingerprint() {
+  try {
+    const dir = path.join(API_DIR, 'prisma', 'migrations');
+    const subs = fs.readdirSync(dir).filter((d) => /^\d/.test(d)).sort();
+    return subs.length ? `${subs.length}:${subs[subs.length - 1]}` : '';
+  } catch {
+    return '';
+  }
+}
+
 async function startStack() {
   // children + tooling all use the embedded DB
   ENV.DATABASE_URL = DB_URL;
@@ -417,20 +429,38 @@ async function startStack() {
   setStatus(firstRun ? T.dbFirst : T.db);
   await startDb();
 
-  // 2) migrate always (schema can change between versions); seed only on first
-  //    run — it is idempotent but spawning it every launch just slows startup.
+  // 2) Web starts NOW — it does not need the database, so its ~8s Next.js startup
+  //    overlaps the migrate + API boot below instead of stacking after them. This is
+  //    the biggest single cut to "time until the window is usable". The browser calls
+  //    the API directly (localhost:8091), so the web host needs no DB to start.
+  setStatus(T.web);
+  const nextBin = path.join(WEB_DIR, 'node_modules', 'next', 'dist', 'bin', 'next');
+  const web = nodeSpawn([nextBin, 'start', '-p', '3091'], { cwd: WEB_DIR, env: ENV });
+  children.push(web);
+
+  // 3) migrate — but only when the migration set actually changed (after an update).
+  //    An unchanged DB re-runs `migrate deploy` for nothing on every launch; skip it.
+  //    Marker is written only after a successful migrate, so a failure re-tries next boot.
   setStatus(T.prep);
-  if (PACKAGED) {
-    await nodeRun([path.join(API_DIR, 'node_modules', 'prisma', 'build', 'index.js'), 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
-    if (firstRun) await nodeRun([path.join(API_DIR, 'prisma', 'seed.js')], { cwd: API_DIR, env: ENV });
-  } else {
-    await run('npx', ['prisma', 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
-    if (firstRun) await run('npx', ['tsx', path.join('prisma', 'seed.ts')], { cwd: API_DIR, env: ENV });
+  const markerFile = path.join(app.getPath('userData'), '.migrated');
+  const fp = migrationsFingerprint();
+  let applied = '';
+  try { applied = fs.readFileSync(markerFile, 'utf8').trim(); } catch { /* no marker yet */ }
+  if (firstRun || !fp || applied !== fp) {
+    let code = 0;
+    if (PACKAGED) {
+      code = await nodeRun([path.join(API_DIR, 'node_modules', 'prisma', 'build', 'index.js'), 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
+      if (firstRun) await nodeRun([path.join(API_DIR, 'prisma', 'seed.js')], { cwd: API_DIR, env: ENV });
+    } else {
+      code = await run('npx', ['prisma', 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
+      if (firstRun) await run('npx', ['tsx', path.join('prisma', 'seed.ts')], { cwd: API_DIR, env: ENV });
+    }
+    if (code === 0 && fp) { try { fs.writeFileSync(markerFile, fp); } catch { /* best effort */ } }
   }
 
-  // 3) API — retry once. A just-freed port or a cold/recovering DB can miss the
-  // first boot; a fresh spawn on the second attempt clears the "engine didn't
-  // respond" race instead of failing the whole launch.
+  // 4) API — retry once. A just-freed port or a cold/recovering DB can miss the first
+  //    boot; a fresh spawn on the second attempt clears the "engine didn't respond"
+  //    race instead of failing the whole launch.
   setStatus(T.api);
   let apiUp = false;
   for (let attempt = 0; attempt < 2 && !apiUp; attempt++) {
@@ -450,13 +480,9 @@ async function startStack() {
   }
   if (!apiUp) throw new Error('local engine did not respond');
 
-  // 4) web
-  setStatus(T.web);
-  const nextBin = path.join(WEB_DIR, 'node_modules', 'next', 'dist', 'bin', 'next');
-  const web = nodeSpawn([nextBin, 'start', '-p', '3091'], { cwd: WEB_DIR, env: ENV });
-  children.push(web);
-  await waitHttp(WEB_URL, 40000);
+  // 5) make sure web finished coming up too (it has been starting since step 2)
   setStatus(T.almost);
+  await waitHttp(WEB_URL, 40000);
 }
 
 function createSplash() {
