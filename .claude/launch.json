@@ -2,16 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@neurion/web", "start"],
-      "port": 3091
-    },
-    {
       "name": "landing",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["-y", "serve", "apps/landing", "-l", "4173"],
-      "port": 4173
+      "runtimeArgs": ["--yes", "serve", "-l", "8080", "apps/landing"],
+      "port": 8080
     }
   ]
 }
