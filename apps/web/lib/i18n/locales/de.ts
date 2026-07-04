@@ -547,5 +547,6 @@ const dict: Record<string, string> = {
   "skills.on": "An",
   "skills.off": "Aus",
   "skills.always": "immer aktiv",
+  "ob.autoRec": "für deinen PC gewählt",
 };
 export default dict;

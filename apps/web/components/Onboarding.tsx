@@ -22,6 +22,7 @@ export function Onboarding() {
   const [engineUp, setEngineUp] = useState(false);
   const [pull, setPull] = useState<{ percent: number | null; status: string } | null>(null);
   const [err, setErr] = useState('');
+  const [rec, setRec] = useState<{ ramGb: number; cores: number; model: { name: string; label: string; size: string; note: string } } | null>(null);
   const alive = useRef(true);
 
   // Decide once at mount whether to show: never onboarded AND no models installed.
@@ -34,6 +35,11 @@ export function Onboarding() {
         if ((r.installed || []).length > 0) { localStorage.setItem(DONE_KEY, '1'); return; } // existing user
         setEngineUp(r.engine === 'up');
         setStep('welcome');
+        // Detect the machine's RAM and pre-pick the best-fitting model, so the user
+        // never has to answer "which model?" — the download button just uses this.
+        void api<{ ramGb: number; cores: number; model: { name: string; label: string; size: string; note: string } }>('/ai/models/recommend')
+          .then((rr) => { if (alive.current) setRec(rr); })
+          .catch(() => undefined);
       })
       .catch(() => undefined); // API not reachable (online build etc.) — no wizard
     return () => { alive.current = false; };
@@ -62,7 +68,7 @@ export function Onboarding() {
     setErr('');
     setPull({ percent: 0, status: '' });
     try {
-      await streamSSE('/ai/models/pull', { name: RECOMMENDED_MODEL }, {
+      await streamSSE('/ai/models/pull', { name: rec?.model.name ?? RECOMMENDED_MODEL }, {
         onEvent: (event, d) => {
           if (event === 'progress') setPull({ percent: d.percent ?? null, status: d.status ?? '' });
           else if (event === 'done') { setPull(null); setStep('done'); }
@@ -129,6 +135,15 @@ export function Onboarding() {
           <>
             <h2 style={h}>{t('ob.modelTitle')}</h2>
             <p style={sub}>{t('ob.modelBody')}</p>
+            {rec && !pull && (
+              <div style={{ border: `1px solid ${theme.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 16, background: theme.bg }}>
+                <div style={{ fontSize: 12, color: theme.muted, marginBottom: 5 }}>🖥 {rec.ramGb} GB RAM · {rec.cores} core → {t('ob.autoRec')}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>
+                  {rec.model.label} <span style={{ color: theme.muted, fontWeight: 400, fontSize: 13 }}>({rec.model.size})</span>
+                </div>
+                <div style={{ fontSize: 12, color: theme.muted, marginTop: 2, fontFamily: 'var(--font-sans), sans-serif' }}>{rec.model.note}</div>
+              </div>
+            )}
             {pull ? (
               <div style={{ marginBottom: 20 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>

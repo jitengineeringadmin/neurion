@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
+import { cpus, totalmem } from 'node:os';
 import { ProviderResolverService } from './provider-resolver.service';
 
 interface PullDto {
@@ -152,6 +153,30 @@ export class ModelsController {
   @Get('models/recommended')
   recommended() {
     return { recommended: RECOMMENDED, quants: QUANT_LEVELS };
+  }
+
+  /**
+   * Auto-pick the best default CHAT model for THIS machine's RAM, so a non-technical
+   * user never has to answer "which model?". Conservative (RAM-based, so it runs even
+   * on CPU); a GPU only makes the same pick faster. Used by the first-run wizard.
+   */
+  @Get('models/recommend')
+  recommend() {
+    const ramGb = Math.round(totalmem() / 1_073_741_824);
+    const cores = cpus().length;
+    // Largest Qwen 2.5 (best all-round family) that fits comfortably: a model needs
+    // roughly ~2x its file size in RAM for weights + context + OS headroom.
+    const tiers: Array<{ min: number; name: string }> = [
+      { min: 48, name: 'qwen2.5:72b' },
+      { min: 40, name: 'qwen2.5:32b' },
+      { min: 20, name: 'qwen2.5:14b' },
+      { min: 12, name: 'qwen2.5:7b' },
+      { min: 7, name: 'qwen2.5:3b' },
+      { min: 0, name: 'qwen2.5:1.5b' },
+    ];
+    const tier = (tiers.find((t) => ramGb >= t.min) ?? tiers[tiers.length - 1])!; // min:0 always matches
+    const model = RECOMMENDED.find((m) => m.name === tier.name) ?? RECOMMENDED.find((m) => m.name === 'qwen2.5:3b')!;
+    return { ramGb, cores, model };
   }
 
   /** Models already downloaded locally + whether the local engine is reachable. */
