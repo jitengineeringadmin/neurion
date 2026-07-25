@@ -118,11 +118,32 @@ if (-not $SkipInstaller) {
         throw "Installer not found: $Installer"
     }
 
+    # Update manifest. The desktop app polls latest.json and verifies the
+    # installer against this digest before running it, so the hash must be
+    # computed from the exact file being uploaded.
+    $Sha = (Get-FileHash -LiteralPath $Installer -Algorithm SHA256).Hash.ToLower()
+    $Manifest = [ordered]@{
+        version = $Version
+        url     = "Neurion-Setup-$Version.exe"
+        sha256  = $Sha
+        notes   = "Neurion $Version"
+    }
+    $ManifestPath = Join-Path $Root "apps\desktop\dist-installer\latest.json"
+    # WriteAllText with an explicit BOM-less encoder: Set-Content -Encoding utf8
+    # emits a UTF-8 BOM on Windows PowerShell 5.1, and JSON.parse rejects it.
+    [System.IO.File]::WriteAllText(
+        $ManifestPath,
+        ($Manifest | ConvertTo-Json -Depth 3),
+        (New-Object System.Text.UTF8Encoding $false)
+    )
+    Write-Host "=== manifest: v$Version sha256=$Sha ==="
+
     Write-Host "=== publishing Neurion installer v$Version ==="
     Invoke-Native -Command $Scp -Arguments ($SshOptions + @($Installer, "${Vps}:/var/www/neurion/download/"))
+    Invoke-Native -Command $Scp -Arguments ($SshOptions + @($ManifestPath, "${Vps}:/var/www/neurion/download/"))
     # The version stamp matches ANY semver, not just 1.8.x — the old pattern
     # silently stopped rewriting the page as soon as the minor changed.
-    $RemotePublish = "set -e; cd /var/www/neurion/download; cp -f 'Neurion-Setup-$Version.exe' 'Neurion-Setup-latest.exe'; chown www-data:www-data 'Neurion-Setup-$Version.exe' 'Neurion-Setup-latest.exe'; if [ -f /var/www/neurion/index.html ]; then sed -Ei 's/v[0-9]+\.[0-9]+\.[0-9]+/v$Version/g' /var/www/neurion/index.html; fi"
+    $RemotePublish = "set -e; cd /var/www/neurion/download; cp -f 'Neurion-Setup-$Version.exe' 'Neurion-Setup-latest.exe'; chown www-data:www-data 'Neurion-Setup-$Version.exe' 'Neurion-Setup-latest.exe' latest.json; if [ -f /var/www/neurion/index.html ]; then sed -Ei 's/v[0-9]+\.[0-9]+\.[0-9]+/v$Version/g' /var/www/neurion/index.html; fi"
     Invoke-Native -Command $Ssh -Arguments ($SshOptions + @($Vps, $RemotePublish))
 }
 

@@ -10,8 +10,8 @@
     "prepare-stack": "node scripts/prepare-stack.mjs",
     "pack": "node scripts/prepare-stack.mjs && electron-builder",
     "dist": "electron-builder",
-    "lint": "echo \"(desktop) no lint\" && exit 0",
-    "test": "echo \"(desktop) no tests\" && exit 0"
+    "lint": "node --check main.js && node --check updater.js && node --check preload.js",
+    "test": "node scripts/updater-test.js"
   },
   "devDependencies": {
     "electron": "^31.7.0",
@@ -31,6 +31,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "updater.js",
       "splash.html",
       "build/**",
       "!node_modules/**/*",

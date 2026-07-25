@@ -93,6 +93,17 @@ const STRINGS = {
     pickFolder: 'Select the project folder',
     failTitle: 'Neurion won’t start',
     failBody: 'The local engine did not respond. Fully close Neurion and reopen it.<br/>If it persists, restart your PC or reinstall.',
+    updCheck: 'Check for updates',
+    updTitle: 'Update available',
+    updBody: (v, cur) => `Neurion ${v} is available (you have ${cur}).`,
+    updNow: 'Download and install',
+    updLater: 'Later',
+    updNone: 'Neurion is up to date.',
+    updFailed: 'Could not check for updates.',
+    updDownloading: 'Downloading the update…',
+    updReadyTitle: 'Update ready',
+    updReadyBody: 'Neurion will close to complete the installation.',
+    updInstall: 'Install now',
   },
   it: {
     boot: 'Avvio…',
@@ -116,6 +127,17 @@ const STRINGS = {
     pickFolder: 'Seleziona la cartella del progetto',
     failTitle: 'Neurion non si avvia',
     failBody: 'Il motore locale non ha risposto. Chiudi completamente Neurion e riaprilo.<br/>Se persiste, riavvia il PC o reinstalla.',
+    updCheck: 'Controlla aggiornamenti',
+    updTitle: 'Aggiornamento disponibile',
+    updBody: (v, cur) => `È disponibile Neurion ${v} (hai la ${cur}).`,
+    updNow: 'Scarica e installa',
+    updLater: 'Più tardi',
+    updNone: 'Neurion è aggiornato.',
+    updFailed: 'Impossibile controllare gli aggiornamenti.',
+    updDownloading: 'Download dell’aggiornamento…',
+    updReadyTitle: 'Aggiornamento pronto',
+    updReadyBody: 'Neurion si chiuderà per completare l’installazione.',
+    updInstall: 'Installa ora',
   },
 };
 let T = STRINGS.en;
@@ -699,6 +721,85 @@ function createTray() {
   tray.on('double-click', show);
 }
 
+// --- updates --------------------------------------------------------------
+const { compareVersions, fetchManifest, downloadVerified } = require('./updater');
+
+const UPDATE_MANIFEST_URL =
+  process.env.NEURION_UPDATE_URL || 'https://neurionproject.org/download/latest.json';
+const UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+let updateInFlight = false;
+
+/**
+ * Check the manifest and, if the user agrees, download + launch the installer.
+ * `silent` suppresses the "already up to date" / failure dialogs (startup run).
+ */
+async function checkForUpdates(silent = true) {
+  if (updateInFlight) return;
+  updateInFlight = true;
+  try {
+    const current = app.getVersion();
+    const manifest = await fetchManifest(UPDATE_MANIFEST_URL);
+    const latest = String(manifest.version || '');
+    if (!latest || compareVersions(latest, current) <= 0) {
+      bootLog('update', `up to date (current ${current}, published ${latest || 'n/a'})`);
+      if (!silent) {
+        dialog.showMessageBox({ type: 'info', title: 'Neurion', message: T.updNone, detail: `v${current}` });
+      }
+      return;
+    }
+    bootLog('update', `update available: ${current} -> ${latest}`);
+    const choice = dialog.showMessageBoxSync({
+      type: 'info',
+      title: T.updTitle,
+      message: T.updTitle,
+      detail: `${T.updBody(latest, current)}${manifest.notes ? `\n\n${manifest.notes}` : ''}`,
+      buttons: [T.updLater, T.updNow],
+      defaultId: 1,
+      cancelId: 0,
+    });
+    if (choice !== 1) return;
+
+    const url = new URL(manifest.url, UPDATE_MANIFEST_URL).href;
+    setStatus(T.updDownloading);
+    const bin = await downloadVerified(url, manifest.sha256, {
+      allowInsecure: /^http:\/\/(localhost|127\.0\.0\.1)[:/]/.test(url),
+    });
+
+    const target = path.join(app.getPath('temp'), `Neurion-Setup-${latest}.exe`);
+    fs.writeFileSync(target, bin);
+    bootLog('update', `downloaded + verified ${target} (${bin.length} bytes)`);
+
+    dialog.showMessageBoxSync({
+      type: 'info',
+      title: T.updReadyTitle,
+      message: T.updReadyTitle,
+      detail: T.updReadyBody,
+      buttons: [T.updInstall],
+      defaultId: 0,
+    });
+    spawn(target, [], { detached: true, stdio: 'ignore' }).unref();
+    isQuitting = true;
+    stopAll();
+    app.quit();
+  } catch (e) {
+    bootLog('update', `check failed: ${(e && e.message) || e}`);
+    if (!silent) {
+      dialog.showMessageBox({ type: 'warning', title: 'Neurion', message: T.updFailed, detail: String((e && e.message) || e) });
+    }
+  } finally {
+    updateInFlight = false;
+  }
+}
+
+function startUpdateChecks() {
+  if (!PACKAGED) {
+    bootLog('update', 'dev run — update checks disabled');
+    return;
+  }
+  setTimeout(() => void checkForUpdates(true), 30_000);
+  setInterval(() => void checkForUpdates(true), UPDATE_INTERVAL_MS);
+}
+
 function buildMenu() {
   const template = [
     {
@@ -706,6 +807,7 @@ function buildMenu() {
       submenu: [
         { label: T.about, click: () => dialog.showMessageBox(mainWindow, { title: 'Neurion', message: 'Neurion desktop', detail: `${T.aboutDetail} v${app.getVersion()}` }) },
         { type: 'separator' },
+        { label: T.updCheck, click: () => void checkForUpdates(false) },
         { label: T.openBrowser, click: () => shell.openExternal(WEB_URL) },
         { label: T.trayAutostart, type: 'checkbox', checked: getAutoStart(), click: (item) => setAutoStart(item.checked) },
         { type: 'separator' },
@@ -810,6 +912,7 @@ if (!app.requestSingleInstanceLock()) {
     createMainWindow();
     createTray();
     startApiWatchdog();
+    startUpdateChecks();
   });
 }
 

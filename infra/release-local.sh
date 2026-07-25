@@ -21,6 +21,18 @@ ART=("$ROOT/apps/desktop/dist-installer"/Neurion-Setup-"$VER".exe \
      "$ROOT/apps/desktop/dist-installer"/Neurion-"$VER"-linux-*.deb)
 [ ${#ART[@]} -gt 0 ] || { echo "no installer produced for v$VER"; exit 1; }
 
+# Update manifest: the desktop app polls latest.json and verifies the installer
+# against this digest before running it, so hash the exact file being uploaded.
+EXE="$ROOT/apps/desktop/dist-installer/Neurion-Setup-$VER.exe"
+if [ -f "$EXE" ]; then
+  SHA="$(sha256sum "$EXE" | cut -d' ' -f1)"
+  MANIFEST="$ROOT/apps/desktop/dist-installer/latest.json"
+  printf '{\n  "version": "%s",\n  "url": "Neurion-Setup-%s.exe",\n  "sha256": "%s",\n  "notes": "Neurion %s"\n}\n' \
+    "$VER" "$VER" "$SHA" "$VER" > "$MANIFEST"
+  ART+=("$MANIFEST")
+  echo "=== manifest: v$VER sha256=$SHA ==="
+fi
+
 echo "=== publishing to $VPS:/var/www/neurion/download ==="
 FAILED=0
 for f in "${ART[@]}"; do
