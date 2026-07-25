@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
+import { randomBytes } from 'node:crypto';
 import { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RefreshTokenService } from './refresh-token.service';
@@ -84,6 +85,36 @@ export class AuthService {
     // welcome + email verification (best-effort, never blocks registration)
     void this.sendWelcome(user.id, user.email);
     return this.toPublic(user);
+  }
+
+  /**
+   * The account that represents whoever owns this installation. Created on
+   * demand so the desktop needs no sign-up screen, and reused afterwards so the
+   * user's conversations, projects and settings survive restarts.
+   *
+   * It gets a random password: there is no login form behind it, and leaving a
+   * known one would matter the moment this database were ever exposed. If the
+   * owner later wants a real account for the network, they set an email and
+   * password through the normal profile flow.
+   */
+  async ensureLocalOwner(): Promise<User> {
+    const email = 'owner@neurion.local';
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) return existing;
+
+    const passwordHash = await argon2.hash(randomBytes(32).toString('hex'));
+    const workspaceId = await this.defaultWorkspaceId();
+    return this.prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        displayName: 'Owner',
+        workspaceId,
+        // Nothing to verify: no address was ever collected.
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+    });
   }
 
   private async sendWelcome(userId: string, email: string): Promise<void> {

@@ -84,6 +84,27 @@ export class ChatController {
     return "";
   }
 
+  /**
+   * Credits pay for OTHER PEOPLE's hardware. When the answer came out of the
+   * machine the user is sitting at — their CPU, their RAM, their electricity —
+   * there is nothing to bill, and telling someone they are out of credits on
+   * their own computer is indefensible.
+   *
+   * Chargeable work is therefore the network lanes only: a realtime node that
+   * served the request, or a grid job. Everything served by a local engine
+   * (bundled llama.cpp, ollama, LM Studio) is free and unmetered.
+   *
+   * Set NEURION_METER_LOCAL=true to bill local inference as well, for a hosted
+   * deployment where "local" means the operator's server rather than the user's.
+   */
+  private billable(plan: RoutePlan, rawCost: number): number {
+    if (String(this.config.get("NEURION_METER_LOCAL") ?? "false") === "true") {
+      return rawCost;
+    }
+    const servedByNetwork = plan.lane === "GRID" || (plan.lane === "FAST" && !!plan.nodeId);
+    return servedByNetwork ? rawCost : 0;
+  }
+
   private fileChunks(dto: StreamChatDto): string[] {
     const chunks = dto.file?.chunks?.length
       ? dto.file.chunks
@@ -331,9 +352,9 @@ export class ChatController {
       hasLiveOpenTierConsent: false,
       preferredModel: model,
     });
-    const cost = plan.estimate.estCredits;
+    const cost = this.billable(plan, plan.estimate.estCredits);
     const balance = await this.credits.getBalance(user.sub);
-    if (balance < cost) {
+    if (cost > 0 && balance < cost) {
       send("error", { message: "insufficient credits", balance, cost });
       return;
     }
@@ -577,13 +598,15 @@ export class ChatController {
         attachmentBytes: dto.file?.size,
       });
       const fileChunkCount = this.fileChunks(dto).length;
-      const cost =
+      const cost = this.billable(
+        plan,
         dto.file && fileChunkCount > 1
           ? Math.max(
               plan.estimate.estCredits,
               Math.min(50, 2 + Math.ceil(fileChunkCount / 5)),
             )
-          : plan.estimate.estCredits;
+          : plan.estimate.estCredits,
+      );
       // user-chosen model overrides the default for real (non-mock) providers.
       const chosenModel =
         dto.preferredModel && plan.provider.name !== "mock"
@@ -780,8 +803,10 @@ export class ChatController {
 
       // Cost reconciliation: when the provider reports real token usage, true-up
       // the up-front estimate (refund an overcharge; best-effort charge an undercharge).
+      // Skipped for free local inference — otherwise the true-up would re-introduce
+      // a charge through the back door for work that was never billable.
       let finalCost = cost;
-      if (usage && usage.totalTokens > 0) {
+      if (cost > 0 && usage && usage.totalTokens > 0) {
         const perCredit =
           Number(this.config.get<string>("AI_TOKENS_PER_CREDIT") ?? "1000") ||
           1000;

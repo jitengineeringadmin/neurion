@@ -90,6 +90,40 @@ async function refresh(): Promise<boolean> {
   return true;
 }
 
+/**
+ * Desktop: sign in as this machine's owner, with no login screen.
+ *
+ * Nothing local needs protecting from the person already sitting at the
+ * computer, and an account only starts to mean something once other people are
+ * involved — sharing the node, earning NRN, being paid. Those still go through
+ * prodLogin() against the production network, which is a separate identity.
+ *
+ * Returns false on a hosted deployment, where the API refuses this outright.
+ */
+export async function localOwnerSession(): Promise<boolean> {
+  if (!isDesktop()) return false;
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/local-session`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { accessToken?: string };
+    if (!data.accessToken) return false;
+    setToken(data.accessToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** A usable session, obtained without prompting when this is the desktop app. */
+export async function ensureSession(): Promise<boolean> {
+  if (getToken()) return true;
+  if (await refresh()) return true;
+  return localOwnerSession();
+}
+
 export async function api<T = unknown>(
   path: string,
   init: RequestInit = {},

@@ -482,6 +482,12 @@ async function startStack() {
   // Personal desktop: keep the user signed in across restarts (a 30-day access token
   // in localStorage) instead of re-prompting every launch. Prod/web keeps the 15m default.
   ENV.JWT_ACCESS_TTL = ENV.JWT_ACCESS_TTL || '30d';
+  // Personal machine: the app signs itself in as this installation's owner
+  // instead of showing a login form. Nothing here is being protected from
+  // anyone — whoever is logged into this computer already owns the database,
+  // the models and the files. The API refuses to honour this unless it is also
+  // bound to loopback, so the two settings cannot drift apart.
+  ENV.NEURION_LOCAL_OWNER = 'true';
   ensureSecrets();
 
   // Local image engine (stable-diffusion.cpp) lives under userData; the API downloads
