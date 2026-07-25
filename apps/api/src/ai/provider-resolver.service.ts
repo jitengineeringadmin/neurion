@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { AiProvider } from './providers/ai-provider.interface';
 import { MockProvider } from './providers/mock.provider';
 import { OpenAICompatibleProvider } from './providers/openai-compatible.provider';
+import { OllamaNativeProvider } from './providers/ollama-native.provider';
 
 export interface ResolvedProvider {
   provider: AiProvider;
@@ -41,6 +42,26 @@ export class ProviderResolverService {
     return this.config.get<string>('AI_OPENAI_COMPATIBLE_API_KEY') ?? 'local-dev';
   }
 
+  /** Context window requested from ollama. See OllamaNativeProvider for why. */
+  private numCtx(): number {
+    return Math.max(2048, Number(this.config.get<string>('AI_OLLAMA_NUM_CTX') ?? 8192) || 8192);
+  }
+  private keepAlive(): string {
+    return this.config.get<string>('AI_OLLAMA_KEEP_ALIVE') ?? '30m';
+  }
+
+  /**
+   * Build the provider for a source. ollama gets its native endpoint so the
+   * context can be capped and the model kept resident; everything else speaks
+   * plain OpenAI-compatible HTTP.
+   */
+  private providerFor(src: { base: string; label: string }): AiProvider {
+    if (src.label === 'ollama') {
+      return new OllamaNativeProvider(src.base.replace(/\/v1\/?$/, ''), this.numCtx(), this.keepAlive());
+    }
+    return new OpenAICompatibleProvider(src.base, this.apiKey(), src.label);
+  }
+
   /** Every OpenAI-compatible engine we may talk to, in preference order. */
   private sources(): Array<{ base: string; label: string }> {
     const out: Array<{ base: string; label: string }> = [];
@@ -70,11 +91,6 @@ export class ProviderResolverService {
     }
     this.indexCache = { at: now, map };
     return map;
-  }
-
-  /** A local OpenAI-compatible provider (ollama) — used for vision chat. */
-  localProvider(): OpenAICompatibleProvider {
-    return new OpenAICompatibleProvider(this.baseUrl, this.apiKey());
   }
 
   /** First installed vision-capable model (llava, moondream, …), or null. */
@@ -132,7 +148,7 @@ export class ProviderResolverService {
       const src = index.get(preferredModel);
       if (src) {
         return {
-          provider: new OpenAICompatibleProvider(src.base, this.apiKey(), src.label),
+          provider: this.providerFor(src),
           model: preferredModel,
         };
       }
@@ -149,15 +165,15 @@ export class ProviderResolverService {
     //    model (never hand back a hardcoded tag the user may not have installed).
     const configured = index.get(chatModel);
     if (configured) {
-      return { provider: new OpenAICompatibleProvider(configured.base, this.apiKey(), configured.label), model: chatModel };
+      return { provider: this.providerFor(configured), model: chatModel };
     }
     for (const [id, src] of index) {
       if (/embed|rerank|bge|clip/i.test(id)) continue;
-      return { provider: new OpenAICompatibleProvider(src.base, this.apiKey(), src.label), model: id };
+      return { provider: this.providerFor(src), model: id };
     }
     const first = [...index.entries()][0];
     if (first) {
-      return { provider: new OpenAICompatibleProvider(first[1].base, this.apiKey(), first[1].label), model: first[0] };
+      return { provider: this.providerFor(first[1]), model: first[0] };
     }
 
     this.logger.error('No AI provider reachable — using LABELED mock. Configure ollama (infra/scripts/setup-ollama.ps1), LM Studio (AI_LMSTUDIO_BASE_URL) or a ds4-server (AI_DS4_BASE_URL).');

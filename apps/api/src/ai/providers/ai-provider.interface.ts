@@ -12,6 +12,14 @@ export interface TokenUsage {
 
 export interface ChatOptions {
   maxTokens?: number;
+  /**
+   * Called with reasoning deltas from models that emit them on a separate
+   * channel (qwen3, deepseek-r1, …). Those models can think for tens of seconds
+   * before producing any answer text, so without this the UI shows nothing and
+   * looks hung. Reasoning is NOT part of the answer and must not be persisted
+   * as one — it exists to prove the model is working.
+   */
+  onReasoning?: (delta: string) => void;
 }
 
 export interface AiProvider {

@@ -703,10 +703,20 @@ export class ChatController {
       let usedModel = chosenModel;
       const t0 = Date.now();
       try {
+        // Reasoning models think for tens of seconds before the first answer
+        // token. Forward that as its own event so the UI can show progress
+        // instead of a frozen screen; it is never appended to the answer.
+        let reasoningChars = 0;
         for await (const text of plan.provider.streamChat(
           context,
           chosenModel,
           abort.signal,
+          {
+            onReasoning: (delta) => {
+              reasoningChars += delta.length;
+              send("reasoning", { text: delta, chars: reasoningChars });
+            },
+          },
         )) {
           if (firstTokenMs === null) firstTokenMs = Date.now() - t0;
           full += text;

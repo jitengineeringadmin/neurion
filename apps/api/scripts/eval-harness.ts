@@ -67,7 +67,10 @@ interface RunResult {
   genMs?: number;
   outputChars?: number;
   completionTokens?: number;
-  tokPerSec?: number;
+  /** Tokens per second over the whole request — what the user actually waits. */
+  tokPerSecWall?: number;
+  /** Tokens per second while text was streaming; misleading on reasoning models. */
+  tokPerSecStream?: number;
   charPerSec?: number;
   provider?: string;
   servedModel?: string;
@@ -336,8 +339,16 @@ async function main(): Promise<void> {
             const usage = (s.final as { tokenUsage?: { completionTokens?: number } })?.tokenUsage;
             r.completionTokens = usage?.completionTokens;
             r.genMs = r.ttftClientMs !== undefined ? s.totalMs - r.ttftClientMs : undefined;
+            // Reasoning models (qwen3 etc.) emit their thinking on a channel the
+            // client never sees, so nothing streams for seconds and then the
+            // answer lands at once. Dividing the token count by the streaming
+            // window alone reported 700+ tok/s on a CPU. Wall-clock is the
+            // honest rate; the streaming rate is kept but labelled as such.
+            if (r.completionTokens && s.totalMs > 0) {
+              r.tokPerSecWall = (r.completionTokens / s.totalMs) * 1000;
+            }
             if (r.genMs && r.genMs > 0) {
-              if (r.completionTokens) r.tokPerSec = (r.completionTokens / r.genMs) * 1000;
+              if (r.completionTokens) r.tokPerSecStream = (r.completionTokens / r.genMs) * 1000;
               r.charPerSec = (s.text.length / r.genMs) * 1000;
             }
           }
@@ -349,7 +360,7 @@ async function main(): Promise<void> {
         const tag = cold ? "cold" : `run${run}`;
         if (r.valid) {
           console.log(
-            `  ${r.pass ? "ok  " : "FAIL"} ${c.id.padEnd(22)} ${tag.padEnd(5)} ttft ${fmt(r.ttftClientMs)}ms  tot ${fmt(r.totalMs)}ms  ${fmt(r.tokPerSec, 1)} tok/s`,
+            `  ${r.pass ? "ok  " : "FAIL"} ${c.id.padEnd(22)} ${tag.padEnd(5)} ttft ${fmt(r.ttftClientMs)}ms  tot ${fmt(r.totalMs)}ms  ${fmt(r.tokPerSecWall, 1)} tok/s`,
           );
         } else {
           console.log(`  SKIP ${c.id.padEnd(22)} ${tag.padEnd(5)} ${r.invalidReason}`);
@@ -384,7 +395,8 @@ async function main(): Promise<void> {
       passRate: +(passRate * 100).toFixed(0),
       ttftMedianMs: median(mw.map((r) => r.ttftClientMs!)),
       totalMedianMs: median(mw.map((r) => r.totalMs!)),
-      tokPerSecMedian: median(mw.map((r) => r.tokPerSec!).filter(Boolean)),
+      tokPerSecMedian: median(mw.map((r) => r.tokPerSecWall!).filter(Boolean)),
+      tokPerSecStreamMedian: median(mw.map((r) => r.tokPerSecStream!).filter(Boolean)),
       // Single sample by construction: the one request that paid the model load.
       coldTtftMs: median(mc.map((r) => r.ttftClientMs!)),
       overheadMedianMs: median(mw.map((r) => r.overheadMs!).filter((n) => Number.isFinite(n))),
