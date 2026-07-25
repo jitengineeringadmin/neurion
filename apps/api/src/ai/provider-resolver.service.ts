@@ -62,6 +62,16 @@ export class ProviderResolverService {
     return new OpenAICompatibleProvider(src.base, this.apiKey(), src.label);
   }
 
+  /**
+   * The bundled llama.cpp server, when Neurion has set one up. Injected late to
+   * avoid a circular import with the engine module.
+   */
+  private bundled: { isReady(): boolean; baseUrl(): string } | null = null;
+  registerBundledEngine(engine: { isReady(): boolean; baseUrl(): string }): void {
+    this.bundled = engine;
+    this.indexCache = null;
+  }
+
   /** Every OpenAI-compatible engine we may talk to, in preference order. */
   private sources(): Array<{ base: string; label: string }> {
     const out: Array<{ base: string; label: string }> = [];
@@ -69,6 +79,10 @@ export class ProviderResolverService {
     out.push({ base: this.baseUrl, label: 'ollama' });
     const lms = this.lmStudioBaseUrl;
     if (lms && lms !== this.baseUrl) out.push({ base: lms, label: 'lmstudio' });
+    // Last: a user who already runs ollama or LM Studio keeps using their own
+    // models; the bundled engine exists so that someone with neither is not
+    // left talking to a labelled mock.
+    if (this.bundled?.isReady()) out.push({ base: this.bundled.baseUrl(), label: 'neurion' });
     return out;
   }
 

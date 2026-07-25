@@ -434,6 +434,9 @@ async function reclaimStack() {
     waitPortFree('localhost', PG_PORT, 12000),
     waitPortFree('localhost', 8091, 12000),
     waitPortFree('localhost', 3091, 12000),
+    // 8095 is the bundled llama.cpp server. It is a child of the API, so a
+    // previous instance can still be holding the port while it dies.
+    waitPortFree('localhost', 8095, 12000),
   ]);
 }
 
@@ -487,6 +490,12 @@ async function startStack() {
     const imgDir = path.join(app.getPath('userData'), 'image-engine');
     fs.mkdirSync(imgDir, { recursive: true });
     ENV.NEURION_IMAGE_DIR = imgDir;
+    // Same treatment for the bundled text engine (llama.cpp + a GGUF model), so
+    // chat works on a machine that has never heard of ollama. Kept out of the
+    // installer and fetched on first use, exactly like the image engine.
+    const textDir = path.join(app.getPath('userData'), 'text-engine');
+    fs.mkdirSync(textDir, { recursive: true });
+    ENV.NEURION_TEXT_DIR = textDir;
   } catch {
     /* best effort — image gen just stays unavailable */
   }
