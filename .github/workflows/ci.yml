@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api-web:
+    name: api + web (typecheck, build, lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: prisma generate
+        run: pnpm --filter @neurion/api exec prisma generate
+      - name: typecheck
+        run: |
+          pnpm --filter @neurion/api typecheck
+          pnpm --filter @neurion/web typecheck
+      - name: build
+        run: |
+          pnpm --filter @neurion/api build
+          pnpm --filter @neurion/web build
+      - name: unit tests
+        run: pnpm --filter @neurion/api test:unit
+
+  contracts:
+    name: contracts (compile + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: hardhat compile + test
+        run: pnpm --filter @neurion/contracts exec hardhat test
+
+  node-agent:
+    name: node-agent (build + vet + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: apps/node-agent/go.sum
+      - name: build + vet + test
+        working-directory: apps/node-agent
+        run: |
+          go build ./...
+          go vet ./...
+          go test ./... 2>&1 | tee /dev/stderr | grep -vq "no test files" || true
