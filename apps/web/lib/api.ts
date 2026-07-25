@@ -1,5 +1,23 @@
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8091";
+/**
+ * Inside the desktop shell the API always listens on 8091 — main.js pins
+ * NEURION_API_PORT to it, so it is a runtime contract, not a guess.
+ *
+ * Resolving it here rather than trusting NEXT_PUBLIC_API_URL matters because
+ * that value is inlined at BUILD time: a machine with an apps/web/.env.local
+ * pointing elsewhere produces a bundle that calls a port nothing is serving,
+ * and every request fails with ERR_CONNECTION_REFUSED while the app merely
+ * looks like it is asking for a login. The packaged build sets the right value
+ * (prepare-stack.mjs), so this only ever bit the monorepo run — silently.
+ */
+function resolveApiBase(): string {
+  if (typeof window !== "undefined") {
+    const shell = (window as { neurion?: { isDesktop?: boolean } }).neurion;
+    if (shell?.isDesktop) return "http://localhost:8091";
+  }
+  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8091";
+}
+
+export const API_BASE = resolveApiBase();
 
 // The production network API. In the desktop the app talks to a LOCAL embedded API
 // (API_BASE = localhost), but its node pool is empty — community nodes live on the
