@@ -673,7 +673,13 @@ export class ChatController {
         if (retrieval.hits.length) {
           send("knowledge", this.knowledgeEvent("retrieved", retrieval));
           const augmented = [...context];
-          augmented.splice(1, 0, {
+          // Append near the question, not at position 1 — matching the paged
+          // branch above. Retrieved text depends on the current query, so
+          // putting it right after the system prompt rewrites the head of the
+          // prompt every turn and throws away the engine's KV cache for the
+          // whole conversation. At the tail the prefix stays byte-identical
+          // (and the model weights nearby context more heavily anyway).
+          augmented.splice(Math.max(1, augmented.length - 1), 0, {
             role: "user",
             content: this.knowledge.context(retrieval),
           });
