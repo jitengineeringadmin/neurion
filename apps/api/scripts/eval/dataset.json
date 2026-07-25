@@ -64,10 +64,14 @@
       "expect": { "type": "regex", "value": "^[^\\n]+\\n[^\\n]+\\n[^\\n]+$" }
     },
     {
-      "id": "negation",
+      "id": "language-adherence",
       "category": "instruction-hard",
-      "prompt": "Scrivi una frase sul mare che NON contenga la lettera 'a'. Rispondi solo con la frase.",
-      "expect": { "type": "regex", "value": "^[^aA]+$" }
+      "prompt": "Descrivi il mare in una frase. Rispondi obbligatoriamente in italiano.",
+      "expect": {
+        "type": "regex",
+        "value": "(?i)\\b(il|lo|la|le|gli|un|una|del|della|che|si|Ã¨|e|con|per|di)\\b.*\\b(mare|onde|acqua|blu|orizzonte|profond|distesa|azzurr)"
+      },
+      "note": "Replaces a 'sentence without the letter a' case that every model failed: in Italian nearly every function word contains one, so it measured a linguistic trap rather than a capability. Language adherence is a real defect instead — qwen2.5:3b answered this prompt in French unprompted."
     },
     {
       "id": "recall-buried",
