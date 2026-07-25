@@ -1,0 +1,21 @@
+{
+  "name": "@neurion/contracts",
+  "version": "1.8.8",
+  "private": true,
+  "scripts": {
+    "build": "hardhat compile",
+    "test": "hardhat test",
+    "lint": "echo \"(contracts) solhint not configured yet\" && exit 0",
+    "typecheck": "echo \"(contracts) typechain on compile\" && exit 0",
+    "deploy:local": "hardhat run scripts/deploy-local.ts --network localhost"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2"
+  }
+}

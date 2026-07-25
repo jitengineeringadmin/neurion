@@ -1,0 +1,15 @@
+[Unit]
+Description=Neurion Web
+After=network.target neurion-api.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/jit-factory/projects/neurion/apps/web
+EnvironmentFile=/opt/jit-factory/projects/neurion/.env
+ExecStart=/usr/bin/npx next start -p 3091
+Restart=always
+RestartSec=3
+User=neurion
+
+[Install]
+WantedBy=multi-user.target

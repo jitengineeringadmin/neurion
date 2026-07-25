@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: neurion-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-neurion}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-neurion}
+      POSTGRES_DB: ${POSTGRES_DB:-neurion}
+    # Bind to localhost only — never expose the DB on all interfaces. Override
+    # secrets via .env (POSTGRES_PASSWORD=...) before any non-local deploy.
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - neurion_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-neurion}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: neurion-redis
+    command: ${REDIS_PASSWORD:+redis-server --requirepass ${REDIS_PASSWORD}}
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: neurion-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-neurion}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-neurion-secret}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - neurion_minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  hardhat:
+    image: node:20
+    container_name: neurion-hardhat
+    working_dir: /contracts
+    command: sh -c "corepack enable && pnpm install && pnpm hardhat node --hostname 0.0.0.0"
+    ports:
+      - "127.0.0.1:8545:8545"
+    volumes:
+      - ./packages/contracts:/contracts
+    profiles: ["chain"]
+
+  # G3: optional local AI provider for real Fallback-lane chat. `docker compose --profile ai up`.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: neurion-ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - neurion_ollama:/root/.ollama
+    profiles: ["ai"]
+
+volumes:
+  neurion_postgres:
+  neurion_minio:
+  neurion_ollama:

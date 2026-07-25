@@ -1,0 +1,18 @@
+{
+  "name": "@neurion/fake-node",
+  "version": "1.8.8",
+  "private": true,
+  "scripts": {
+    "start": "tsx run.ts",
+    "lint": "echo \"(fake-node) no lint\" && exit 0",
+    "test": "echo \"(fake-node) no tests\" && exit 0"
+  },
+  "dependencies": {
+    "ws": "^8.17.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.5"
+  }
+}

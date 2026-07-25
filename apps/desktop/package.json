@@ -1,0 +1,90 @@
+{
+  "name": "@neurion/desktop",
+  "version": "1.8.8",
+  "private": true,
+  "description": "Neurion desktop app",
+  "homepage": "https://neurionproject.org",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "prepare-stack": "node scripts/prepare-stack.mjs",
+    "pack": "node scripts/prepare-stack.mjs && electron-builder",
+    "dist": "electron-builder",
+    "lint": "echo \"(desktop) no lint\" && exit 0",
+    "test": "echo \"(desktop) no tests\" && exit 0"
+  },
+  "devDependencies": {
+    "electron": "^31.7.0",
+    "electron-builder": "^24.13.3",
+    "rcedit": "^4.0.1"
+  },
+  "build": {
+    "appId": "org.neurionproject.desktop",
+    "productName": "Neurion",
+    "directories": {
+      "output": "dist-installer",
+      "buildResources": "build"
+    },
+    "afterPack": "scripts/after-pack.js",
+    "asar": true,
+    "npmRebuild": false,
+    "files": [
+      "main.js",
+      "preload.js",
+      "splash.html",
+      "build/**",
+      "!node_modules/**/*",
+      "!staging/**/*",
+      "!scripts/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "staging",
+        "to": "app-stack"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Neurion",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "Neurion-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build/icon.png",
+      "category": "Development",
+      "maintainer": "Neurion <info@neurionproject.org>",
+      "synopsis": "Neurion — distributed AI compute",
+      "artifactName": "Neurion-${version}-linux-${arch}.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.developer-tools",
+      "identity": null,
+      "artifactName": "Neurion-${version}-mac-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "Neurion ${version}"
+    }
+  },
+  "dependencies": {
+    "embedded-postgres": "18.4.0-beta.17",
+    "pg": "^8.7.3"
+  }
+}

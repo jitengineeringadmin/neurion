@@ -1,0 +1,17 @@
+{
+  "name": "@neurion/echo-worker",
+  "version": "1.8.8",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"(echo-worker) no lint yet\" && exit 0",
+    "test": "echo \"(echo-worker) no tests yet\" && exit 0",
+    "run:local": "tsx src/run.ts --input ./input.json --output ./output.json"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.5"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "neurion",
+  "version": "1.8.8",
+  "private": true,
+  "packageManager": "pnpm@8.12.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:migrate": "pnpm --filter @neurion/api db:migrate",
+    "db:seed": "pnpm --filter @neurion/api db:seed",
+    "db:validate": "pnpm --filter @neurion/api db:validate",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "turbo": "^1.13.0",
+    "typescript": "^5.4.5"
+  }
+}

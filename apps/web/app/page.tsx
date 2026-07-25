@@ -1,0 +1,52 @@
+'use client';
+import Link from 'next/link';
+import { MatrixRain } from '../components/MatrixRain';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { LangToggle } from '../components/LangToggle';
+import { button } from '../lib/ui';
+import { useT } from '../lib/i18n';
+
+export default function Home() {
+  const t = useT();
+  return (
+    <main style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.18 }}>
+        <MatrixRain />
+      </div>
+      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 2 }}>
+        <ThemeToggle />
+        <LangToggle />
+      </div>
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          maxWidth: 760,
+          margin: '0 auto',
+          padding: '120px 24px',
+        }}
+      >
+        <h1 className="neon" style={{ fontSize: 'clamp(44px, 9vw, 84px)', margin: 0, letterSpacing: '0.12em', color: 'var(--accent)' }}>
+          {t('home.brandName')}
+        </h1>
+        <p style={{ fontSize: 18, color: 'var(--text)', marginTop: 8 }}>
+          {t('home.tagline')}
+        </p>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.8, maxWidth: 560 }}>
+          {t('home.description')}
+        </p>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 24 }}>
+          <a href="/download/Neurion-Setup-latest.exe" style={{ ...button, display: 'inline-block', textDecoration: 'none' }}>
+            {t('home.downloadCta')}
+          </a>
+          <Link href="/login" style={{ ...button, display: 'inline-block', textDecoration: 'none', background: 'transparent' }}>
+            {t('home.enterCta')} &gt;
+          </Link>
+        </div>
+        <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 10 }}>
+          {t('home.downloadMeta')}
+        </p>
+      </div>
+    </main>
+  );
+}
