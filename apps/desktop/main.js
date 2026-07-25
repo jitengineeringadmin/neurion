@@ -144,6 +144,11 @@ let T = STRINGS.en;
 
 const sh = (cmd, args, opts = {}) => spawn(cmd, args, { shell: true, windowsHide: true, ...opts });
 
+/** The app icon for whichever platform this is; .ico on Windows, .png elsewhere. */
+function appIcon() {
+  return path.join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+}
+
 // --- boot log -------------------------------------------------------------
 // Every child process the stack starts writes here, tagged. Without this a
 // failed migrate / dead web server is completely invisible: the user only ever
@@ -600,6 +605,10 @@ function createSplash() {
     frame: false,
     resizable: false,
     backgroundColor: '#04070a',
+    // The splash is the FIRST window a user sees, and it had no icon — so the
+    // taskbar showed Electron's default logo for the whole startup, which is
+    // the icon most people end up looking at longest.
+    icon: appIcon(),
     webPreferences: { contextIsolation: true },
   });
   splash.loadFile(path.join(__dirname, 'splash.html'));
@@ -630,7 +639,7 @@ function createMainWindow() {
     minHeight: 600,
     backgroundColor: '#04070a',
     title: 'Neurion',
-    icon: path.join(__dirname, 'build', 'icon.ico'),
+    icon: appIcon(),
     show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, backgroundThrottling: false },
   });
@@ -907,6 +916,11 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     T = STRINGS[(app.getLocale() || 'en').slice(0, 2)] || STRINGS.en;
+    // Windows groups taskbar buttons and resolves their icon by AppUserModelID.
+    // Without one, Electron's default is used and a pinned Neurion does not
+    // match the running window. Must be set before any window is created, and
+    // must equal the installer's appId.
+    if (process.platform === 'win32') app.setAppUserModelId('org.neurionproject.desktop');
     buildMenu();
     createSplash();
     let bootError = null;
