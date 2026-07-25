@@ -35,6 +35,12 @@ export class ModelMemoryService {
     return base.replace(/\/v1\/?$/, "");
   }
 
+  /**
+   * NVIDIA only. On AMD and Apple Silicon this returns null, so the planner
+   * falls through to the CPU branches — correct behaviour for the engines in
+   * use, but it means "no GPU detected" must never be phrased to the user as
+   * "you have no GPU".
+   */
   private async gpu(): Promise<GpuMemory | null> {
     try {
       const { stdout } = await execFileAsync(
@@ -63,7 +69,14 @@ export class ModelMemoryService {
 
   private disk() {
     try {
-      const path = this.config.get<string>("NEURION_DATA_DIR") ?? process.cwd();
+      // Measure the volume the weights actually land on. Reporting free space
+      // for the working directory is misleading when models live under the
+      // user's app-data directory on a different drive.
+      const path =
+        this.config.get<string>("NEURION_TEXT_DIR") ??
+        this.config.get<string>("NEURION_IMAGE_DIR") ??
+        this.config.get<string>("NEURION_DATA_DIR") ??
+        process.cwd();
       const stats = statfsSync(path);
       return {
         path,
@@ -135,12 +148,20 @@ export class ModelMemoryService {
         "Part of the model can stay on GPU while remaining layers are served from system RAM.";
     } else if (
       ramTotal >= Math.max(4 * GB, modelBytes * 0.45) &&
+      workingSet <= ramTotal * 0.85 &&
       diskFree !== null &&
       diskFree >= modelBytes * 1.25
     ) {
       mode = "cpu_mmap";
+      // Free RAM decides how this FEELS, and the verdict used to ignore it
+      // entirely — the same answer came back whether the model loaded in half a
+      // second or paged for a minute and a half. Measured on a 27.7 GB machine:
+      // a 19 GB working set with ~11 GB free took 95 s to become usable, while
+      // a 5 GB one took under 9 s.
       reason =
-        "The model can be memory-mapped from disk, but page faults and CPU inference can make it much slower.";
+        workingSet <= ramFree
+          ? "Fits in free RAM: it runs on the CPU and loads quickly."
+          : "Larger than free RAM: it will be memory-mapped from disk, so the first load pages heavily and can take minutes. Close other applications first.";
     } else {
       mode = "not_recommended";
       reason =
