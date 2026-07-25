@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { MatrixRain } from '../components/MatrixRain';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LangToggle } from '../components/LangToggle';
-import { button } from '../lib/ui';
+import { button, buttonOutline } from '../lib/ui';
 import { useT } from '../lib/i18n';
 
 export default function Home() {
@@ -39,7 +39,7 @@ export default function Home() {
           <a href="/download/Neurion-Setup-latest.exe" style={{ ...button, display: 'inline-block', textDecoration: 'none' }}>
             {t('home.downloadCta')}
           </a>
-          <Link href="/login" style={{ ...button, display: 'inline-block', textDecoration: 'none', background: 'transparent' }}>
+          <Link href="/login" style={{ ...buttonOutline, display: 'inline-block', textDecoration: 'none' }}>
             {t('home.enterCta')} &gt;
           </Link>
         </div>

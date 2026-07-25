@@ -25,6 +25,10 @@ const API_DIR = PACKAGED ? path.join(STACK, 'api') : path.join(ROOT, 'apps', 'ap
 const WEB_DIR = PACKAGED ? path.join(STACK, 'web') : path.join(ROOT, 'apps', 'web');
 const ENV_PATH = PACKAGED ? path.join(STACK, '.env') : path.join(ROOT, '.env');
 const WEB_URL = 'http://localhost:3091';
+// The window opens on the app, not on the marketing home page. Loading '/' meant
+// a freshly installed desktop app greeted the user with a "Download for Windows"
+// button for the very thing they had just installed.
+const APP_URL = `${WEB_URL}/app/chat`;
 const API_HEALTH = 'http://localhost:8091/api/health';
 
 // In-app node: the bundled node-agent binary connects to the PRODUCTION network
@@ -643,7 +647,7 @@ function createMainWindow() {
     show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, backgroundThrottling: false },
   });
-  mainWindow.loadURL(WEB_URL);
+  mainWindow.loadURL(APP_URL);
 
   // Windows/Chromium can leave the newly-exposed region unpainted after a maximize
   // (content looks frozen at the old size until you interact). Force a repaint on
@@ -660,7 +664,7 @@ function createMainWindow() {
   mainWindow.webContents.on('did-fail-load', (_e, code) => {
     if (code === -3) return; // aborted (a newer navigation superseded this one)
     if (++loadTries <= 25) {
-      setTimeout(() => mainWindow && !mainWindow.isDestroyed() && mainWindow.loadURL(WEB_URL), 1000);
+      setTimeout(() => mainWindow && !mainWindow.isDestroyed() && mainWindow.loadURL(APP_URL), 1000);
     } else {
       mainWindow.loadURL(
         'data:text/html;charset=utf-8,' +
