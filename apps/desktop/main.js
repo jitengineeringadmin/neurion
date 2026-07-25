@@ -9,6 +9,13 @@ const os = require('node:os');
 const { spawn, spawnSync } = require('node:child_process');
 const { pathToFileURL } = require('node:url');
 
+// Electron on Windows can surface a fatal "EPIPE: broken pipe, write" dialog
+// when stdout/stderr disappear while child process output is being mirrored.
+// Treat logging as best-effort so the desktop shell keeps running.
+for (const stream of [process.stdout, process.stderr]) {
+  stream?.on?.('error', () => {});
+}
+
 // In a packaged build the stack lives under resources/app-stack (extraResources);
 // in dev it is the monorepo working tree.
 const PACKAGED = app.isPackaged;
@@ -18,6 +25,10 @@ const API_DIR = PACKAGED ? path.join(STACK, 'api') : path.join(ROOT, 'apps', 'ap
 const WEB_DIR = PACKAGED ? path.join(STACK, 'web') : path.join(ROOT, 'apps', 'web');
 const ENV_PATH = PACKAGED ? path.join(STACK, '.env') : path.join(ROOT, '.env');
 const WEB_URL = 'http://localhost:3091';
+// The window opens on the app, not on the marketing home page. Loading '/' meant
+// a freshly installed desktop app greeted the user with a "Download for Windows"
+// button for the very thing they had just installed.
+const APP_URL = `${WEB_URL}/app/chat`;
 const API_HEALTH = 'http://localhost:8091/api/health';
 
 // In-app node: the bundled node-agent binary connects to the PRODUCTION network
@@ -86,6 +97,17 @@ const STRINGS = {
     pickFolder: 'Select the project folder',
     failTitle: 'Neurion won’t start',
     failBody: 'The local engine did not respond. Fully close Neurion and reopen it.<br/>If it persists, restart your PC or reinstall.',
+    updCheck: 'Check for updates',
+    updTitle: 'Update available',
+    updBody: (v, cur) => `Neurion ${v} is available (you have ${cur}).`,
+    updNow: 'Download and install',
+    updLater: 'Later',
+    updNone: 'Neurion is up to date.',
+    updFailed: 'Could not check for updates.',
+    updDownloading: 'Downloading the update…',
+    updReadyTitle: 'Update ready',
+    updReadyBody: 'Neurion will close to complete the installation.',
+    updInstall: 'Install now',
   },
   it: {
     boot: 'Avvio…',
@@ -109,11 +131,67 @@ const STRINGS = {
     pickFolder: 'Seleziona la cartella del progetto',
     failTitle: 'Neurion non si avvia',
     failBody: 'Il motore locale non ha risposto. Chiudi completamente Neurion e riaprilo.<br/>Se persiste, riavvia il PC o reinstalla.',
+    updCheck: 'Controlla aggiornamenti',
+    updTitle: 'Aggiornamento disponibile',
+    updBody: (v, cur) => `È disponibile Neurion ${v} (hai la ${cur}).`,
+    updNow: 'Scarica e installa',
+    updLater: 'Più tardi',
+    updNone: 'Neurion è aggiornato.',
+    updFailed: 'Impossibile controllare gli aggiornamenti.',
+    updDownloading: 'Download dell’aggiornamento…',
+    updReadyTitle: 'Aggiornamento pronto',
+    updReadyBody: 'Neurion si chiuderà per completare l’installazione.',
+    updInstall: 'Installa ora',
   },
 };
 let T = STRINGS.en;
 
 const sh = (cmd, args, opts = {}) => spawn(cmd, args, { shell: true, windowsHide: true, ...opts });
+
+/** The app icon for whichever platform this is; .ico on Windows, .png elsewhere. */
+function appIcon() {
+  return path.join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+}
+
+// --- boot log -------------------------------------------------------------
+// Every child process the stack starts writes here, tagged. Without this a
+// failed migrate / dead web server is completely invisible: the user only ever
+// sees a stuck splash and "Neurion won't start" with no way to find out why.
+let bootLogPath = null;
+function bootLog(tag, text) {
+  const line = `[${new Date().toISOString()}] [${tag}] ${String(text).replace(/\s+$/, '')}`;
+  try {
+    console.log(line);
+  } catch {
+    /* stdout may be gone */
+  }
+  try {
+    if (!bootLogPath) bootLogPath = path.join(app.getPath('userData'), 'neurion-boot.log');
+    fs.appendFileSync(bootLogPath, line + '\n');
+  } catch {
+    /* best effort */
+  }
+}
+
+/** Mirror a child's stdout/stderr into the boot log, line by line. */
+function attachLog(child, tag) {
+  for (const [stream, suffix] of [
+    [child.stdout, ''],
+    [child.stderr, ':err'],
+  ]) {
+    if (!stream) continue;
+    let buf = '';
+    stream.on('data', (chunk) => {
+      buf += chunk.toString();
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+      for (const l of lines) if (l.trim()) bootLog(tag + suffix, l);
+    });
+  }
+  child.on('error', (e) => bootLog(tag, `SPAWN ERROR: ${e && e.message}`));
+  child.on('exit', (code, signal) => bootLog(tag, `exited code=${code} signal=${signal}`));
+  return child;
+}
 
 function waitPort(host, port, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
@@ -172,9 +250,9 @@ function waitHttp(url, timeoutMs) {
   });
 }
 
-function run(cmd, args, opts) {
+function run(cmd, args, opts, tag = 'run') {
   return new Promise((resolve) => {
-    const p = sh(cmd, args, opts);
+    const p = attachLog(sh(cmd, args, opts), tag);
     p.on('close', (code) => resolve(code ?? 0));
     p.on('error', () => resolve(1));
   });
@@ -182,16 +260,17 @@ function run(cmd, args, opts) {
 
 // Run a JS file with Electron's embedded Node (ELECTRON_RUN_AS_NODE) so the
 // packaged app needs no system Node. Args are passed directly (no shell).
-function nodeSpawn(args, opts = {}) {
-  return spawn(process.execPath, args, {
+function nodeSpawn(args, opts = {}, tag = null) {
+  const p = spawn(process.execPath, args, {
     windowsHide: true,
     ...opts,
     env: { ...(opts.env || ENV), ELECTRON_RUN_AS_NODE: '1' },
   });
+  return tag ? attachLog(p, tag) : p;
 }
-function nodeRun(args, opts) {
+function nodeRun(args, opts, tag = 'node') {
   return new Promise((resolve) => {
-    const p = nodeSpawn(args, opts);
+    const p = nodeSpawn(args, opts, tag);
     p.on('close', (code) => resolve(code ?? 0));
     p.on('error', () => resolve(1));
   });
@@ -352,7 +431,7 @@ async function reclaimStack() {
       spawnSync(
         'powershell',
         ['-NoProfile', '-Command',
-          "Get-CimInstance Win32_Process -Filter \"Name='postgres.exe'\" | Where-Object { $_.CommandLine -like '*neurion*pgdata*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"],
+          "Get-CimInstance Win32_Process -Filter \"Name='postgres.exe'\" | Where-Object { $_.CommandLine -like '*neurion*pgdata*' -or $_.CommandLine -like '*Neurion*app-stack*_desktop*postgres.exe*' -or $_.CommandLine -like '*embedded-postgres*windows-x64*native*bin*postgres.exe*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"],
         { windowsHide: true, timeout: 8000 },
       );
     } catch {
@@ -364,6 +443,9 @@ async function reclaimStack() {
     waitPortFree('localhost', PG_PORT, 12000),
     waitPortFree('localhost', 8091, 12000),
     waitPortFree('localhost', 3091, 12000),
+    // 8095 is the bundled llama.cpp server. It is a child of the API, so a
+    // previous instance can still be holding the port while it dies.
+    waitPortFree('localhost', 8095, 12000),
   ]);
 }
 
@@ -402,9 +484,19 @@ function migrationsFingerprint() {
 async function startStack() {
   // children + tooling all use the embedded DB
   ENV.DATABASE_URL = DB_URL;
+  // Desktop ports are part of the packaged runtime contract. Never inherit the
+  // monorepo development ports from a build-machine .env file.
+  ENV.NEURION_API_PORT = '8091';
+  ENV.NEURION_WEB_PORT = '3091';
   // Personal desktop: keep the user signed in across restarts (a 30-day access token
   // in localStorage) instead of re-prompting every launch. Prod/web keeps the 15m default.
   ENV.JWT_ACCESS_TTL = ENV.JWT_ACCESS_TTL || '30d';
+  // Personal machine: the app signs itself in as this installation's owner
+  // instead of showing a login form. Nothing here is being protected from
+  // anyone — whoever is logged into this computer already owns the database,
+  // the models and the files. The API refuses to honour this unless it is also
+  // bound to loopback, so the two settings cannot drift apart.
+  ENV.NEURION_LOCAL_OWNER = 'true';
   ensureSecrets();
 
   // Local image engine (stable-diffusion.cpp) lives under userData; the API downloads
@@ -413,6 +505,12 @@ async function startStack() {
     const imgDir = path.join(app.getPath('userData'), 'image-engine');
     fs.mkdirSync(imgDir, { recursive: true });
     ENV.NEURION_IMAGE_DIR = imgDir;
+    // Same treatment for the bundled text engine (llama.cpp + a GGUF model), so
+    // chat works on a machine that has never heard of ollama. Kept out of the
+    // installer and fetched on first use, exactly like the image engine.
+    const textDir = path.join(app.getPath('userData'), 'text-engine');
+    fs.mkdirSync(textDir, { recursive: true });
+    ENV.NEURION_TEXT_DIR = textDir;
   } catch {
     /* best effort — image gen just stays unavailable */
   }
@@ -435,7 +533,10 @@ async function startStack() {
   //    the API directly (localhost:8091), so the web host needs no DB to start.
   setStatus(T.web);
   const nextBin = path.join(WEB_DIR, 'node_modules', 'next', 'dist', 'bin', 'next');
-  const web = nodeSpawn([nextBin, 'start', '-p', '3091'], { cwd: WEB_DIR, env: ENV });
+  bootLog('web', `spawning ${nextBin} (cwd=${WEB_DIR})`);
+  // -H 127.0.0.1: same reason the API binds loopback — this is a personal
+  // desktop, the UI has no business being reachable from the rest of the LAN.
+  const web = nodeSpawn([nextBin, 'start', '-p', '3091', '-H', '127.0.0.1'], { cwd: WEB_DIR, env: ENV }, 'web');
   children.push(web);
 
   // 3) migrate — but only when the migration set actually changed (after an update).
@@ -447,15 +548,25 @@ async function startStack() {
   let applied = '';
   try { applied = fs.readFileSync(markerFile, 'utf8').trim(); } catch { /* no marker yet */ }
   if (firstRun || !fp || applied !== fp) {
-    let code = 0;
-    if (PACKAGED) {
-      code = await nodeRun([path.join(API_DIR, 'node_modules', 'prisma', 'build', 'index.js'), 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
-      if (firstRun) await nodeRun([path.join(API_DIR, 'prisma', 'seed.js')], { cwd: API_DIR, env: ENV });
-    } else {
-      code = await run('npx', ['prisma', 'migrate', 'deploy'], { cwd: API_DIR, env: ENV });
-      if (firstRun) await run('npx', ['tsx', path.join('prisma', 'seed.ts')], { cwd: API_DIR, env: ENV });
+    bootLog('migrate', `applying migrations (marker=${applied || 'none'} -> ${fp})`);
+    // Always drive Prisma through Electron's embedded Node. The old dev branch
+    // shelled out to `npx`, which fails inside the Electron main process — the
+    // failure was silent, so the API then booted against a stale schema and
+    // crash-looped on the first missing table.
+    const prismaCli = path.join(API_DIR, 'node_modules', 'prisma', 'build', 'index.js');
+    const code = await nodeRun([prismaCli, 'migrate', 'deploy'], { cwd: API_DIR, env: ENV }, 'migrate');
+    if (code !== 0) {
+      throw new Error(`database migration failed (exit ${code}) — see ${bootLogPath}`);
     }
-    if (code === 0 && fp) { try { fs.writeFileSync(markerFile, fp); } catch { /* best effort */ } }
+    if (firstRun) {
+      const seedJs = path.join(API_DIR, 'prisma', 'seed.js');
+      const seedArgs = fs.existsSync(seedJs)
+        ? [seedJs]
+        : [path.join(API_DIR, 'node_modules', 'tsx', 'dist', 'cli.mjs'), path.join(API_DIR, 'prisma', 'seed.ts')];
+      const seedCode = await nodeRun(seedArgs, { cwd: API_DIR, env: ENV }, 'seed');
+      if (seedCode !== 0) bootLog('seed', `WARNING: seed failed (exit ${seedCode}) — continuing`);
+    }
+    if (fp) { try { fs.writeFileSync(markerFile, fp); } catch { /* best effort */ } }
   }
 
   // 4) API — retry once. A just-freed port or a cold/recovering DB can miss the first
@@ -464,7 +575,7 @@ async function startStack() {
   setStatus(T.api);
   let apiUp = false;
   for (let attempt = 0; attempt < 2 && !apiUp; attempt++) {
-    const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV });
+    const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV }, `api#${attempt + 1}`);
     apiProc = api;
     children.push(api);
     apiUp = await waitHttp(API_HEALTH, 45000);
@@ -478,11 +589,17 @@ async function startStack() {
       await waitPortFree('localhost', 8091, 6000);
     }
   }
-  if (!apiUp) throw new Error('local engine did not respond');
+  if (!apiUp) throw new Error(`local engine did not respond — see ${bootLogPath}`);
+  bootLog('api', 'healthy');
 
-  // 5) make sure web finished coming up too (it has been starting since step 2)
+  // 5) make sure web finished coming up too (it has been starting since step 2).
+  //    Its result was previously discarded, so a dead web server still led to a
+  //    main window pointed at a refused connection (blank app, no explanation).
   setStatus(T.almost);
-  await waitHttp(WEB_URL, 40000);
+  if (!(await waitHttp(WEB_URL, 40000))) {
+    throw new Error(`web interface did not respond on ${WEB_URL} — see ${bootLogPath}`);
+  }
+  bootLog('web', 'healthy');
 }
 
 function createSplash() {
@@ -492,9 +609,30 @@ function createSplash() {
     frame: false,
     resizable: false,
     backgroundColor: '#04070a',
+    // The splash is the FIRST window a user sees, and it had no icon — so the
+    // taskbar showed Electron's default logo for the whole startup, which is
+    // the icon most people end up looking at longest.
+    icon: appIcon(),
     webPreferences: { contextIsolation: true },
   });
   splash.loadFile(path.join(__dirname, 'splash.html'));
+}
+
+/** Boot failed: say why, and offer to open the log instead of a blank window. */
+function showBootFailure(message) {
+  const choice = dialog.showMessageBoxSync({
+    type: 'error',
+    title: T.failTitle,
+    message: T.failTitle,
+    detail: `${message}\n\n${bootLogPath || ''}`,
+    buttons: [T.quit, 'Apri log'],
+    defaultId: 1,
+    cancelId: 0,
+  });
+  if (choice === 1 && bootLogPath) shell.openPath(bootLogPath);
+  isQuitting = true;
+  stopAll();
+  app.quit();
 }
 
 function createMainWindow() {
@@ -505,11 +643,11 @@ function createMainWindow() {
     minHeight: 600,
     backgroundColor: '#04070a',
     title: 'Neurion',
-    icon: path.join(__dirname, 'build', 'icon.ico'),
+    icon: appIcon(),
     show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, backgroundThrottling: false },
   });
-  mainWindow.loadURL(WEB_URL);
+  mainWindow.loadURL(APP_URL);
 
   // Windows/Chromium can leave the newly-exposed region unpainted after a maximize
   // (content looks frozen at the old size until you interact). Force a repaint on
@@ -526,7 +664,7 @@ function createMainWindow() {
   mainWindow.webContents.on('did-fail-load', (_e, code) => {
     if (code === -3) return; // aborted (a newer navigation superseded this one)
     if (++loadTries <= 25) {
-      setTimeout(() => mainWindow && !mainWindow.isDestroyed() && mainWindow.loadURL(WEB_URL), 1000);
+      setTimeout(() => mainWindow && !mainWindow.isDestroyed() && mainWindow.loadURL(APP_URL), 1000);
     } else {
       mainWindow.loadURL(
         'data:text/html;charset=utf-8,' +
@@ -611,6 +749,85 @@ function createTray() {
   tray.on('double-click', show);
 }
 
+// --- updates --------------------------------------------------------------
+const { compareVersions, fetchManifest, downloadVerified } = require('./updater');
+
+const UPDATE_MANIFEST_URL =
+  process.env.NEURION_UPDATE_URL || 'https://neurionproject.org/download/latest.json';
+const UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+let updateInFlight = false;
+
+/**
+ * Check the manifest and, if the user agrees, download + launch the installer.
+ * `silent` suppresses the "already up to date" / failure dialogs (startup run).
+ */
+async function checkForUpdates(silent = true) {
+  if (updateInFlight) return;
+  updateInFlight = true;
+  try {
+    const current = app.getVersion();
+    const manifest = await fetchManifest(UPDATE_MANIFEST_URL);
+    const latest = String(manifest.version || '');
+    if (!latest || compareVersions(latest, current) <= 0) {
+      bootLog('update', `up to date (current ${current}, published ${latest || 'n/a'})`);
+      if (!silent) {
+        dialog.showMessageBox({ type: 'info', title: 'Neurion', message: T.updNone, detail: `v${current}` });
+      }
+      return;
+    }
+    bootLog('update', `update available: ${current} -> ${latest}`);
+    const choice = dialog.showMessageBoxSync({
+      type: 'info',
+      title: T.updTitle,
+      message: T.updTitle,
+      detail: `${T.updBody(latest, current)}${manifest.notes ? `\n\n${manifest.notes}` : ''}`,
+      buttons: [T.updLater, T.updNow],
+      defaultId: 1,
+      cancelId: 0,
+    });
+    if (choice !== 1) return;
+
+    const url = new URL(manifest.url, UPDATE_MANIFEST_URL).href;
+    setStatus(T.updDownloading);
+    const bin = await downloadVerified(url, manifest.sha256, {
+      allowInsecure: /^http:\/\/(localhost|127\.0\.0\.1)[:/]/.test(url),
+    });
+
+    const target = path.join(app.getPath('temp'), `Neurion-Setup-${latest}.exe`);
+    fs.writeFileSync(target, bin);
+    bootLog('update', `downloaded + verified ${target} (${bin.length} bytes)`);
+
+    dialog.showMessageBoxSync({
+      type: 'info',
+      title: T.updReadyTitle,
+      message: T.updReadyTitle,
+      detail: T.updReadyBody,
+      buttons: [T.updInstall],
+      defaultId: 0,
+    });
+    spawn(target, [], { detached: true, stdio: 'ignore' }).unref();
+    isQuitting = true;
+    stopAll();
+    app.quit();
+  } catch (e) {
+    bootLog('update', `check failed: ${(e && e.message) || e}`);
+    if (!silent) {
+      dialog.showMessageBox({ type: 'warning', title: 'Neurion', message: T.updFailed, detail: String((e && e.message) || e) });
+    }
+  } finally {
+    updateInFlight = false;
+  }
+}
+
+function startUpdateChecks() {
+  if (!PACKAGED) {
+    bootLog('update', 'dev run — update checks disabled');
+    return;
+  }
+  setTimeout(() => void checkForUpdates(true), 30_000);
+  setInterval(() => void checkForUpdates(true), UPDATE_INTERVAL_MS);
+}
+
 function buildMenu() {
   const template = [
     {
@@ -618,6 +835,7 @@ function buildMenu() {
       submenu: [
         { label: T.about, click: () => dialog.showMessageBox(mainWindow, { title: 'Neurion', message: 'Neurion desktop', detail: `${T.aboutDetail} v${app.getVersion()}` }) },
         { type: 'separator' },
+        { label: T.updCheck, click: () => void checkForUpdates(false) },
         { label: T.openBrowser, click: () => shell.openExternal(WEB_URL) },
         { label: T.trayAutostart, type: 'checkbox', checked: getAutoStart(), click: (item) => setAutoStart(item.checked) },
         { type: 'separator' },
@@ -702,16 +920,32 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     T = STRINGS[(app.getLocale() || 'en').slice(0, 2)] || STRINGS.en;
+    // Windows groups taskbar buttons and resolves their icon by AppUserModelID.
+    // Without one, Electron's default is used and a pinned Neurion does not
+    // match the running window. Must be set before any window is created, and
+    // must equal the installer's appId.
+    if (process.platform === 'win32') app.setAppUserModelId('org.neurionproject.desktop');
     buildMenu();
     createSplash();
+    let bootError = null;
     try {
       await startStack();
     } catch (e) {
-      setStatus('errore avvio: ' + (e && e.message ? e.message : e));
+      bootError = (e && e.message) || String(e);
+      bootLog('boot', `FAILED: ${bootError}`);
+      setStatus(T.error + bootError);
+    }
+    // A failed boot used to be papered over: the main window opened anyway and
+    // loaded a URL nothing was serving. Show the reason and where the log is.
+    if (bootError) {
+      showBootFailure(bootError);
+      createTray();
+      return;
     }
     createMainWindow();
     createTray();
     startApiWatchdog();
+    startUpdateChecks();
   });
 }
 

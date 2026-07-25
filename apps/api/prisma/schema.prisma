@@ -23,32 +23,34 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users            User[]
-  nodes            ComputeNode[]
-  jobs             Job[]
-  chats            ChatConversation[]
-  ownerReputations OwnerReputation[]   // G5
-  config           WorkspaceConfig?    // G5
-  attachments      Attachment[]        // G7
+  users              User[]
+  nodes              ComputeNode[]
+  jobs               Job[]
+  chats              ChatConversation[]
+  ownerReputations   OwnerReputation[] // G5
+  config             WorkspaceConfig? // G5
+  attachments        Attachment[] // G7
+  agentRuns          AgentRun[]
+  knowledgeDocuments KnowledgeDocument[]
 }
 
 model User {
-  id            String     @id @default(cuid())
-  workspaceId   String
-  email         String     @unique
-  passwordHash  String?
-  displayName   String?
-  avatarUrl     String?
-  role          UserRole   @default(USER)
-  status        UserStatus @default(ACTIVE)
-  walletAddress String?
-  kycStatus     KycStatus  @default(KYC_NOT_REQUIRED)
-  payoutHold    Boolean    @default(false) // G5: compliance soft-hold
-  creditBalance Int        @default(0) // denormalized = SUM(creditLedger.amount); kept in sync atomically
-  emailVerified   Boolean   @default(false)
+  id              String     @id @default(cuid())
+  workspaceId     String
+  email           String     @unique
+  passwordHash    String?
+  displayName     String?
+  avatarUrl       String?
+  role            UserRole   @default(USER)
+  status          UserStatus @default(ACTIVE)
+  walletAddress   String?
+  kycStatus       KycStatus  @default(KYC_NOT_REQUIRED)
+  payoutHold      Boolean    @default(false) // G5: compliance soft-hold
+  creditBalance   Int        @default(0) // denormalized = SUM(creditLedger.amount); kept in sync atomically
+  emailVerified   Boolean    @default(false)
   emailVerifiedAt DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   workspace              Workspace               @relation(fields: [workspaceId], references: [id])
   nodes                  ComputeNode[]
@@ -57,12 +59,17 @@ model User {
   creditLedger           CreditLedger[]
   tokenPayouts           TokenPayout[]
   ownerReputation        OwnerReputation?        @relation("OwnerRepUser") // G5
-  refreshTokens          RefreshToken[]          // G6
-  authTokens             AuthToken[]             // email verify + password reset
-  attachments            Attachment[]            // G7
+  refreshTokens          RefreshToken[] // G6
+  authTokens             AuthToken[] // email verify + password reset
+  attachments            Attachment[] // G7
   registrationChallenges RegistrationChallenge[] // G5
-  forumThreads           ForumThread[]           // community forum
-  forumPosts             ForumPost[]             // community forum
+  forumThreads           ForumThread[] // community forum
+  forumPosts             ForumPost[] // community forum
+  agentRuns              AgentRun[]
+  agentApprovals         AgentApproval[]
+  agentMemories          AgentMemory[]
+  contextSnapshots       ContextSnapshot[]
+  knowledgeDocuments     KnowledgeDocument[]
 }
 
 // ============================================================================
@@ -117,13 +124,13 @@ model ForumPost {
 
 // Single-use tokens for email verification + password reset (hash stored, raw emailed).
 model AuthToken {
-  id        String        @id @default(cuid())
+  id        String           @id @default(cuid())
   userId    String
   purpose   AuthTokenPurpose
-  tokenHash String        @unique
+  tokenHash String           @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime      @default(now())
+  createdAt DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -164,63 +171,63 @@ enum KycStatus {
 // ============================================================================
 
 model ComputeNode {
-  id                String         @id @default(cuid())
-  workspaceId       String
-  ownerUserId       String
-  name              String
-  nodeKeyHash       String
-  status            NodeStatus     @default(OFFLINE)    // liveness only
-  lifecycleState    NodeLifecycle  @default(PROBATION)  // G1/G5: trust lifecycle (orthogonal to liveness)
-  trustLevel        NodeTrustLevel @default(COMMUNITY)
-  regionCode        String?
-  os                String?
-  arch              String?
-  cpuModel          String?
-  cpuCores          Int?
-  ramMb             Int?
-  gpuVendor         String?
-  gpuModel          String?
-  gpuMemoryMb       Int?
-  dockerAvailable   Boolean        @default(false)
-  nvidiaAvailable   Boolean        @default(false)
-  maxConcurrentJobs Int            @default(1)
-  supportedModes    String[]       @default([])
-  supportedJobTypes String[]       @default([])
-  loadedModels      String[]       @default([])
-  avgFirstTokenMs   Int?
+  id                 String         @id @default(cuid())
+  workspaceId        String
+  ownerUserId        String
+  name               String
+  nodeKeyHash        String
+  status             NodeStatus     @default(OFFLINE) // liveness only
+  lifecycleState     NodeLifecycle  @default(PROBATION) // G1/G5: trust lifecycle (orthogonal to liveness)
+  trustLevel         NodeTrustLevel @default(COMMUNITY)
+  regionCode         String?
+  os                 String?
+  arch               String?
+  cpuModel           String?
+  cpuCores           Int?
+  ramMb              Int?
+  gpuVendor          String?
+  gpuModel           String?
+  gpuMemoryMb        Int?
+  dockerAvailable    Boolean        @default(false)
+  nvidiaAvailable    Boolean        @default(false)
+  maxConcurrentJobs  Int            @default(1)
+  supportedModes     String[]       @default([])
+  supportedJobTypes  String[]       @default([])
+  loadedModels       String[]       @default([])
+  avgFirstTokenMs    Int?
   avgTokensPerSecond Float?
 
   // G1 verification / reputation
-  reputation                   Float    @default(0.5) // EWMA, moves ONLY on deep-verified outcomes (C1)
-  reputationScore              Float    @default(0)
-  verifiedJobCount             Int      @default(0)
-  unverifiedJobCount           Int      @default(0) // pass-by-trust count; drives the sampling exposure floor
-  outstandingOptimisticCredits Int      @default(0)
-  lifetimeUnverifiedCredits    Int      @default(0)
+  reputation                   Float     @default(0.5) // EWMA, moves ONLY on deep-verified outcomes (C1)
+  reputationScore              Float     @default(0)
+  verifiedJobCount             Int       @default(0)
+  unverifiedJobCount           Int       @default(0) // pass-by-trust count; drives the sampling exposure floor
+  outstandingOptimisticCredits Int       @default(0)
+  lifetimeUnverifiedCredits    Int       @default(0)
   lastVerifiedAt               DateTime?
-  totalJobs                    Int      @default(0)
-  successfulJobs               Int      @default(0)
-  failedJobs                   Int      @default(0)
+  totalJobs                    Int       @default(0)
+  successfulJobs               Int       @default(0)
+  failedJobs                   Int       @default(0)
 
   // G5 sybil + stake
   registrationIp      String?
   subnet24Hash        String?
   hardwareFingerprint String?
-  stakeChallengeId    String?  @unique
-  stakeCredits        Int      @default(0) // bond locked at registration; refunded on graduation, forfeited on pre-graduation fraud
-  stakeRefunded       Boolean  @default(false)
+  stakeChallengeId    String? @unique
+  stakeCredits        Int     @default(0) // bond locked at registration; refunded on graduation, forfeited on pre-graduation fraud
+  stakeRefunded       Boolean @default(false)
 
   lastSeenAt DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  workspace          Workspace                    @relation(fields: [workspaceId], references: [id])
-  owner              User                         @relation(fields: [ownerUserId], references: [id])
-  jobs               Job[]
-  heartbeats         NodeHeartbeat[]
-  realtimeSessions   RealtimeSession[]
-  confidentiality    NodeConfidentialityProfile?  // G2
-  attestations       NodeAttestation[]            // G2
+  workspace            Workspace                         @relation(fields: [workspaceId], references: [id])
+  owner                User                              @relation(fields: [ownerUserId], references: [id])
+  jobs                 Job[]
+  heartbeats           NodeHeartbeat[]
+  realtimeSessions     RealtimeSession[]
+  confidentiality      NodeConfidentialityProfile? // G2
+  attestations         NodeAttestation[] // G2
   agreementAcceptances NodeOperatorAgreementAcceptance[] // G2
 
   @@index([workspaceId])
@@ -299,25 +306,29 @@ model Job {
   rewardPaidAt          DateTime?
   nrnPayoutEligible     Boolean   @default(false)
 
-  assignedAt  DateTime?
-  startedAt   DateTime?
-  completedAt DateTime?
-  verifiedAt  DateTime?
-  rewardedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  assignedAt     DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  verifiedAt     DateTime?
+  rewardedAt     DateTime?
+  leaseExpiresAt DateTime?
+  attempt        Int       @default(0)
+  maxAttempts    Int       @default(3)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  workspace         Workspace        @relation(fields: [workspaceId], references: [id])
-  user              User             @relation(fields: [userId], references: [id])
-  node              ComputeNode?     @relation(fields: [nodeId], references: [id])
-  events            JobEvent[]
-  verification      JobVerification? // G1
-  linkedFromMessages ChatMessage[]   @relation("ChatMessageLinkedJob") // G9
-  attachments       Attachment[]     // G7
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id])
+  user               User             @relation(fields: [userId], references: [id])
+  node               ComputeNode?     @relation(fields: [nodeId], references: [id])
+  events             JobEvent[]
+  verification       JobVerification? // G1
+  linkedFromMessages ChatMessage[]    @relation("ChatMessageLinkedJob") // G9
+  attachments        Attachment[] // G7
 
   @@index([workspaceId, status])
   @@index([userId])
   @@index([nodeId])
+  @@index([status, leaseExpiresAt])
 }
 
 enum JobLane {
@@ -376,7 +387,7 @@ model JobVerification {
   outcome      VerificationOutcome @default(PENDING)
   score        Float?
   threshold    Float?
-  executorRef  String?  // "fallback:embed" | "gpu:whisper-v3" — never a peer
+  executorRef  String? // "fallback:embed" | "gpu:whisper-v3" — never a peer
   provisional  Boolean             @default(false)
   goldenTaskId String?
   detail       Json?
@@ -390,14 +401,14 @@ model JobVerification {
 }
 
 model GoldenTask {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   jobType    String
   input      Json
   expected   Json
-  active     Boolean  @default(true)
-  usageCount Int      @default(0)
+  active     Boolean   @default(true)
+  usageCount Int       @default(0)
   lastUsedAt DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   verifications JobVerification[]
 
@@ -423,22 +434,24 @@ enum VerificationOutcome {
 // ============================================================================
 
 model ChatConversation {
-  id               String          @id @default(cuid())
-  workspaceId      String
-  userId           String
-  title            String?
-  mode             ChatMode        @default(AUTO)
-  privacyLevel     JobPrivacyLevel @default(VERIFIED_ONLY) // G2: by-default floor
-  pinned           Boolean         @default(false)
-  projectId        String?
-  openTierConsentId String?                                // G2
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  id                String          @id @default(cuid())
+  workspaceId       String
+  userId            String
+  title             String?
+  mode              ChatMode        @default(AUTO)
+  privacyLevel      JobPrivacyLevel @default(VERIFIED_ONLY) // G2: by-default floor
+  pinned            Boolean         @default(false)
+  projectId         String?
+  openTierConsentId String? // G2
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
-  workspace       Workspace        @relation(fields: [workspaceId], references: [id])
-  user            User             @relation(fields: [userId], references: [id])
-  messages        ChatMessage[]
-  openTierConsent OpenTierConsent? @relation(fields: [openTierConsentId], references: [id])
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id])
+  user               User                @relation(fields: [userId], references: [id])
+  messages           ChatMessage[]
+  openTierConsent    OpenTierConsent?    @relation(fields: [openTierConsentId], references: [id])
+  contextSnapshots   ContextSnapshot[]
+  knowledgeDocuments KnowledgeDocument[]
 
   @@index([workspaceId, userId])
 }
@@ -467,9 +480,50 @@ model ChatMessage {
   conversation ChatConversation  @relation(fields: [conversationId], references: [id])
   linkedJob    Job?              @relation("ChatMessageLinkedJob", fields: [linkedJobId], references: [id]) // G9
   route        ChatMessageRoute? // G2
-  attachments  Attachment[]      // G7
+  attachments  Attachment[] // G7
 
   @@index([conversationId, createdAt])
+}
+
+// Optional local RAG layer. Dense model weights stay untouched; only relevant
+// document chunks are paged into a conversation's prompt.
+model KnowledgeDocument {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  userId         String
+  conversationId String
+  name           String
+  mime           String
+  sizeBytes      Int
+  sha256         String
+  chunkCount     Int
+  truncated      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  workspace    Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  chunks       KnowledgeChunk[]
+
+  @@unique([conversationId, sha256])
+  @@index([userId, conversationId, createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+model KnowledgeChunk {
+  id            String   @id @default(cuid())
+  documentId    String
+  ordinal       Int
+  content       String
+  charCount     Int
+  tokenEstimate Int
+  createdAt     DateTime @default(now())
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, ordinal])
+  @@index([documentId, ordinal])
 }
 
 enum ChatRole {
@@ -547,10 +601,10 @@ model NodeConfidentialityProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  node             ComputeNode                      @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  attestation      NodeAttestation?                 @relation("ActiveAttestation", fields: [attestationId], references: [id])
+  node              ComputeNode                      @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  attestation       NodeAttestation?                 @relation("ActiveAttestation", fields: [attestationId], references: [id])
   acceptedAgreement NodeOperatorAgreementAcceptance? @relation(fields: [acceptedAgreementId], references: [id])
-  attestations     NodeAttestation[]                @relation("ProfileAttestations")
+  attestations      NodeAttestation[]                @relation("ProfileAttestations")
 
   @@index([trustLevel, chatEligible])
   @@index([ccType, attestationStatus])
@@ -565,7 +619,7 @@ model NodeAttestation {
   quoteRaw        Bytes
   measurement     String
   boundModelHash  String? // TP5: measurement bound to the loaded model
-  nonce           String  @unique // anti-replay challenge we issued
+  nonce           String                  @unique // anti-replay challenge we issued
   nonceConsumedAt DateTime?
   verifierVendor  String?
   rejectionReason String?
@@ -573,8 +627,8 @@ model NodeAttestation {
   expiresAt       DateTime?
   createdAt       DateTime                @default(now())
 
-  node      ComputeNode                 @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  profile   NodeConfidentialityProfile? @relation("ProfileAttestations", fields: [profileId], references: [id])
+  node      ComputeNode                  @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  profile   NodeConfidentialityProfile?  @relation("ProfileAttestations", fields: [profileId], references: [id])
   activeFor NodeConfidentialityProfile[] @relation("ActiveAttestation")
 
   @@index([nodeId, status])
@@ -700,18 +754,18 @@ model CreditLedger {
 }
 
 model TokenPayout {
-  id           String       @id @default(cuid())
-  userId       String
-  jobId        String?
+  id            String       @id @default(cuid())
+  userId        String
+  jobId         String?
   walletAddress String
-  tokenSymbol  String       @default("NRN")
-  amountWei    String
-  chainId      Int
-  txHash       String?
-  status       PayoutStatus @default(PENDING)
-  errorMessage String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  tokenSymbol   String       @default("NRN")
+  amountWei     String
+  chainId       Int
+  txHash        String?
+  status        PayoutStatus @default(PENDING)
+  errorMessage  String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   user User @relation(fields: [userId], references: [id])
 
@@ -861,8 +915,8 @@ model RefreshToken {
   ipHash       String?
   createdAt    DateTime  @default(now())
 
-  user       User          @relation(fields: [userId], references: [id])
-  replacedBy RefreshToken? @relation("RefreshTokenRotation", fields: [replacedById], references: [id])
+  user       User           @relation(fields: [userId], references: [id])
+  replacedBy RefreshToken?  @relation("RefreshTokenRotation", fields: [replacedById], references: [id])
   replaces   RefreshToken[] @relation("RefreshTokenRotation")
 
   @@index([userId])
@@ -921,12 +975,169 @@ model Project {
   @@index([userId])
 }
 
+// Durable agent execution. SSE is only a live view; these rows are the source of
+// truth used to reconnect after a network error or mark an interrupted desktop run.
+model AgentRun {
+  id                String         @id @default(cuid())
+  workspaceId       String
+  userId            String
+  parentRunId       String?
+  goal              String
+  status            AgentRunStatus @default(PENDING)
+  computeMode       String         @default("ask")
+  requestedModel    String?
+  resolvedModel     String?
+  cwd               String?
+  contextTokenLimit Int            @default(8192)
+  currentStep       Int            @default(0)
+  finalAnswer       String?
+  errorMessage      String?
+  lastHeartbeatAt   DateTime       @default(now())
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    AgentRun?         @relation("AgentRunChildren", fields: [parentRunId], references: [id], onDelete: SetNull)
+  children  AgentRun[]        @relation("AgentRunChildren")
+  steps     AgentStep[]
+  approvals AgentApproval[]
+  artifacts AgentArtifact[]
+  snapshots ContextSnapshot[]
+
+  @@index([userId, status, updatedAt])
+  @@index([workspaceId, createdAt])
+  @@index([parentRunId])
+}
+
+enum AgentRunStatus {
+  PENDING
+  RUNNING
+  WAITING_APPROVAL
+  COMPLETED
+  FAILED
+  CANCELLED
+  INTERRUPTED
+}
+
+model AgentStep {
+  id            String          @id @default(cuid())
+  runId         String
+  sequence      Int
+  depth         Int             @default(0)
+  kind          AgentStepKind
+  status        AgentStepStatus @default(RUNNING)
+  toolName      String?
+  thought       String?
+  args          Json?
+  resultPreview String?
+  tokenEstimate Int?
+  startedAt     DateTime        @default(now())
+  completedAt   DateTime?
+
+  run       AgentRun        @relation(fields: [runId], references: [id], onDelete: Cascade)
+  approvals AgentApproval[]
+  artifacts AgentArtifact[]
+
+  @@unique([runId, sequence])
+  @@index([runId, status])
+}
+
+enum AgentStepKind {
+  MODEL
+  TOOL
+  APPROVAL
+  SUMMARY
+  FINAL
+  ERROR
+}
+
+enum AgentStepStatus {
+  RUNNING
+  WAITING_APPROVAL
+  COMPLETED
+  FAILED
+  DENIED
+  CANCELLED
+}
+
+model AgentApproval {
+  id         String              @id
+  runId      String
+  stepId     String?
+  userId     String
+  toolName   String
+  args       Json?
+  status     AgentApprovalStatus @default(PENDING)
+  expiresAt  DateTime
+  resolvedAt DateTime?
+  createdAt  DateTime            @default(now())
+
+  run  AgentRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  step AgentStep? @relation(fields: [stepId], references: [id], onDelete: SetNull)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, expiresAt])
+  @@index([runId, status])
+  @@index([stepId])
+}
+
+enum AgentApprovalStatus {
+  PENDING
+  APPROVED
+  DENIED
+  EXPIRED
+}
+
+model AgentArtifact {
+  id        String   @id @default(cuid())
+  runId     String
+  stepId    String?
+  kind      String
+  mime      String   @default("text/plain")
+  content   String
+  sha256    String
+  sizeBytes Int
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  run  AgentRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  step AgentStep? @relation(fields: [stepId], references: [id], onDelete: SetNull)
+
+  @@index([runId, createdAt])
+  @@index([stepId])
+}
+
+model ContextSnapshot {
+  id             String   @id @default(cuid())
+  userId         String
+  conversationId String?
+  agentRunId     String?
+  summary        String
+  tokenEstimate  Int
+  throughIndex   Int?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation ChatConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  agentRun     AgentRun?         @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([agentRunId, createdAt])
+  @@index([userId, createdAt])
+}
+
 // Agent persistent memory — facts the agent was asked to remember, per user.
 model AgentMemory {
   id        String   @id @default(cuid())
   userId    String
   content   String
   createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
 }

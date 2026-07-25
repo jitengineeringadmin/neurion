@@ -1,8 +1,10 @@
 // AUTO-GENERATED locale. Edit translations here.
 const dict: Record<string, string> = {
   "home.brandName": "NEURION",
-  "home.tagline": "Comparte la potencia que no usas. Accede a la IA. Gana créditos y el token NRN.",
-  "home.description": "Una red de cómputo de IA distribuida: chat rápido sobre una grid de la comunidad, con un router Fast / Grid / Fallback, créditos internos y un token de utilidad NRN on-chain.",
+  "home.tagline":
+    "Comparte la potencia que no usas. Accede a la IA. Gana créditos y el token NRN.",
+  "home.description":
+    "Una red de cómputo de IA distribuida: chat rápido sobre una grid de la comunidad, con un router Fast / Grid / Fallback, créditos internos y un token de utilidad NRN on-chain.",
   "home.enterCta": "ENTRAR",
   "login.brandSuffix": "AI",
   "login.tabLogin": "acceder",
@@ -12,9 +14,6 @@ const dict: Record<string, string> = {
   "login.submitBusy": "...",
   "login.submitLogin": "Acceder",
   "login.submitRegister": "Registrarse",
-  "login.startingUp": "Iniciando…",
-  "login.startingUpHint": "La app se está iniciando — tarda unos segundos.",
-  "login.startingUpSlow": "El primer inicio puede tardar hasta un minuto (arrancando la base de datos)…",
   "nav.tabChat": "Chat",
   "nav.tabAgent": "Code",
   "nav.tabModels": "Modelos",
@@ -30,16 +29,20 @@ const dict: Record<string, string> = {
   "chat.agentTraceSubAgent": "↳ subagente: ",
   "chat.agentErrorPrefix": "⚠️ {message}",
   "chat.chatErrorPrefix": "⚠️ {message}",
-  "chat.analyzeFolderGoal": "Analiza la carpeta del proyecto: {cwd}. Usa list_dir para listar archivos y subcarpetas, lee los archivos clave con read_file y luego explica la estructura, el stack tecnológico y el propósito del proyecto en un resumen claro. Solo lectura: no crees, modifiques ni ejecutes nada.",
+  "chat.analyzeFolderGoal":
+    "Analiza la carpeta del proyecto: {cwd}. Usa list_dir para listar archivos y subcarpetas, lee los archivos clave con read_file y luego explica la estructura, el stack tecnológico y el propósito del proyecto en un resumen claro. Solo lectura: no crees, modifiques ni ejecutes nada.",
   "chat.analyzeFolderUserMsg": "📂 Analizar la carpeta",
   "chat.headingChat": "Chat",
-  "chat.analyzeFolderButtonTitle": "Analizar {cwd} con el agente (solo lectura)",
+  "chat.analyzeFolderButtonTitle":
+    "Analizar {cwd} con el agente (solo lectura)",
   "chat.analyzeFolderButton": "📂 Analizar carpeta",
   "chat.agentToggleOn": "🤖 Agente activado",
   "chat.agentToggleOff": "🤖 Agente desactivado",
   "chat.creditsLabel": "créditos:",
-  "chat.emptyStateAgent": "Modo agente: dale un objetivo — planifica, usa herramientas y trabaja sobre los archivos (con aprobación).",
-  "chat.emptyStateChat": "Pregunta lo que quieras. El routing, el carril y el coste en créditos se muestran en cada respuesta.",
+  "chat.emptyStateAgent":
+    "Modo agente: dale un objetivo — planifica, usa herramientas y trabaja sobre los archivos (con aprobación).",
+  "chat.emptyStateChat":
+    "Pregunta lo que quieras. El routing, el carril y el coste en créditos se muestran en cada respuesta.",
   "chat.approvalPrompt": "⚠ ¿aprobar {tool}?",
   "chat.approveButton": "Aprobar",
   "chat.denyButton": "Rechazar",
@@ -49,7 +52,8 @@ const dict: Record<string, string> = {
   "chat.inputPlaceholderChat": "Escribe a Neurion…",
   "chat.sendButtonRun": "Ejecutar",
   "chat.sendButtonSend": "Enviar",
-  "agent.defaultGoal": "Revisa mis créditos y los nodos online, luego ejecuta un trabajo echo con el texto \"hello\" y haz un resumen.",
+  "agent.defaultGoal":
+    'Revisa mis créditos y los nodos online, luego ejecuta un trabajo echo con el texto "hello" y haz un resumen.',
   "agent.heading": "Code",
   "agent.headingSubtitle": "multiagente · ReAct",
   "agent.goalPlaceholder": "Dale un objetivo al agente…",
@@ -68,11 +72,13 @@ const dict: Record<string, string> = {
   "agent.subAnswerPrefix": "subrespuesta:",
   "agent.thinkingStatus": "▌ pensando…",
   "models.pageTitle": "Modelos de IA",
-  "models.pageSubtitle": "Descarga un modelo que se ejecuta en tu ordenador. Más grande = más inteligente pero más lento.",
+  "models.pageSubtitle":
+    "Descarga un modelo que se ejecuta en tu ordenador. Más grande = más inteligente pero más lento.",
   "models.localEngineLabel": "Motor local:",
   "models.engineUp": "activo",
   "models.engineDown": "no se está ejecutando",
-  "models.engineDownBanner": "El motor de IA local (ollama) no responde. Instálalo desde {link} y vuelve a abrir esta página. (Pronto vendrá incluido en la app.)",
+  "models.engineDownBanner":
+    "El motor de IA local (ollama) no responde. Instálalo desde {link} y vuelve a abrir esta página. (Pronto vendrá incluido en la app.)",
   "models.ollamaLinkText": "ollama.com",
   "models.downloadingPrefix": "Descargando",
   "models.statusStarting": "iniciando…",
@@ -105,7 +111,8 @@ const dict: Record<string, string> = {
   "nodes.heading": "Nodos",
   "nodes.registerNodeLabel": "Registrar un nodo de cómputo",
   "nodes.registerButton": "Registrar",
-  "nodes.saveNodeKeyNotice": "Guarda ahora esta nodeKey — se muestra una sola vez:",
+  "nodes.saveNodeKeyNotice":
+    "Guarda ahora esta nodeKey — se muestra una sola vez:",
   "nodes.jobsLabel": "trabajos",
   "nodes.statusOnline": "ONLINE",
   "nodes.emptyState": "Aún no hay nodos.",
@@ -113,7 +120,8 @@ const dict: Record<string, string> = {
   "wallet.nrnTokenLabel": "Token NRN",
   "wallet.chainStatusOn": "activos",
   "wallet.chainStatusOff": "desactivados",
-  "wallet.chainInfoLine": "chain {chainId} · pagos {payoutsStatus} · 1 crédito = {nrnAmount} NRN",
+  "wallet.chainInfoLine":
+    "chain {chainId} · pagos {payoutsStatus} · 1 crédito = {nrnAmount} NRN",
   "wallet.chainIdPlaceholder": "…",
   "wallet.tokenAddressLabel": "token: {tokenAddress}",
   "wallet.tokenNotDeployed": "no desplegado",
@@ -121,14 +129,16 @@ const dict: Record<string, string> = {
   "wallet.connectWalletButton": "Conectar wallet (SIWE)",
   "wallet.requestPayoutLabel": "Solicitar pago en NRN",
   "wallet.requestCreditsButton": "Solicitar {credits} créditos",
-  "wallet.errorNoWallet": "No se encontró ninguna wallet EVM (instala MetaMask).",
+  "wallet.errorNoWallet":
+    "No se encontró ninguna wallet EVM (instala MetaMask).",
   "wallet.payoutAmount": "{amount} NRN",
   "wallet.statusConfirmed": "CONFIRMADO",
   "wallet.statusValue": "{status}",
   "admin.loading": "Cargando…",
   "admin.dashboardHeading": "Panel de admin",
   "rootmeta.pageTitle": "Neurion AI",
-  "rootmeta.pageDescription": "Red de cómputo de IA distribuida — comparte la potencia que no usas, accede a la IA, gana NRN.",
+  "rootmeta.pageDescription":
+    "Red de cómputo de IA distribuida — comparte la potencia que no usas, accede a la IA, gana NRN.",
   "splash.bootInitializingRuntime": "> inicializando runtime de neurion…",
   "splash.bootConnectingGrid": "> conectando con la compute grid…",
   "splash.bootWarmingPool": "> calentando el pool en tiempo real…",
@@ -138,12 +148,12 @@ const dict: Record<string, string> = {
   "splash.productName": "NEURION",
   "sessions.newChatTitle": "Nuevo chat",
   "sessions.assignProjectTooltip": "asignar proyecto",
-  "sessions.assignRemove": "quitar del proyecto",
   "sessions.pinTooltip": "fijar",
   "sessions.deleteTooltip": "eliminar",
   "sessions.promptProjectName": "¿Nombre del proyecto?",
   "sessions.promptProjectFolder": "¿Carpeta del proyecto?",
-  "sessions.promptAssignToProject": "Asignar a proyecto (número, vacío = ninguno):",
+  "sessions.promptAssignToProject":
+    "Asignar a proyecto (número, vacío = ninguno):",
   "sessions.defaultProjectName": "proyecto",
   "sessions.newSessionButton": "Nueva sesión",
   "sessions.newProjectFolderButton": "Proyecto (carpeta)",
@@ -158,9 +168,11 @@ const dict: Record<string, string> = {
   "themetoggle.darkLabel": "oscuro",
   "auth.forgotLink": "¿Olvidaste la contraseña?",
   "auth.forgotTitle": "Restablecer contraseña",
-  "auth.forgotIntro": "Introduce tu email y te enviaremos un enlace para restablecerla.",
+  "auth.forgotIntro":
+    "Introduce tu email y te enviaremos un enlace para restablecerla.",
   "auth.forgotSubmit": "Enviar enlace",
-  "auth.forgotSent": "Si ese email está registrado, recibirás un enlace de restablecimiento. Revisa tu bandeja de entrada.",
+  "auth.forgotSent":
+    "Si ese email está registrado, recibirás un enlace de restablecimiento. Revisa tu bandeja de entrada.",
   "auth.backToLogin": "Volver al inicio de sesión",
   "auth.resetTitle": "Establecer una nueva contraseña",
   "auth.newPassword": "Nueva contraseña",
@@ -169,7 +181,8 @@ const dict: Record<string, string> = {
   "auth.resetDone": "Contraseña actualizada. Ya puedes iniciar sesión.",
   "auth.goToLogin": "Ir al inicio de sesión",
   "auth.resetNoToken": "Enlace de restablecimiento ausente o no válido.",
-  "auth.resetInvalid": "Este enlace de restablecimiento no es válido o ha caducado.",
+  "auth.resetInvalid":
+    "Este enlace de restablecimiento no es válido o ha caducado.",
   "auth.pwTooShort": "La contraseña debe tener al menos 10 caracteres.",
   "auth.pwMismatch": "Las contraseñas no coinciden.",
   "auth.verifyChecking": "Verificando tu email…",
@@ -189,7 +202,8 @@ const dict: Record<string, string> = {
   "auth.pwChangeFail": "No se pudo cambiar la contraseña.",
   "auth.dangerZone": "Zona peligrosa",
   "auth.deleteAccount": "Eliminar cuenta",
-  "auth.deleteWarn": "Esto elimina de forma permanente tu cuenta y todos tus datos (chats, publicaciones del foro, créditos). No se puede deshacer. Introduce tu contraseña para confirmar.",
+  "auth.deleteWarn":
+    "Esto elimina de forma permanente tu cuenta y todos tus datos (chats, publicaciones del foro, créditos). No se puede deshacer. Introduce tu contraseña para confirmar.",
   "auth.deleteConfirm": "Eliminar mi cuenta",
   "auth.cancel": "Cancelar",
   "auth.deleteFail": "No se pudo eliminar la cuenta.",
@@ -206,7 +220,8 @@ const dict: Record<string, string> = {
   "forum.back": "Volver al foro",
   "forum.reply": "Responder",
   "forum.replyPlaceholder": "Escribe una respuesta…",
-  "forum.lockedNotice": "Este hilo está cerrado — no se admiten nuevas respuestas.",
+  "forum.lockedNotice":
+    "Este hilo está cerrado — no se admiten nuevas respuestas.",
   "forum.delete": "eliminar",
   "forum.deleteThread": "Eliminar hilo",
   "forum.pin": "Fijar",
@@ -219,7 +234,8 @@ const dict: Record<string, string> = {
   "forum.catIdeas": "Ideas",
   "forum.catAnnouncements": "Anuncios",
   "forum.participate": "Únete a la conversación",
-  "forum.publicSubtitle": "Lee lo que la comunidad está debatiendo. Inicia sesión para publicar y responder.",
+  "forum.publicSubtitle":
+    "Lee lo que la comunidad está debatiendo. Inicia sesión para publicar y responder.",
   "forum.loginToReply": "¿Quieres responder?",
   "forum.allSections": "Todas las secciones",
   "forum.messages": "mensajes",
@@ -231,7 +247,8 @@ const dict: Record<string, string> = {
   "auth.profileSaved": "Perfil guardado.",
 
   "network.title": "Sala de control de red",
-  "network.subtitle": "Estado en vivo de la red de cómputo de Neurion: nodos, capacidad, trabajos y flujo de tokens",
+  "network.subtitle":
+    "Estado en vivo de la red de cómputo de Neurion: nodos, capacidad, trabajos y flujo de tokens",
   "network.openApp": "Abrir la app",
   "network.updated": "Actualizado {time}",
   "network.loading": "Cargando estado de la red…",
@@ -298,13 +315,15 @@ const dict: Record<string, string> = {
   "models.choose": "Elige un modelo para descargar",
 
   "models.nodeHeading": "Comparte tus modelos (ejecuta un nodo)",
-  "models.nodeDesc": "Ejecuta un nodo en la red Neurion con tus modelos descargados y gana NRN. Inicia sesión con tu cuenta de neurionproject.org.",
+  "models.nodeDesc":
+    "Ejecuta un nodo en la red Neurion con tus modelos descargados y gana NRN. Inicia sesión con tu cuenta de neurionproject.org.",
   "models.nodeRunning": "Compartiendo: ganando NRN",
   "models.nodeStop": "Detener",
   "models.nodeStart": "Empezar a compartir",
   "models.nodeEmail": "correo de neurionproject.org",
   "models.nodePass": "contraseña",
-  "models.nodeNeedsEngine": "Descarga primero un modelo (el motor local debe estar en ejecución).",
+  "models.nodeNeedsEngine":
+    "Descarga primero un modelo (el motor local debe estar en ejecución).",
   "models.nodeUnavailable": "Nodo no disponible en esta compilación.",
 
   "agent.compute": "Cómputo",
@@ -313,24 +332,29 @@ const dict: Record<string, string> = {
   "agent.modeLocal": "Local (mi PC)",
   "agent.modeNetwork": "Solo red",
   "agent.netModel": "modelo de red",
-  "agent.computeAsk": "Un nodo de la red puede ejecutar {model} (consume créditos). ¿Usarlo?",
+  "agent.computeAsk":
+    "Un nodo de la red puede ejecutar {model} (consume créditos). ¿Usarlo?",
   "agent.useNetwork": "Usar red",
   "agent.useLocal": "Usar local",
-  "agent.computeFallback": "el nodo de la red falló — se cambió a tu modelo local",
+  "agent.computeFallback":
+    "el nodo de la red falló — se cambió a tu modelo local",
 
   "models.quantLabel": "Cuantización",
   "models.quantDefault": "Predeterminado",
   "models.quantSizeVaries": "el tamaño varía",
-  "models.quantHelp": "Menor = más ligero, más rápido, menos memoria. Mayor = mejor calidad, descarga más grande.",
+  "models.quantHelp":
+    "Menor = más ligero, más rápido, menos memoria. Mayor = mejor calidad, descarga más grande.",
 
   "nav.tabImage": "Imagen",
   "image.pageTitle": "Imagen",
   "image.localBadge": "local · tu PC",
-  "image.pageSubtitle": "Genera imágenes a partir de texto en tu propio equipo.",
+  "image.pageSubtitle":
+    "Genera imágenes a partir de texto en tu propio equipo.",
   "image.engineLabel": "Motor de imagen:",
   "image.engineUp": "listo",
   "image.engineDown": "no encontrado",
-  "image.engineDownBanner": "No hay motor de imagen local. Inicia un servidor de Stable Diffusion ({link}) y apunta Neurion hacia él (AI_IMAGE_BASE_URL, predeterminado http://localhost:7860).",
+  "image.engineDownBanner":
+    "No hay motor de imagen local. Inicia un servidor de Stable Diffusion ({link}) y apunta Neurion hacia él (AI_IMAGE_BASE_URL, predeterminado http://localhost:7860).",
   "image.sdLinkText": "Automatic1111 / Forge",
   "image.promptPlaceholder": "Describe la imagen…",
   "image.negativePlaceholder": "Prompt negativo (opcional) — qué evitar",
@@ -349,21 +373,26 @@ const dict: Record<string, string> = {
   "image.queued": "en cola…",
   "image.networkStatus": "red:",
 
-  "network.connectPrompt": "Inicia sesión en la red para usar nodos compartidos:",
+  "network.connectPrompt":
+    "Inicia sesión en la red para usar nodos compartidos:",
   "network.connected": "conectado a la red",
   "network.disconnect": "desconectar",
   "network.email": "correo de la red",
   "network.password": "contraseña",
   "network.connect": "Conectar",
-  "network.connectFailed": "error al iniciar sesión: revisa tu cuenta de la red",
+  "network.connectFailed":
+    "error al iniciar sesión: revisa tu cuenta de la red",
 
-  "image.setupPrompt": "La generación de imágenes necesita una configuración única.",
-  "image.setupSub": "Descarga unos {size} MB una sola vez y se queda en tu PC, sin nada que instalar.",
+  "image.setupPrompt":
+    "La generación de imágenes necesita una configuración única.",
+  "image.setupSub":
+    "Descarga unos {size} MB una sola vez y se queda en tu PC, sin nada que instalar.",
   "image.setupBtn": "Configurar la generación de imágenes",
   "image.installing": "Preparando el motor…",
   "image.installEngine": "descargando el programa",
   "image.installModel": "descargando el modelo",
-  "image.unsupported": "La generación de imágenes en local aún no está disponible en este sistema; usa el modo Red.",
+  "image.unsupported":
+    "La generación de imágenes en local aún no está disponible en este sistema; usa el modo Red.",
   "image.genNoteGpu": "Unos segundos con GPU, unos minutos con CPU.",
 
   "image.sizeSmall": "Pequeño · rápido",
@@ -382,17 +411,20 @@ const dict: Record<string, string> = {
   "image.recommended": "recomendado",
 
   "ob.title": "Bienvenido a Neurion",
-  "ob.sub": "Tu IA, en tu ordenador — con una red compartida detrás cuando necesitas más potencia.",
+  "ob.sub":
+    "Tu IA, en tu ordenador — con una red compartida detrás cuando necesitas más potencia.",
   "ob.b1": "Chatea con modelos de IA que corren en tu PC",
   "ob.b2": "Genera imágenes en local",
   "ob.b3": "Comparte tu potencia inactiva y gana créditos",
   "ob.next": "Empezar",
   "ob.skip": "Omitir",
   "ob.engineTitle": "Solo hay que instalar una cosa",
-  "ob.engineBody": "Neurion usa un pequeño motor gratuito ({link}) para ejecutar modelos de IA. Instálalo y vuelve aquí: lo detecto automáticamente.",
+  "ob.engineBody":
+    "Neurion usa un pequeño motor gratuito ({link}) para ejecutar modelos de IA. Instálalo y vuelve aquí: lo detecto automáticamente.",
   "ob.engineWaiting": "Esperando el motor…",
   "ob.modelTitle": "Descarga tu primer modelo",
-  "ob.modelBody": "Una sola descarga (~1,9 GB) y después todo funciona en tu equipo.",
+  "ob.modelBody":
+    "Una sola descarga (~1,9 GB) y después todo funciona en tu equipo.",
   "ob.modelBtn": "Descargar el modelo recomendado",
   "ob.doneTitle": "¡Todo listo!",
   "ob.doneBody": "Pregunta lo que quieras: corre en tu ordenador.",
@@ -402,10 +434,23 @@ const dict: Record<string, string> = {
   "agent.t.write_file": "Escribiendo {v}",
   "agent.t.edit_file": "Editando {v}",
   "agent.t.apply_patch": "Actualizando {v}",
+  "agent.t.rollback_patch": "Revirtiendo el cambio {v}",
+  "agent.t.project_map": "Indexando el proyecto",
+  "agent.t.code_search": "Buscando en el codigo {v}",
+  "agent.t.symbol_graph": "Analizando el símbolo {v}",
+  "agent.t.verify_project": "Verificando el proyecto",
   "agent.t.run_command": "Ejecutando: {v}",
+  "agent.t.start_process": "Iniciando proceso: {v}",
+  "agent.t.read_process": "Leyendo proceso {v}",
+  "agent.t.wait_process": "Esperando el proceso {v}",
+  "agent.t.stop_process": "Deteniendo el proceso {v}",
+  "agent.reviewing": "Revisando los cambios verificados...",
+  "agent.reviewPass": "Revisión independiente superada",
+  "agent.reviewChanges": "La revisión requiere cambios",
+  "agent.actionRejected": "Acción corregida antes de ejecutarse: {reason}",
   "agent.t.list_dir": "Explorando {v}",
   "agent.t.find_files": "Buscando archivos ({v})",
-  "agent.t.search_files": "Buscando \"{v}\"",
+  "agent.t.search_files": 'Buscando "{v}"',
   "agent.t.create_project": "Creando el proyecto {v}",
   "agent.t.spawn_agent": "Delegando una subtarea",
   "agent.t.remember": "Guardando una nota en memoria",
@@ -422,15 +467,19 @@ const dict: Record<string, string> = {
 
   "sidebar.openFolder": "Abrir carpeta",
   "sidebar.projectsHeading": "Proyectos",
-  "sidebar.noProjects": "Sin proyectos — abre una carpeta y el agente trabajará dentro.",
+  "sidebar.noProjects":
+    "Sin proyectos — abre una carpeta y el agente trabajará dentro.",
   "sidebar.galleryHeading": "Tus imágenes",
   "sidebar.galleryEmpty": "Las imágenes generadas aparecerán aquí.",
 
   "image.kindImage": "Imagen",
   "image.kindVideo": "Vídeo · beta",
-  "video.note": "Un clip animado (~10s): escenas generadas por IA con zooms cinematográficos y fundidos. Corre en tu PC.",
-  "video.engineMissing": "Configura primero un modelo de imagen (pestaña Imagen): el clip nace de los fotogramas IA.",
-  "video.unsupported": "Instala ffmpeg para habilitar el vídeo en este sistema.",
+  "video.note":
+    "Un clip animado (~10s): escenas generadas por IA con zooms cinematográficos y fundidos. Corre en tu PC.",
+  "video.engineMissing":
+    "Configura primero un modelo de imagen (pestaña Imagen): el clip nace de los fotogramas IA.",
+  "video.unsupported":
+    "Instala ffmpeg para habilitar el vídeo en este sistema.",
   "video.setupBtn": "Preparar el vídeo (~170 MB, una vez)",
   "video.installing": "Preparando el vídeo",
   "video.ready": "Motor de vídeo listo",
@@ -443,13 +492,16 @@ const dict: Record<string, string> = {
 
   "video.kindClip": "Clip rápido",
   "video.kindAi": "Vídeo IA · experimental",
-  "video.aiNote": "Text-to-video de verdad (Wan 2.1) en TU equipo — la RAM hace de GPU grande. Lento (20–60+ min para ~2s a 480p), pero real, sin conexión y gratis.",
+  "video.aiNote":
+    "Text-to-video de verdad (Wan 2.1) en TU equipo — la RAM hace de GPU grande. Lento (20–60+ min para ~2s a 480p), pero real, sin conexión y gratis.",
   "video.aiSetupBtn": "Descargar el modelo de vídeo IA (~6,7 GB, una vez)",
   "video.aiInstalling": "Descargando el modelo de vídeo IA",
   "video.aiReady": "Vídeo IA listo — espera larga por clip",
   "video.aiWorking": "Vídeo IA en curso (puede tardar hasta una hora)",
-  "video.reqRam": "Requisitos mínimos no cumplidos: {have} GB de RAM (se necesitan {need} GB+). Puedes usar el Clip rápido, o la red cuando lleguen los nodos de vídeo.",
-  "video.reqDisk": "Espacio en disco insuficiente: {have} GB libres (se necesitan {need} GB+).",
+  "video.reqRam":
+    "Requisitos mínimos no cumplidos: {have} GB de RAM (se necesitan {need} GB+). Puedes usar el Clip rápido, o la red cuando lleguen los nodos de vídeo.",
+  "video.reqDisk":
+    "Espacio en disco insuficiente: {have} GB libres (se necesitan {need} GB+).",
 
   "video.step": "Paso {c} de {t}",
   "video.left": "faltan ~{m} min",
@@ -476,34 +528,45 @@ const dict: Record<string, string> = {
   "audio.setupGen": "Descargar el modelo de música IA (~650 MB, una vez)",
   "audio.installing": "Preparando el audio",
   "audio.mixing": "Añadiendo la banda sonora",
-  "audio.ttsUnsupported": "La voz en off solo se auto-instala en Windows por ahora (en otros sistemas instala piper manualmente).",
-  "audio.foleyComing": "Los efectos de sonido sincronizados (foley IA) llegan con los nodos GPU de la red.",
+  "audio.ttsUnsupported":
+    "La voz en off solo se auto-instala en Windows por ahora (en otros sistemas instala piper manualmente).",
+  "audio.foleyComing":
+    "Los efectos de sonido sincronizados (foley IA) llegan con los nodos GPU de la red.",
   "audio.credit": "Música: Kevin MacLeod (incompetech.com) · CC BY 4.0",
-  "agent.modelDied": "El modelo se detuvo de forma inesperada (probablemente sin memoria). Reintenta o elige un modelo más pequeño del menú.",
+  "agent.modelDied":
+    "El modelo se detuvo de forma inesperada (probablemente sin memoria). Reintenta o elige un modelo más pequeño del menú.",
 
   "agent.autoOn": "Autónomo",
   "agent.autoOff": "Preguntar cada acción",
-  "agent.autoHint": "Autónomo = el agente escribe archivos y ejecuta comandos sin preguntar. Off = apruebas cada acción.",
+  "agent.autoHint":
+    "Autónomo = el agente escribe archivos y ejecuta comandos sin preguntar. Off = apruebas cada acción.",
   "agent.clearHist": "Borrar historial",
 
   "agent.preview": "Vista previa",
-  "agent.previewHint": "Muestra una vista previa en vivo de la página HTML de la carpeta",
+  "agent.previewHint":
+    "Muestra una vista previa en vivo de la página HTML de la carpeta",
   "agent.previewRefresh": "Actualizar",
-  "agent.previewEmpty": "Aún no hay página HTML en la carpeta — la vista previa aparece cuando el agente crea una.",
+  "agent.previewEmpty":
+    "Aún no hay página HTML en la carpeta — la vista previa aparece cuando el agente crea una.",
 
   "settings.title": "Ajustes",
   "settings.instructionsTitle": "Tus instrucciones para el agente",
-  "settings.instructionsSub": "Reglas que el agente Code sigue siempre — tu stack, estilo, idioma, qué hacer y qué no. Corto y directo funciona mejor, sobre todo con modelos locales pequeños.",
+  "settings.instructionsSub":
+    "Reglas que el agente Code sigue siempre — tu stack, estilo, idioma, qué hacer y qué no. Corto y directo funciona mejor, sobre todo con modelos locales pequeños.",
   "settings.save": "Guardar",
   "settings.savedActive": "Guardado — el agente las sigue",
   "settings.unsaved": "cambios sin guardar",
-  "settings.tip": "Consejo: da un ejemplo concreto para copiar, no reglas vagas. Los modelos pequeños siguen mejor los ejemplos.",
+  "settings.tip":
+    "Consejo: da un ejemplo concreto para copiar, no reglas vagas. Los modelos pequeños siguen mejor los ejemplos.",
   "settings.behaviorTitle": "Comportamiento predeterminado",
   "settings.autoDefault": "Iniciar el agente Code en modo autónomo",
-  "settings.autoDefaultSub": "Las nuevas ejecuciones no pedirán aprobación en cada escritura/comando (puedes cambiarlo por ejecución).",
+  "settings.autoDefaultSub":
+    "Las nuevas ejecuciones no pedirán aprobación en cada escritura/comando (puedes cambiarlo por ejecución).",
 
-  "agent.rulesHint": "Reglas para ESTE proyecto que el agente sigue siempre (NEURION.md en la carpeta)",
-  "agent.rulesSub": "Reglas solo para ESTE proyecto, además de tus ajustes globales. Se guardan como NEURION.md en la carpeta; el agente las lee en cada ejecución.",
+  "agent.rulesHint":
+    "Reglas para ESTE proyecto que el agente sigue siempre (NEURION.md en la carpeta)",
+  "agent.rulesSub":
+    "Reglas solo para ESTE proyecto, además de tus ajustes globales. Se guardan como NEURION.md en la carpeta; el agente las lee en cada ejecución.",
   "agent.rulesSave": "Guardar NEURION.md",
   "agent.rulesClose": "Cerrar",
 
@@ -517,36 +580,15 @@ const dict: Record<string, string> = {
 
   "chat.attachImage": "Adjuntar una imagen",
   "chat.imageAttached": "Imagen adjunta",
-  "chat.imagePromptPlaceholder": "Pregunta sobre la imagen… (vacío = descríbela)",
+  "chat.imagePromptPlaceholder":
+    "Pregunta sobre la imagen… (vacío = descríbela)",
 
-  "models.searchPlaceholder": "🔎 Buscar modelos (p. ej. coder, vision, 7b, deepseek)…",
-  "models.noMatch": "Sin resultados — prueba una familia (qwen, llama, mistral) o un tamaño (7b, 14b).",
+  "models.searchPlaceholder":
+    "🔎 Buscar modelos (p. ej. coder, vision, 7b, deepseek)…",
+  "models.noMatch":
+    "Sin resultados — prueba una familia (qwen, llama, mistral) o un tamaño (7b, 14b).",
 
   "sidebar.rename": "Renombrar",
   "sidebar.renamePrompt": "Nuevo nombre del proyecto:",
-
-  // --- skills ---
-  "skills.title": "Skills",
-  "skills.sub": "Paquetes de instrucciones reutilizables que el agente aplica por su cuenta cuando una petición coincide. Añade uno por cada tipo de trabajo frecuente: el modelo solo carga los relevantes.",
-  "skills.new": "Nueva skill",
-  "skills.empty": "Aún no hay skills. Añade una para enseñar al agente una forma de trabajar repetible.",
-  "skills.name": "Nombre",
-  "skills.namePh": "p. ej. Landing page",
-  "skills.desc": "Descripción",
-  "skills.descPh": "Qué hace / cuándo usarla",
-  "skills.triggers": "Palabras clave",
-  "skills.triggersPh": "landing, sitio, website — separadas por comas",
-  "skills.triggersHelp": "La skill se carga solo cuando la petición contiene una de estas palabras. Déjalo vacío para aplicarla siempre.",
-  "skills.body": "Instrucciones",
-  "skills.bodyPh": "Escribe los pasos que el agente debe seguir, p. ej.:\n- Usa siempre Tailwind por CDN y una Google Font.\n- Un único index.html, sin build.\n- Paleta: terracota, crema, oliva. Sin lorem ipsum.",
-  "skills.save": "Guardar skill",
-  "skills.cancel": "Cancelar",
-  "skills.edit": "Editar",
-  "skills.delete": "Eliminar",
-  "skills.enabled": "Activa",
-  "skills.on": "On",
-  "skills.off": "Off",
-  "skills.always": "siempre activa",
-  "ob.autoRec": "elegido para tu PC",
 };
 export default dict;

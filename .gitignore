@@ -1,45 +1,38 @@
-# deps
-node_modules/
-.pnpm-store/
+# --- secrets -----------------------------------------------------------
+.env
+.env.*
+!.env.example
+**/.env.local
 
-# build
+# --- dependencies ------------------------------------------------------
+node_modules/
+
+# --- build output ------------------------------------------------------
 dist/
 .next/
-out/
 *.tsbuildinfo
-
-# turbo
-.turbo/
-
-# desktop packaging (generated runtime stack + installer output)
-.neurion-stage/
-apps/desktop/staging/
-apps/desktop/dist-installer/
-
-# env
-.env
-.env.local
-.env.*.local
-
-# prisma
-apps/api/prisma/*.db
-
-# hardhat
 packages/contracts/artifacts/
 packages/contracts/cache/
 packages/contracts/typechain-types/
-
-# go
 apps/node-agent/bin/
-*.exe
-# generated node config (contains a secret nodeKey) + job temp
-apps/node-agent/neurion-node.yaml
-neurion-work/
 
-# logs
+# --- desktop packaging (regenerable, ~5 GB) ----------------------------
+apps/desktop/staging/
+apps/desktop/dist-installer/
+apps/desktop/dist-installer-*/
+
+# --- caches ------------------------------------------------------------
+.turbo/
+**/.turbo/
+
+# --- local runtime state ----------------------------------------------
+.runtime/
+.local-run/
+.local-data/
+.tmp-*
+**/.tmp-*
+
+# --- logs / os ---------------------------------------------------------
 *.log
-tia_openness_server.log
-
-# os
-.DS_Store
 Thumbs.db
+.DS_Store

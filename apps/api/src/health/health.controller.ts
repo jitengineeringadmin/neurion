@@ -8,6 +8,24 @@ async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 }
 
+/**
+ * Read the shipped version instead of hardcoding it — the literal here said
+ * 1.2.0 while the product was 1.8.8, so /api/health lied to anyone checking
+ * what was actually deployed. NEURION_VERSION overrides for odd packagings.
+ */
+const VERSION: string = (() => {
+  if (process.env.NEURION_VERSION) return process.env.NEURION_VERSION;
+  for (const rel of ['../../package.json', '../package.json']) {
+    try {
+      const pkg = require(rel) as { version?: string };
+      if (pkg?.version) return pkg.version;
+    } catch {
+      /* try the next layout */
+    }
+  }
+  return 'unknown';
+})();
+
 @Public()
 @Controller('health')
 export class HealthController {
@@ -18,7 +36,7 @@ export class HealthController {
 
   @Get()
   root() {
-    return { status: 'ok', service: 'neurion-api', version: '1.2.0' };
+    return { status: 'ok', service: 'neurion-api', version: VERSION };
   }
 
   @Get('db')

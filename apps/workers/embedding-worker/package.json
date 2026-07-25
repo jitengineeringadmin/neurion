@@ -1,6 +1,6 @@
 {
   "name": "@neurion/embedding-worker",
-  "version": "1.2.0",
+  "version": "1.8.8",
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.json",

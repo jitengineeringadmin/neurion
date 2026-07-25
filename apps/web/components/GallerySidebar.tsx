@@ -25,7 +25,7 @@ export function GallerySidebar() {
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: 4 }}>
-      <div style={{ fontSize: 12, letterSpacing: 0.4, color: theme.muted, textTransform: 'uppercase', margin: '4px 0 8px' }}>{t('sidebar.galleryHeading')}</div>
+      <div style={{ fontSize: 11, color: theme.muted, textTransform: 'uppercase', margin: '4px 0 8px' }}>{t('sidebar.galleryHeading')}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         {items.map((it) => (
           it.status === 'done' && it.hasImage ? (
@@ -41,7 +41,7 @@ export function GallerySidebar() {
           )
         ))}
       </div>
-      {items.length === 0 && <div style={{ fontSize: 13.5, color: theme.muted, padding: '4px 8px', lineHeight: 1.5 }}>{t('sidebar.galleryEmpty')}</div>}
+      {items.length === 0 && <div style={{ fontSize: 12, color: theme.muted, padding: '4px 8px', lineHeight: 1.5 }}>{t('sidebar.galleryEmpty')}</div>}
     </div>
   );
 }

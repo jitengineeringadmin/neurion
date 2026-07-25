@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { api } from '../../../lib/api';
 import { theme, card, input, button } from '../../../lib/ui';
 import { useT } from '../../../lib/i18n';
-import { SkillsManager } from '../../../components/SkillsManager';
 
 const AUTO_KEY = 'neurion_agent_auto';
 
@@ -71,10 +70,6 @@ export default function SettingsPage() {
           {t('settings.autoDefault')}
         </label>
         <p style={{ color: theme.muted, fontSize: 12, margin: '4px 0 0 24px' }}>{t('settings.autoDefaultSub')}</p>
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        <SkillsManager />
       </div>
     </div>
   );

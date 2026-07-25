@@ -45,6 +45,18 @@ export const button: CSSProperties = {
   boxShadow: 'var(--glow)',
 };
 
+/**
+ * Outlined variant. Spreading `button` and overriding only `background` leaves
+ * `color: var(--bg)` in place — dark text on a dark surface, i.e. a button that
+ * renders as an empty box. Use this instead.
+ */
+export const buttonOutline: CSSProperties = {
+  ...button,
+  background: 'transparent',
+  color: 'var(--accent)',
+  boxShadow: 'none',
+};
+
 export const ghostButton: CSSProperties = {
   background: 'transparent',
   border: '1px solid var(--border)',

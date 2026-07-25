@@ -1,10 +1,10 @@
-import { AuthUser } from '../common/decorators/current-user.decorator';
-import { AiProvider } from '../ai/providers/ai-provider.interface';
+import { AuthUser } from "../common/decorators/current-user.decorator";
+import { AiProvider } from "../ai/providers/ai-provider.interface";
 
 export type AgentEmit = (event: string, data: unknown) => void;
 
 // Where the agent's LLM brain runs — chosen by the user (like Claude's permission modes).
-export type ComputeMode = 'ask' | 'auto' | 'local' | 'network';
+export type ComputeMode = "ask" | "auto" | "local" | "network";
 
 export interface ToolCtx {
   user: AuthUser;
@@ -28,6 +28,9 @@ export interface ToolCtx {
   isNetwork?: boolean;
   relayed?: boolean; // network LLM served by the remote relay (billed remotely)
   meter?: { networkChars: number };
+  runId?: string;
+  parentRunId?: string;
+  cancelSignal?: AbortSignal;
 }
 
 export interface AgentTool {
@@ -35,7 +38,29 @@ export interface AgentTool {
   description: string;
   /** param name -> human description, rendered into the system prompt */
   params: Record<string, string>;
+  inputSchema?: AgentToolInputSchema;
   run(args: Record<string, unknown>, ctx: ToolCtx): Promise<string>;
+}
+
+export interface AgentValueSchema {
+  type: "string" | "number" | "boolean" | "array" | "object";
+  enum?: string[];
+  integer?: boolean;
+  min?: number;
+  max?: number;
+  minLength?: number;
+  maxLength?: number;
+  maxItems?: number;
+  items?: AgentValueSchema;
+  properties?: Record<string, AgentValueSchema>;
+  required?: string[];
+  additionalProperties?: boolean;
+}
+
+export interface AgentToolInputSchema {
+  properties: Record<string, AgentValueSchema>;
+  required?: string[];
+  additionalProperties?: boolean;
 }
 
 export interface AgentAction {
@@ -43,4 +68,5 @@ export interface AgentAction {
   tool?: string;
   args?: Record<string, unknown>;
   final?: string;
+  invalid?: string;
 }

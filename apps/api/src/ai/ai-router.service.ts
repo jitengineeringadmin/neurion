@@ -99,8 +99,9 @@ export class AiRouterService {
       }
     }
 
-    // No warm trusted realtime node -> trusted internal Fallback provider.
-    const resolved = await this.resolver.resolveFallback();
+    // No warm trusted realtime node -> trusted internal Fallback provider,
+    // routed to whichever local engine actually serves the requested model.
+    const resolved = await this.resolver.resolveFallback(input.preferredModel);
     const reason: RouteReason =
       eff.reason === 'USER_SELECTED' || eff.reason === 'POLICY_DEFAULT' ? 'NO_WARM_TRUSTED_NODE' : eff.reason;
 

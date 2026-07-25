@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { MatrixRain } from '../components/MatrixRain';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LangToggle } from '../components/LangToggle';
-import { button } from '../lib/ui';
+import { button, buttonOutline } from '../lib/ui';
 import { useT } from '../lib/i18n';
 
 export default function Home() {
@@ -35,9 +35,17 @@ export default function Home() {
         <p style={{ color: 'var(--muted)', lineHeight: 1.8, maxWidth: 560 }}>
           {t('home.description')}
         </p>
-        <Link href="/login" style={{ ...button, display: 'inline-block', marginTop: 24, textDecoration: 'none' }}>
-          {t('home.enterCta')} ▸
-        </Link>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 24 }}>
+          <a href="/download/Neurion-Setup-latest.exe" style={{ ...button, display: 'inline-block', textDecoration: 'none' }}>
+            {t('home.downloadCta')}
+          </a>
+          <Link href="/login" style={{ ...buttonOutline, display: 'inline-block', textDecoration: 'none' }}>
+            {t('home.enterCta')} &gt;
+          </Link>
+        </div>
+        <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 10 }}>
+          {t('home.downloadMeta')}
+        </p>
       </div>
     </main>
   );

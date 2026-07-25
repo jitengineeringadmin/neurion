@@ -16,4 +16,6 @@ export type Lane = z.infer<typeof Lane>;
 export const NodeTrustLevel = z.enum(['COMMUNITY', 'VERIFIED', 'ENTERPRISE', 'INTERNAL']);
 export type NodeTrustLevel = z.infer<typeof NodeTrustLevel>;
 
-export const NEURION_VERSION = '1.2.0' as const;
+// NEURION_VERSION used to be hardcoded here and had no callers — it had already
+// drifted to 1.2.0 while the product shipped 1.8.8. The version now comes from
+// package.json (see apps/api/src/health/health.controller.ts).

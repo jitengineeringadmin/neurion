@@ -46,7 +46,9 @@ mkdirSync(STAGE, { recursive: true });
 step('build api (nest)');
 sh(pnpm, ['--filter', '@neurion/api', 'build']);
 step('build web (next)');
-sh(pnpm, ['--filter', '@neurion/web', 'build']);
+sh(pnpm, ['--filter', '@neurion/web', 'build'], {
+  env: { ...process.env, NEXT_PUBLIC_API_URL: 'http://localhost:8091' },
+});
 
 // 2) stage api: dist + prisma + compiled seed + prod node_modules + generated client
 step('stage api');
@@ -112,8 +114,18 @@ const goBuild = spawnSync('go', ['build', '-trimpath', '-ldflags', '-s -w', '-o'
 });
 if (goBuild.status !== 0) console.warn('⚠ node-agent build failed (is Go installed?) — the in-app node will be unavailable in this build');
 
-// 5) runtime env
-step('copy .env');
-if (existsSync(path.join(ROOT, '.env'))) copyFileSync(path.join(ROOT, '.env'), path.join(STAGE, '.env'));
+// 5) runtime env. Do not copy the build machine's secrets or development ports
+// into a distributable installer; the desktop creates per-install JWT secrets.
+step('write desktop .env');
+writeFileSync(
+  path.join(STAGE, '.env'),
+  [
+    'NEURION_API_PORT=8091',
+    'NEURION_WEB_PORT=3091',
+    'JWT_ACCESS_TTL=30d',
+    'AGENT_FS_CONFINE_TO_CWD=true',
+    '',
+  ].join('\n'),
+);
 
 console.log('\n✔ staging ready:', STAGE);

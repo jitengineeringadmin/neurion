@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "note": "Deterministic checks only. Every prompt pins the output shape so correctness is machine-checkable without a judge model. Keep prompts short: on a CPU-only box generation length dominates wall time, and we are measuring the engine, not the prompt.",
+  "cases": [
+    {
+      "id": "echo-word",
+      "category": "instruction",
+      "prompt": "Rispondi esattamente con la parola FUNZIONA e nient'altro.",
+      "expect": { "type": "contains", "value": "FUNZIONA", "caseSensitive": false }
+    },
+    {
+      "id": "arith-small",
+      "category": "reasoning",
+      "prompt": "Quanto fa 17 * 23? Rispondi solo con il numero.",
+      "expect": { "type": "contains", "value": "391" }
+    },
+    {
+      "id": "arith-multi",
+      "category": "reasoning",
+      "prompt": "Un treno percorre 120 km in 1,5 ore. Qual e la velocita media in km/h? Rispondi solo con il numero.",
+      "expect": { "type": "contains", "value": "80" }
+    },
+    {
+      "id": "json-shape",
+      "category": "format",
+      "prompt": "Restituisci SOLO un oggetto JSON valido, senza testo attorno e senza blocchi di codice, con esattamente le chiavi \"nome\" (stringa) e \"anno\" (numero), riferito a Alan Turing e al 1912.",
+      "expect": { "type": "json", "keys": ["nome", "anno"] }
+    },
+    {
+      "id": "code-fn",
+      "category": "code",
+      "prompt": "Scrivi una funzione JavaScript chiamata somma che prende due numeri e restituisce la loro somma. Solo il codice, niente spiegazioni.",
+      "expect": { "type": "regex", "value": "function\\s+somma|const\\s+somma\\s*=" }
+    },
+    {
+      "id": "lang-it",
+      "category": "instruction",
+      "prompt": "Rispondi in italiano con una sola frase: cos'e un compilatore?",
+      "expect": { "type": "regex", "value": "(?i)\\b(compilatore|codice|sorgente|traduce|linguaggio)\\b" }
+    },
+    {
+      "id": "refuse-hallucination",
+      "category": "grounding",
+      "prompt": "Qual e la capitale dello stato immaginario di Zorblaxia? Se non lo sai o lo stato non esiste, rispondi esattamente NON LO SO.",
+      "expect": { "type": "regex", "value": "(?i)(non lo so|non esiste|immaginari|invent|fittizi)" }
+    },
+    {
+      "id": "extract-field",
+      "category": "extraction",
+      "prompt": "Da questo testo estrai solo l'anno: \"Il progetto Neurion e stato avviato nel 2026 da un piccolo team.\" Rispondi solo con il numero.",
+      "expect": { "type": "contains", "value": "2026" }
+    },
+
+    {
+      "id": "multi-step",
+      "category": "reasoning-hard",
+      "prompt": "Marco ha 3 scatole. Ogni scatola contiene 4 sacchetti e ogni sacchetto contiene 7 biglie. Marco regala 15 biglie. Quante biglie gli restano? Rispondi solo con il numero.",
+      "expect": { "type": "contains", "value": "69" }
+    },
+    {
+      "id": "constraint-count",
+      "category": "instruction-hard",
+      "prompt": "Elenca esattamente tre colori primari, uno per riga, senza numerazione, senza punteggiatura e senza altro testo.",
+      "expect": { "type": "regex", "value": "^[^\\n]+\\n[^\\n]+\\n[^\\n]+$" }
+    },
+    {
+      "id": "language-adherence",
+      "category": "instruction-hard",
+      "prompt": "Descrivi il mare in una frase. Rispondi obbligatoriamente in italiano.",
+      "expect": {
+        "type": "regex",
+        "value": "(?i)\\b(il|lo|la|le|gli|un|una|del|della|che|si|Ã¨|e|con|per|di)\\b.*\\b(mare|onde|acqua|blu|orizzonte|profond|distesa|azzurr)"
+      },
+      "note": "Replaces a 'sentence without the letter a' case that every model failed: in Italian nearly every function word contains one, so it measured a linguistic trap rather than a capability. Language adherence is a real defect instead — qwen2.5:3b answered this prompt in French unprompted."
+    },
+    {
+      "id": "recall-buried",
+      "category": "context",
+      "prompt": "Leggi: 'Il server ALFA ha 32 GB di RAM. Il server BETA ha 8 GB. Il server GAMMA ha 128 GB. Il server DELTA ha 16 GB.' Quanti GB ha BETA? Rispondi solo con il numero.",
+      "expect": { "type": "contains", "value": "8" }
+    },
+    {
+      "id": "json-nested",
+      "category": "format-hard",
+      "prompt": "Restituisci SOLO JSON valido, senza testo attorno e senza blocchi di codice: un oggetto con chiave \"citta\" (stringa \"Roma\") e chiave \"dati\" che e un oggetto con chiavi \"abitanti\" (numero 2800000) e \"regione\" (stringa \"Lazio\").",
+      "expect": { "type": "json", "keys": ["citta", "dati"] }
+    }
+  ]
+}

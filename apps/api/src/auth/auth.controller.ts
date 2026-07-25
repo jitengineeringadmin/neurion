@@ -7,6 +7,7 @@ import {
   Post,
   Req,
   Res,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -58,6 +59,48 @@ export class AuthController {
 
   private clearRefreshCookie(res: Response): void {
     res.clearCookie(REFRESH_COOKIE, { path: '/api/auth' });
+  }
+
+  /**
+   * Desktop first-run: hand back a session for this machine's owner without a
+   * login screen. Nothing local is being protected from anyone — the database,
+   * the model and the files all belong to whoever is already logged into this
+   * computer — and asking for an account before the app has shown it works is
+   * the single largest drop-off in a first run. An account starts to mean
+   * something only when other people are involved: sharing the node, earning
+   * NRN, getting paid.
+   *
+   * Three independent conditions, all required:
+   *  - the desktop shell set NEURION_LOCAL_OWNER (a server deployment never does)
+   *  - the API is bound to loopback
+   *  - the TCP peer really is loopback
+   *
+   * That last check reads socket.remoteAddress and NOT req.ip on purpose:
+   * `trust proxy` is enabled for the nginx deployment, so req.ip is taken from
+   * X-Forwarded-For, which a caller can simply write themselves. Trusting it
+   * here would turn this into "anyone who can reach the port is the owner".
+   */
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('local-session')
+  async localSession(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const enabled = String(this.config.get('NEURION_LOCAL_OWNER') ?? 'false') === 'true';
+    const bindHost = this.config.get<string>('NEURION_BIND_HOST') ?? '127.0.0.1';
+    const boundToLoopback = bindHost === '127.0.0.1' || bindHost === 'localhost' || bindHost === '::1';
+    const peer = req.socket.remoteAddress ?? '';
+    const peerIsLoopback = peer === '127.0.0.1' || peer === '::1' || peer === '::ffff:127.0.0.1';
+
+    if (!enabled || !boundToLoopback || !peerIsLoopback) {
+      throw new ForbiddenException('local sessions are not available on this deployment');
+    }
+
+    const user = await this.auth.ensureLocalOwner();
+    const session = await this.auth.issueSession(user, {
+      userAgent: req.headers['user-agent'] ?? null,
+      ipHash: this.ipHash(req),
+    });
+    this.setRefreshCookie(res, session.refresh.raw, session.refresh.expiresAt);
+    return { accessToken: session.accessToken, user: session.user };
   }
 
   @Public()

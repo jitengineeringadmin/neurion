@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { api, setToken, isDesktop, prodLogin, setProdToken } from './api';
+import { api, setToken, isDesktop, prodLogin, setProdToken, localOwnerSession } from './api';
 
 export interface User {
   id: string;
@@ -25,10 +25,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api<User>('/auth/me')
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    void (async () => {
+      try {
+        const me = await api<User>('/auth/me');
+        if (!cancelled) setUser(me);
+      } catch {
+        // Desktop: claim this machine's owner session rather than sending the
+        // user to a login form. Nothing local is protected from whoever is
+        // already signed into the computer, and an account only starts to
+        // matter when the network is involved. The API refuses this on a hosted
+        // deployment, where the redirect to /login still happens.
+        const claimed = await localOwnerSession();
+        if (cancelled) return;
+        if (claimed) {
+          try {
+            setUser(await api<User>('/auth/me'));
+          } catch {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function login(email: string, password: string): Promise<void> {

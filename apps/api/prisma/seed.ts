@@ -6,7 +6,8 @@ const prisma = new PrismaClient();
 async function main(): Promise<void> {
   // Never seed default accounts (with known passwords) into a production DB.
   if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PROD_SEED !== 'true') {
-    throw new Error('refusing to seed in production (set ALLOW_PROD_SEED=true to override)');
+    console.log('Production seed skipped. Set ALLOW_PROD_SEED=true to enable it.');
+    return;
   }
 
   const workspace = await prisma.workspace.upsert({

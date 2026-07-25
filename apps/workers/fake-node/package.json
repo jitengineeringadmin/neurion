@@ -1,6 +1,6 @@
 {
   "name": "@neurion/fake-node",
-  "version": "1.2.0",
+  "version": "1.8.8",
   "private": true,
   "scripts": {
     "start": "tsx run.ts",

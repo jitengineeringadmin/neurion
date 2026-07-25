@@ -1,8 +1,12 @@
 // AUTO-GENERATED locale. Edit translations here.
 const dict: Record<string, string> = {
   "home.brandName": "NEURION",
-  "home.tagline": "Share idle power. Access AI. Earn credits and the NRN token.",
-  "home.description": "A distributed AI compute network: fast chat over a community grid, with a Fast / Grid / Fallback router, internal credits and an on-chain NRN utility token.",
+  "home.tagline":
+    "Share idle power. Access AI. Earn credits and the NRN token.",
+  "home.description":
+    "A distributed AI compute network: fast chat over a community grid, with a Fast / Grid / Fallback router, internal credits and an on-chain NRN utility token.",
+  "home.downloadCta": "Download for Windows",
+  "home.downloadMeta": "Latest desktop app: Neurion 1.8.8 for Windows.",
   "home.enterCta": "ENTER",
   "login.brandSuffix": "AI",
   "login.tabLogin": "login",
@@ -14,7 +18,8 @@ const dict: Record<string, string> = {
   "login.submitRegister": "Register",
   "login.startingUp": "Starting up…",
   "login.startingUpHint": "The app is starting up — this takes a few seconds.",
-  "login.startingUpSlow": "First launch can take up to a minute (starting the database)…",
+  "login.startingUpSlow":
+    "First launch can take up to a minute (starting the database)…",
   "nav.tabChat": "Chat",
   "nav.tabAgent": "Code",
   "nav.tabImage": "Image",
@@ -31,7 +36,8 @@ const dict: Record<string, string> = {
   "chat.agentTraceSubAgent": "↳ sub-agent: ",
   "chat.agentErrorPrefix": "⚠️ {message}",
   "chat.chatErrorPrefix": "⚠️ {message}",
-  "chat.analyzeFolderGoal": "Analyze the project folder: {cwd}. Use list_dir to list files and subfolders, read the key files with read_file, then explain the structure, technology stack and purpose of the project in a clear summary. Read-only: do not create, modify or run anything.",
+  "chat.analyzeFolderGoal":
+    "Analyze the project folder: {cwd}. Use list_dir to list files and subfolders, read the key files with read_file, then explain the structure, technology stack and purpose of the project in a clear summary. Read-only: do not create, modify or run anything.",
   "chat.analyzeFolderUserMsg": "📂 Analyze the folder",
   "chat.headingChat": "Chat",
   "chat.analyzeFolderButtonTitle": "Analyze {cwd} with the agent (read-only)",
@@ -39,8 +45,10 @@ const dict: Record<string, string> = {
   "chat.agentToggleOn": "🤖 Agent on",
   "chat.agentToggleOff": "🤖 Agent off",
   "chat.creditsLabel": "credits:",
-  "chat.emptyStateAgent": "Agent mode: give a goal — it plans, uses tools, works on files (with approval).",
-  "chat.emptyStateChat": "Ask anything. Routing, lane and credit cost are shown per answer.",
+  "chat.emptyStateAgent":
+    "Agent mode: give a goal — it plans, uses tools, works on files (with approval).",
+  "chat.emptyStateChat":
+    "Ask anything. Routing, lane and credit cost are shown per answer.",
   "chat.approvalPrompt": "⚠ approve {tool}?",
   "chat.approveButton": "Approve",
   "chat.denyButton": "Deny",
@@ -50,17 +58,20 @@ const dict: Record<string, string> = {
   "chat.laneLocal": "local",
   "chat.laneNetwork": "network",
   "ob.title": "Welcome to Neurion",
-  "ob.sub": "Your AI, on your computer — with a shared network behind it when you need more power.",
+  "ob.sub":
+    "Your AI, on your computer — with a shared network behind it when you need more power.",
   "ob.b1": "Chat with AI models that run on your PC",
   "ob.b2": "Generate images locally",
   "ob.b3": "Share your idle power and earn credits",
   "ob.next": "Get started",
   "ob.skip": "Skip",
   "ob.engineTitle": "One thing to install",
-  "ob.engineBody": "Neurion uses a small free engine ({link}) to run AI models. Install it, then come back here — I'll notice it automatically.",
+  "ob.engineBody":
+    "Neurion uses a small free engine ({link}) to run AI models. Install it, then come back here — I'll notice it automatically.",
   "ob.engineWaiting": "Waiting for the engine…",
   "ob.modelTitle": "Download your first model",
-  "ob.modelBody": "One download (~1.9 GB) and everything works on your machine from then on.",
+  "ob.modelBody":
+    "One download (~1.9 GB) and everything works on your machine from then on.",
   "ob.modelBtn": "Download the recommended model",
   "ob.doneTitle": "All set!",
   "ob.doneBody": "Ask anything — it runs on your computer.",
@@ -73,13 +84,16 @@ const dict: Record<string, string> = {
   "agent.filesChanged": "Files changed",
   "sidebar.openFolder": "Open folder",
   "sidebar.projectsHeading": "Projects",
-  "sidebar.noProjects": "No projects yet — open a folder and the agent will work inside it.",
+  "sidebar.noProjects":
+    "No projects yet — open a folder and the agent will work inside it.",
   "sidebar.galleryHeading": "Your images",
   "sidebar.galleryEmpty": "Generated images will appear here.",
   "image.kindImage": "Picture",
   "image.kindVideo": "Video · beta",
-  "video.note": "An animated clip (~10s): AI-generated scenes with cinematic zooms and crossfades. Runs on your PC.",
-  "video.engineMissing": "Set up a picture model first (Picture tab) — the clip is built from AI frames.",
+  "video.note":
+    "An animated clip (~10s): AI-generated scenes with cinematic zooms and crossfades. Runs on your PC.",
+  "video.engineMissing":
+    "Set up a picture model first (Picture tab) — the clip is built from AI frames.",
   "video.unsupported": "Install ffmpeg to enable video on this system.",
   "video.setupBtn": "Set up video (~170 MB, once)",
   "video.installing": "Setting up video",
@@ -92,21 +106,37 @@ const dict: Record<string, string> = {
   "video.empty": "Your clips will appear here.",
   "video.kindClip": "Quick clip",
   "video.kindAi": "AI video · experimental",
-  "video.aiNote": "True text-to-video (Wan 2.1) running on YOUR machine — your RAM stands in for a big GPU. Slow (20–60+ min for ~2s at 480p), but real, offline and free.",
+  "video.aiNote":
+    "True text-to-video (Wan 2.1) running on YOUR machine — your RAM stands in for a big GPU. Slow (20–60+ min for ~2s at 480p), but real, offline and free.",
   "video.aiSetupBtn": "Download the AI video model (~6.7 GB, once)",
   "video.aiInstalling": "Downloading the AI video model",
   "video.aiReady": "AI video ready — expect a long wait per clip",
   "video.aiWorking": "AI video in progress (can take up to an hour)",
-  "video.reqRam": "Minimum requirements not met: {have} GB RAM (needs {need} GB+). You can still use Quick clip, or the network when video nodes arrive.",
-  "video.reqDisk": "Not enough free disk space: {have} GB free (needs {need} GB+).",
+  "video.reqRam":
+    "Minimum requirements not met: {have} GB RAM (needs {need} GB+). You can still use Quick clip, or the network when video nodes arrive.",
+  "video.reqDisk":
+    "Not enough free disk space: {have} GB free (needs {need} GB+).",
   "agent.t.read_file": "Reading {v}",
   "agent.t.write_file": "Writing {v}",
   "agent.t.edit_file": "Editing {v}",
   "agent.t.apply_patch": "Updating {v}",
+  "agent.t.rollback_patch": "Rolling back change {v}",
+  "agent.t.project_map": "Indexing the project",
+  "agent.t.code_search": 'Searching code for "{v}"',
+  "agent.t.symbol_graph": "Mapping symbol {v}",
+  "agent.t.verify_project": "Verifying the project",
   "agent.t.run_command": "Running: {v}",
+  "agent.t.start_process": "Starting process: {v}",
+  "agent.t.read_process": "Reading process {v}",
+  "agent.t.wait_process": "Waiting for process {v}",
+  "agent.t.stop_process": "Stopping process {v}",
+  "agent.reviewing": "Reviewing verified changes...",
+  "agent.reviewPass": "Independent review passed",
+  "agent.reviewChanges": "Independent review requires changes",
+  "agent.actionRejected": "Action corrected before execution: {reason}",
   "agent.t.list_dir": "Browsing {v}",
   "agent.t.find_files": "Finding files ({v})",
-  "agent.t.search_files": "Searching for \"{v}\"",
+  "agent.t.search_files": 'Searching for "{v}"',
   "agent.t.create_project": "Creating project {v}",
   "agent.t.spawn_agent": "Delegating a sub-task",
   "agent.t.remember": "Saving a note to memory",
@@ -118,7 +148,8 @@ const dict: Record<string, string> = {
   "chat.inputPlaceholderChat": "Message Neurion…",
   "chat.sendButtonRun": "Run",
   "chat.sendButtonSend": "Send",
-  "agent.defaultGoal": "Check my credits and online nodes, then run an echo job with text \"hello\" and summarise.",
+  "agent.defaultGoal":
+    'Check my credits and online nodes, then run an echo job with text "hello" and summarise.',
   "agent.heading": "Code",
   "agent.headingSubtitle": "multi-agent · ReAct",
   "agent.goalPlaceholder": "Give the agent a goal…",
@@ -136,12 +167,32 @@ const dict: Record<string, string> = {
   "agent.finalLabel": "✓ final",
   "agent.subAnswerPrefix": "sub-answer:",
   "agent.thinkingStatus": "▌ thinking…",
+  "agent.phasePreparing": "Preparing the run",
+  "agent.phaseThinking": "The model is working",
+  "agent.phaseTool": "Operation: {tool}",
+  "agent.phaseReview": "Independently reviewing changes",
+  "agent.phaseApproval": "Waiting for your approval",
+  "agent.phaseReconnecting": "Reconnecting to the active run",
+  "agent.phaseStopping": "Stopping the run",
+  "agent.progressMeta": "Step {step} · {elapsed}",
+  "agent.stop": "Stop",
+  "agent.stopHint": "Stop the model and every process started by this run",
+  "agent.cancelled": "Run cancelled.",
+  "agent.reconnected":
+    "Connection restored: the work is still running on this device.",
+  "agent.interrupted":
+    "The run was interrupted by a restart. You can resume from its saved state.",
+  "agent.interruptedLabel": "Interrupted",
+  "agent.resume": "Resume",
+  "agent.close": "Close",
   "models.pageTitle": "AI Models",
-  "models.pageSubtitle": "Download a model that runs on your computer. Bigger = smarter but slower.",
+  "models.pageSubtitle":
+    "Download a model that runs on your computer. Bigger = smarter but slower.",
   "models.localEngineLabel": "Local engine:",
   "models.engineUp": "active",
   "models.engineDown": "not running",
-  "models.engineDownBanner": "The local AI engine (ollama) is not responding. Install it from {link} and reopen this page. (It will be bundled in the app soon.)",
+  "models.engineDownBanner":
+    "The local AI engine (ollama) is not responding. Install it from {link} and reopen this page. (It will be bundled in the app soon.)",
   "models.ollamaLinkText": "ollama.com",
   "models.downloadingPrefix": "Downloading",
   "models.statusStarting": "starting…",
@@ -157,14 +208,16 @@ const dict: Record<string, string> = {
   "models.quantLabel": "Quantization",
   "models.quantDefault": "Default",
   "models.quantSizeVaries": "size varies",
-  "models.quantHelp": "Lower = lighter, faster, less memory. Higher = better quality, bigger download.",
+  "models.quantHelp":
+    "Lower = lighter, faster, less memory. Higher = better quality, bigger download.",
   "image.pageTitle": "Image",
   "image.localBadge": "local · your PC",
   "image.pageSubtitle": "Generate images from text on your own machine.",
   "image.engineLabel": "Image engine:",
   "image.engineUp": "ready",
   "image.engineDown": "not found",
-  "image.engineDownBanner": "No local image engine. Start a Stable Diffusion server ({link}) and point Neurion at it (AI_IMAGE_BASE_URL, default http://localhost:7860).",
+  "image.engineDownBanner":
+    "No local image engine. Start a Stable Diffusion server ({link}) and point Neurion at it (AI_IMAGE_BASE_URL, default http://localhost:7860).",
   "image.sdLinkText": "Automatic1111 / Forge",
   "image.promptPlaceholder": "Describe the image…",
   "image.negativePlaceholder": "Negative prompt (optional) — what to avoid",
@@ -182,12 +235,14 @@ const dict: Record<string, string> = {
   "image.queued": "queued…",
   "image.networkStatus": "network:",
   "image.setupPrompt": "Image generation needs a one-time setup.",
-  "image.setupSub": "Downloads ~{size} MB once and stays on your PC — nothing to install.",
+  "image.setupSub":
+    "Downloads ~{size} MB once and stays on your PC — nothing to install.",
   "image.setupBtn": "Set up image generation",
   "image.installing": "Preparing the engine…",
   "image.installEngine": "downloading the program",
   "image.installModel": "downloading the model",
-  "image.unsupported": "Local image generation isn't available on this system yet — use Network mode.",
+  "image.unsupported":
+    "Local image generation isn't available on this system yet — use Network mode.",
   "image.genNoteGpu": "A few seconds on a GPU, a few minutes on CPU.",
   "image.sizeSmall": "Small · fast",
   "image.sizeMedium": "Medium",
@@ -233,7 +288,8 @@ const dict: Record<string, string> = {
   "wallet.nrnTokenLabel": "NRN token",
   "wallet.chainStatusOn": "on",
   "wallet.chainStatusOff": "off",
-  "wallet.chainInfoLine": "chain {chainId} · payouts {payoutsStatus} · 1 credit = {nrnAmount} NRN",
+  "wallet.chainInfoLine":
+    "chain {chainId} · payouts {payoutsStatus} · 1 credit = {nrnAmount} NRN",
   "wallet.chainIdPlaceholder": "…",
   "wallet.tokenAddressLabel": "token: {tokenAddress}",
   "wallet.tokenNotDeployed": "not deployed",
@@ -248,7 +304,8 @@ const dict: Record<string, string> = {
   "admin.loading": "Loading…",
   "admin.dashboardHeading": "Admin dashboard",
   "rootmeta.pageTitle": "Neurion AI",
-  "rootmeta.pageDescription": "Distributed AI compute network — share idle power, access AI, earn NRN.",
+  "rootmeta.pageDescription":
+    "Distributed AI compute network — share idle power, access AI, earn NRN.",
   "splash.bootInitializingRuntime": "> initializing neurion runtime…",
   "splash.bootConnectingGrid": "> connecting compute grid…",
   "splash.bootWarmingPool": "> warming realtime pool…",
@@ -280,7 +337,8 @@ const dict: Record<string, string> = {
   "auth.forgotTitle": "Reset password",
   "auth.forgotIntro": "Enter your email and we'll send you a reset link.",
   "auth.forgotSubmit": "Send reset link",
-  "auth.forgotSent": "If that email is registered, a reset link is on its way. Check your inbox.",
+  "auth.forgotSent":
+    "If that email is registered, a reset link is on its way. Check your inbox.",
   "auth.backToLogin": "Back to login",
   "auth.resetTitle": "Set a new password",
   "auth.newPassword": "New password",
@@ -309,7 +367,8 @@ const dict: Record<string, string> = {
   "auth.pwChangeFail": "Could not change password.",
   "auth.dangerZone": "Danger zone",
   "auth.deleteAccount": "Delete account",
-  "auth.deleteWarn": "This permanently deletes your account and all your data (chats, forum posts, credits). This cannot be undone. Enter your password to confirm.",
+  "auth.deleteWarn":
+    "This permanently deletes your account and all your data (chats, forum posts, credits). This cannot be undone. Enter your password to confirm.",
   "auth.deleteConfirm": "Delete my account",
   "auth.cancel": "Cancel",
   "auth.deleteFail": "Could not delete account.",
@@ -339,13 +398,15 @@ const dict: Record<string, string> = {
   "forum.catIdeas": "Ideas",
   "forum.catAnnouncements": "Announcements",
   "forum.participate": "Join the discussion",
-  "forum.publicSubtitle": "Read what the community is discussing. Log in to post and reply.",
+  "forum.publicSubtitle":
+    "Read what the community is discussing. Log in to post and reply.",
   "forum.loginToReply": "Want to reply?",
   "forum.allSections": "All sections",
   "forum.messages": "messages",
   "forum.latest": "Latest topics",
   "network.title": "Network control room",
-  "network.subtitle": "Live status of the Neurion compute network — nodes, capacity, jobs and token flow.",
+  "network.subtitle":
+    "Live status of the Neurion compute network — nodes, capacity, jobs and token flow.",
   "network.openApp": "Open the app",
   "network.updated": "Updated {time}",
   "network.loading": "Loading network status…",
@@ -412,13 +473,15 @@ const dict: Record<string, string> = {
   "models.choose": "Choose a model to download",
 
   "models.nodeHeading": "Share your models (run a node)",
-  "models.nodeDesc": "Run a node on the Neurion network with your downloaded models and earn NRN. Sign in with your neurionproject.org account.",
+  "models.nodeDesc":
+    "Run a node on the Neurion network with your downloaded models and earn NRN. Sign in with your neurionproject.org account.",
   "models.nodeRunning": "Sharing — earning NRN",
   "models.nodeStop": "Stop",
   "models.nodeStart": "Start sharing",
   "models.nodeEmail": "neurionproject.org email",
   "models.nodePass": "password",
-  "models.nodeNeedsEngine": "Download a model first (the local engine must be running).",
+  "models.nodeNeedsEngine":
+    "Download a model first (the local engine must be running).",
   "models.nodeUnavailable": "Node not available in this build.",
 
   "agent.compute": "Compute",
@@ -457,34 +520,44 @@ const dict: Record<string, string> = {
   "audio.setupGen": "Get the AI music model (~650 MB, once)",
   "audio.installing": "Setting up audio",
   "audio.mixing": "Adding the soundtrack",
-  "audio.ttsUnsupported": "Voice-over needs ffmpeg-style setup available on Windows only for now (install piper manually elsewhere).",
-  "audio.foleyComing": "Synced sound effects (AI foley) arrive with GPU nodes on the network.",
+  "audio.ttsUnsupported":
+    "Voice-over needs ffmpeg-style setup available on Windows only for now (install piper manually elsewhere).",
+  "audio.foleyComing":
+    "Synced sound effects (AI foley) arrive with GPU nodes on the network.",
   "audio.credit": "Music: Kevin MacLeod (incompetech.com) · CC BY 4.0",
-  "agent.modelDied": "The model stopped unexpectedly (likely out of memory). Try again, or pick a smaller model from the dropdown.",
+  "agent.modelDied":
+    "The model stopped unexpectedly (likely out of memory). Try again, or pick a smaller model from the dropdown.",
 
   "agent.autoOn": "Autonomous",
   "agent.autoOff": "Ask each action",
-  "agent.autoHint": "Autonomous = the agent writes files and runs commands without asking. Off = approve each action.",
+  "agent.autoHint":
+    "Autonomous = routine file edits run without prompts; shell and destructive actions still require approval.",
   "agent.clearHist": "Clear history",
 
   "agent.preview": "Preview",
   "agent.previewHint": "Show a live preview of the HTML page in the folder",
   "agent.previewRefresh": "Refresh",
-  "agent.previewEmpty": "No HTML page in this folder yet — the preview appears once the agent writes one.",
+  "agent.previewEmpty":
+    "No HTML page in this folder yet — the preview appears once the agent writes one.",
 
   "settings.title": "Settings",
   "settings.instructionsTitle": "Your agent instructions",
-  "settings.instructionsSub": "Rules the Code agent always follows — your stack, style, language, do’s and don’ts. Short and direct works best, especially with small local models.",
+  "settings.instructionsSub":
+    "Rules the Code agent always follows — your stack, style, language, do’s and don’ts. Short and direct works best, especially with small local models.",
   "settings.save": "Save",
   "settings.savedActive": "Saved — the agent follows these",
   "settings.unsaved": "unsaved changes",
-  "settings.tip": "Tip: give a concrete example to copy, not vague rules. Small models follow examples better than prose.",
+  "settings.tip":
+    "Tip: give a concrete example to copy, not vague rules. Small models follow examples better than prose.",
   "settings.behaviorTitle": "Default behavior",
   "settings.autoDefault": "Start the Code agent in autonomous mode",
-  "settings.autoDefaultSub": "New runs won’t ask for approval on each write/command (you can still toggle it per run).",
+  "settings.autoDefaultSub":
+    "New runs won’t ask for approval on each write/command (you can still toggle it per run).",
 
-  "agent.rulesHint": "Per-project rules the agent always follows (NEURION.md in this folder)",
-  "agent.rulesSub": "Rules just for THIS project, on top of your global Settings. Saved as NEURION.md in the folder; the agent reads it every run.",
+  "agent.rulesHint":
+    "Per-project rules the agent always follows (NEURION.md in this folder)",
+  "agent.rulesSub":
+    "Rules just for THIS project, on top of your global Settings. Saved as NEURION.md in the folder; the agent reads it every run.",
   "agent.rulesSave": "Save NEURION.md",
   "agent.rulesClose": "Close",
 
@@ -496,30 +569,48 @@ const dict: Record<string, string> = {
   "gallery.stop": "Stop",
   "gallery.confirmStop": "Stop and discard this generation?",
 
+  "chat.attachFile": "Attach a file",
+  "chat.fileAttached": "File attached",
+  "chat.filePromptPlaceholder": "Ask about the file... (empty = analyze it)",
+  "chat.defaultFilePrompt": "Analyze this file.",
+  "chat.fileTooLarge": "File too large. Use a text file up to 5 MB.",
+  "chat.fileUnsupported":
+    "This file type is not supported yet. Use PDF, text, code, CSV, JSON or logs.",
+  "chat.fileReadError": "I could not read this file.",
+  "chat.fileTruncated": "truncated",
+  "chat.knowledgeIndexed": "Knowledge paging: {total} blocks indexed",
+  "chat.knowledgeLoaded":
+    "Knowledge paging: loaded {selected} of {total} blocks",
   "chat.attachImage": "Attach an image",
   "chat.imageAttached": "Image attached",
   "chat.imagePromptPlaceholder": "Ask about the image… (empty = describe it)",
 
-  "models.searchPlaceholder": "🔎 Search models (e.g. coder, vision, 7b, deepseek)…",
-  "models.noMatch": "No model matches — try a family (qwen, llama, mistral) or a size (7b, 14b).",
+  "models.searchPlaceholder":
+    "🔎 Search models (e.g. coder, vision, 7b, deepseek)…",
+  "models.noMatch":
+    "No model matches — try a family (qwen, llama, mistral) or a size (7b, 14b).",
 
   "sidebar.rename": "Rename",
   "sidebar.renamePrompt": "New project name:",
 
   // --- skills ---
   "skills.title": "Skills",
-  "skills.sub": "Reusable instruction packs the agent applies on its own when a request matches. Add one per kind of work you do often — the model loads only the relevant ones.",
+  "skills.sub":
+    "Reusable instruction packs the agent applies on its own when a request matches. Add one per kind of work you do often — the model loads only the relevant ones.",
   "skills.new": "New skill",
-  "skills.empty": "No skills yet. Add one to teach the agent a repeatable way of working.",
+  "skills.empty":
+    "No skills yet. Add one to teach the agent a repeatable way of working.",
   "skills.name": "Name",
   "skills.namePh": "e.g. Landing page",
   "skills.desc": "Description",
   "skills.descPh": "What it does / when to use it",
   "skills.triggers": "Trigger words",
   "skills.triggersPh": "landing, site, website — comma separated",
-  "skills.triggersHelp": "The skill loads only when the request contains one of these words. Leave empty to always apply it.",
+  "skills.triggersHelp":
+    "The skill loads only when the request contains one of these words. Leave empty to always apply it.",
   "skills.body": "Instructions",
-  "skills.bodyPh": "Write the steps the agent should follow, e.g.:\n- Always use Tailwind via CDN and a Google Font.\n- One single index.html, no build step.\n- Palette: terracotta, cream, olive. No lorem ipsum.",
+  "skills.bodyPh":
+    "Write the steps the agent should follow, e.g.:\n- Always use Tailwind via CDN and a Google Font.\n- One single index.html, no build step.\n- Palette: terracotta, cream, olive. No lorem ipsum.",
   "skills.save": "Save skill",
   "skills.cancel": "Cancel",
   "skills.edit": "Edit",

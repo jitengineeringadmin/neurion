@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config';
  * community peer can NEVER be the reference, so a sybil ring can't vouch for itself.
  *
  * echo.v1 is verified in-process (free, exact). embedding.v1 re-execution loads the
- * same pinned model (all-MiniLM-L6-v2) via @xenova/transformers, which is heavy
+ * same pinned model (all-MiniLM-L6-v2) via @huggingface/transformers, which is heavy
  * (onnxruntime) — it is OPTIONAL and gated by VERIFY_EMBEDDING_ENABLED so the lean
  * desktop build doesn't ship it; production enables it.
  */
@@ -35,7 +35,7 @@ export class TrustedExecutorService {
       try {
         if (!this.embedder) {
           // dynamic specifier via a variable so TS doesn't require the optional dep at build
-          const spec = '@xenova/transformers';
+          const spec = '@huggingface/transformers';
           const tf = (await import(spec)) as {
             pipeline: (task: string, model: string) => Promise<(t: string, o: unknown) => Promise<{ data: Float32Array }>>;
           };

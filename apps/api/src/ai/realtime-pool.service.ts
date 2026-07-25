@@ -44,7 +44,10 @@ export class RealtimePoolService {
         loadedModels: { has: model },
         trustLevel: { in: allowed },
       },
-      orderBy: [{ reputationScore: 'desc' }, { avgFirstTokenMs: 'asc' }],
+      // `reputation` (EWMA, written by the verification service) — NOT
+      // `reputationScore`, which is declared but never assigned anywhere, so it
+      // stays 0 and made this a constant primary sort key.
+      orderBy: [{ reputation: 'desc' }, { avgFirstTokenMs: 'asc' }, { id: 'asc' }],
     });
     if (!node) return null;
 
