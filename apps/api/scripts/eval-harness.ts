@@ -35,7 +35,11 @@ const API = process.env.API ?? "http://127.0.0.1:8091";
 const BASE = `${API}/api`;
 const EMAIL = process.env.EVAL_EMAIL ?? "admin@neurion.local";
 const PASSWORD = process.env.EVAL_PASSWORD ?? "neurion123";
-const RUNS = Number(process.env.EVAL_RUNS ?? 1);
+// Sampling is on in production, so the same prompt gives different answers:
+// qwen2.5-coder:7b answered one arithmetic case 68, 63, 66, 81, 63, 63 across
+// six runs. A single run is a coin flip, not a measurement — hence a default of
+// three and a warning below when someone asks for fewer.
+const RUNS = Number(process.env.EVAL_RUNS ?? 3);
 const TIMEOUT_MS = Number(process.env.EVAL_TIMEOUT_MS ?? 300_000);
 const OUT_DIR = process.env.EVAL_OUT ?? join(HERE, "..", "..", "..", ".runtime", "eval");
 
@@ -75,6 +79,12 @@ interface RunResult {
   provider?: string;
   servedModel?: string;
   lane?: string;
+  /**
+   * What the model actually said. Without it a failing case is unusable: you
+   * cannot tell a wrong answer from a check that is too strict, and the second
+   * is the more common bug.
+   */
+  response?: string;
 }
 
 // --- hardware profile -----------------------------------------------------
@@ -293,7 +303,14 @@ async function main(): Promise<void> {
   console.log(`Neurion eval — API ${API} (v${health.version ?? "?"})`);
   console.log(`  ${hw.cpu} · ${hw.threads}t · ${hw.ramFreeGb}/${hw.ramTotalGb} GB liberi · GPU: ${hw.gpu}`);
   console.log(`  residenti all'avvio: ${before.length ? before.map((m) => `${m.name}(${m.processor})`).join(", ") : "nessuno"}`);
-  console.log(`  ${requested.length} modelli × ${cases.length} casi × ${RUNS} run (+1 cold scartato dalle medie)\n`);
+  console.log(`  ${requested.length} modelli × ${cases.length} casi × ${RUNS} run (+1 cold scartato dalle medie)`);
+  if (RUNS < 3) {
+    console.log(
+      `  ATTENZIONE: ${RUNS} run per caso. I modelli campionano, quindi la percentuale di successo\n` +
+        `  con cosi pochi campioni e rumore. Usa EVAL_RUNS=3 o piu per confrontare modelli.`,
+    );
+  }
+  console.log("");
 
   const results: RunResult[] = [];
 
@@ -331,6 +348,7 @@ async function main(): Promise<void> {
           if (!r.invalidReason) {
             r.valid = true;
             r.pass = check(s.text, c.expect);
+            r.response = s.text.slice(0, 2000);
             const serverTtft = Number((s.final as { firstTokenMs?: number })?.firstTokenMs ?? NaN);
             if (Number.isFinite(serverTtft)) {
               r.serverFirstTokenMs = serverTtft;

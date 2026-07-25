@@ -49,6 +49,37 @@
       "category": "extraction",
       "prompt": "Da questo testo estrai solo l'anno: \"Il progetto Neurion e stato avviato nel 2026 da un piccolo team.\" Rispondi solo con il numero.",
       "expect": { "type": "contains", "value": "2026" }
+    },
+
+    {
+      "id": "multi-step",
+      "category": "reasoning-hard",
+      "prompt": "Marco ha 3 scatole. Ogni scatola contiene 4 sacchetti e ogni sacchetto contiene 7 biglie. Marco regala 15 biglie. Quante biglie gli restano? Rispondi solo con il numero.",
+      "expect": { "type": "contains", "value": "69" }
+    },
+    {
+      "id": "constraint-count",
+      "category": "instruction-hard",
+      "prompt": "Elenca esattamente tre colori primari, uno per riga, senza numerazione, senza punteggiatura e senza altro testo.",
+      "expect": { "type": "regex", "value": "^[^\\n]+\\n[^\\n]+\\n[^\\n]+$" }
+    },
+    {
+      "id": "negation",
+      "category": "instruction-hard",
+      "prompt": "Scrivi una frase sul mare che NON contenga la lettera 'a'. Rispondi solo con la frase.",
+      "expect": { "type": "regex", "value": "^[^aA]+$" }
+    },
+    {
+      "id": "recall-buried",
+      "category": "context",
+      "prompt": "Leggi: 'Il server ALFA ha 32 GB di RAM. Il server BETA ha 8 GB. Il server GAMMA ha 128 GB. Il server DELTA ha 16 GB.' Quanti GB ha BETA? Rispondi solo con il numero.",
+      "expect": { "type": "contains", "value": "8" }
+    },
+    {
+      "id": "json-nested",
+      "category": "format-hard",
+      "prompt": "Restituisci SOLO JSON valido, senza testo attorno e senza blocchi di codice: un oggetto con chiave \"citta\" (stringa \"Roma\") e chiave \"dati\" che e un oggetto con chiavi \"abitanti\" (numero 2800000) e \"regione\" (stringa \"Lazio\").",
+      "expect": { "type": "json", "keys": ["citta", "dati"] }
     }
   ]
 }
