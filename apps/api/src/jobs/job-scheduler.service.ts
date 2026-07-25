@@ -117,7 +117,9 @@ export class JobScheduler implements OnModuleInit {
         supportedJobTypes: { has: job.type },
         ...(job.type === "image.v1" ? { nvidiaAvailable: true } : {}),
       },
-      orderBy: { reputationScore: "desc" },
+      // `reputation` (EWMA) — `reputationScore` is never written, so ordering by
+      // it left candidate selection effectively unordered.
+      orderBy: [{ reputation: "desc" }, { id: "asc" }],
       take: 50,
     });
     const regional =

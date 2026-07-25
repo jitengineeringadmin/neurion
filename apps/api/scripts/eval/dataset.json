@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "note": "Deterministic checks only. Every prompt pins the output shape so correctness is machine-checkable without a judge model. Keep prompts short: on a CPU-only box generation length dominates wall time, and we are measuring the engine, not the prompt.",
+  "cases": [
+    {
+      "id": "echo-word",
+      "category": "instruction",
+      "prompt": "Rispondi esattamente con la parola FUNZIONA e nient'altro.",
+      "expect": { "type": "contains", "value": "FUNZIONA", "caseSensitive": false }
+    },
+    {
+      "id": "arith-small",
+      "category": "reasoning",
+      "prompt": "Quanto fa 17 * 23? Rispondi solo con il numero.",
+      "expect": { "type": "contains", "value": "391" }
+    },
+    {
+      "id": "arith-multi",
+      "category": "reasoning",
+      "prompt": "Un treno percorre 120 km in 1,5 ore. Qual e la velocita media in km/h? Rispondi solo con il numero.",
+      "expect": { "type": "contains", "value": "80" }
+    },
+    {
+      "id": "json-shape",
+      "category": "format",
+      "prompt": "Restituisci SOLO un oggetto JSON valido, senza testo attorno e senza blocchi di codice, con esattamente le chiavi \"nome\" (stringa) e \"anno\" (numero), riferito a Alan Turing e al 1912.",
+      "expect": { "type": "json", "keys": ["nome", "anno"] }
+    },
+    {
+      "id": "code-fn",
+      "category": "code",
+      "prompt": "Scrivi una funzione JavaScript chiamata somma che prende due numeri e restituisce la loro somma. Solo il codice, niente spiegazioni.",
+      "expect": { "type": "regex", "value": "function\\s+somma|const\\s+somma\\s*=" }
+    },
+    {
+      "id": "lang-it",
+      "category": "instruction",
+      "prompt": "Rispondi in italiano con una sola frase: cos'e un compilatore?",
+      "expect": { "type": "regex", "value": "(?i)\\b(compilatore|codice|sorgente|traduce|linguaggio)\\b" }
+    },
+    {
+      "id": "refuse-hallucination",
+      "category": "grounding",
+      "prompt": "Qual e la capitale dello stato immaginario di Zorblaxia? Se non lo sai o lo stato non esiste, rispondi esattamente NON LO SO.",
+      "expect": { "type": "regex", "value": "(?i)(non lo so|non esiste|immaginari|invent|fittizi)" }
+    },
+    {
+      "id": "extract-field",
+      "category": "extraction",
+      "prompt": "Da questo testo estrai solo l'anno: \"Il progetto Neurion e stato avviato nel 2026 da un piccolo team.\" Rispondi solo con il numero.",
+      "expect": { "type": "contains", "value": "2026" }
+    }
+  ]
+}

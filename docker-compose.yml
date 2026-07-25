@@ -65,6 +65,14 @@ services:
     container_name: neurion-ollama
     ports:
       - "127.0.0.1:11434:11434"
+    environment:
+      # Keep the model resident instead of unloading it after the default 5 min
+      # of idle: chat reaches ollama through the OpenAI-compatible /v1 layer,
+      # which cannot carry keep_alive, so this server default is the only lever.
+      # Start with one resident model — more costs memory and causes evictions,
+      # which is slower than no caching at all. Measure before raising it.
+      OLLAMA_KEEP_ALIVE: "-1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
     volumes:
       - neurion_ollama:/root/.ollama
     profiles: ["ai"]

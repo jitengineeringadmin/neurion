@@ -19,7 +19,8 @@
     "test:agent-upgrade": "tsx scripts/agent-upgrade-test.ts",
     "test:agent-live": "tsx scripts/agent-live-test.ts",
     "test:knowledge": "tsx scripts/knowledge-test.ts",
-    "test:e2e": "tsx scripts/e2e.ts"
+    "test:e2e": "tsx scripts/e2e.ts",
+    "eval": "tsx scripts/eval-harness.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
