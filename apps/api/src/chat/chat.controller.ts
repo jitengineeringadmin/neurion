@@ -485,8 +485,18 @@ export class ChatController {
     // (addAssistantMessage at the end) — just stop writing to the dead socket. Coming
     // back to the conversation then shows the finished reply instead of a lost one.
     let clientGone = false;
+    // The provider interface has always accepted an AbortSignal and nothing
+    // ever passed one, so a disconnected client left the engine generating with
+    // no way to stop it. Keeping the generation is the DEFAULT and deliberate
+    // behaviour (see above); CHAT_ABORT_ON_DISCONNECT=true opts into stopping
+    // instead, which matters on a CPU-only machine where an unwatched answer
+    // competes with the next real request.
+    const abort = new AbortController();
+    const abortOnDisconnect =
+      String(this.config.get("CHAT_ABORT_ON_DISCONNECT") ?? "false") === "true";
     res.on("close", () => {
       clientGone = true;
+      if (abortOnDisconnect) abort.abort();
     });
     const send = (event: string, data: unknown): void => {
       if (clientGone) return;
@@ -696,6 +706,7 @@ export class ChatController {
         for await (const text of plan.provider.streamChat(
           context,
           chosenModel,
+          abort.signal,
         )) {
           if (firstTokenMs === null) firstTokenMs = Date.now() - t0;
           full += text;
@@ -717,7 +728,11 @@ export class ChatController {
           labeled: true,
           note: `real provider unavailable: ${(streamErr as Error).message}`,
         });
-        for await (const text of usedProvider.streamChat(context, usedModel)) {
+        for await (const text of usedProvider.streamChat(
+          context,
+          usedModel,
+          abort.signal,
+        )) {
           if (firstTokenMs === null) firstTokenMs = Date.now() - t0;
           full += text;
           send("token", { text });

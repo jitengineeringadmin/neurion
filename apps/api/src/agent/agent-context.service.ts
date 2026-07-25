@@ -16,6 +16,14 @@ export interface CompiledContext {
 const IMPORTANT_LINE =
   /\b(error|failed|failure|warn|warning|passed|success|created|wrote|edited|deleted|changed|exit code|exception|traceback|network)\b/i;
 
+/**
+ * Compression decisions are snapped to multiples of this many messages so the
+ * compiled prompt stays byte-identical while a conversation grows inside a
+ * block, instead of shifting on every single turn. Prompt-prefix reuse in the
+ * inference engine depends on that stability; see scripts/context-test.ts.
+ */
+const CONTEXT_BLOCK = 8;
+
 @Injectable()
 export class AgentContextService {
   constructor(
@@ -116,10 +124,16 @@ export class AgentContextService {
     }
 
     const charBudget = Math.floor(inputBudget * 3.5);
-    const perMessage = Math.max(
-      1800,
-      Math.floor(charBudget / Math.max(4, messages.length)),
+    // Quantise the divisor. Dividing by the exact message count re-truncated
+    // every message to a different length on each turn, so the compiled prompt
+    // changed from byte one and the engine could never reuse its KV cache.
+    // Rounding up to a block keeps the budget — and therefore the bytes —
+    // identical for CONTEXT_BLOCK turns at a time.
+    const slots = Math.max(
+      4,
+      Math.ceil(messages.length / CONTEXT_BLOCK) * CONTEXT_BLOCK,
     );
+    const perMessage = Math.max(1800, Math.floor(charBudget / slots));
     const shortened = messages.map((message, index) => {
       if (index === 0 && message.role === "system") {
         return {
@@ -144,21 +158,30 @@ export class AgentContextService {
     }
 
     const system = shortened[0]?.role === "system" ? shortened[0] : undefined;
-    const tail: ChatMsg[] = [];
-    let used = system ? this.estimateTokens(system.content) + 6 : 0;
+    const base = system ? 1 : 0;
     const tailBudget = Math.floor(inputBudget * 0.62);
-    for (let i = shortened.length - 1; i >= (system ? 1 : 0); i--) {
-      const message = shortened[i] as ChatMsg;
-      const cost = this.estimateTokens(message.content) + 6;
-      if (used + cost > tailBudget && tail.length >= 2) break;
-      tail.unshift(message);
+
+    // Walk back from the newest message to find how much history fits.
+    let used = system ? this.estimateTokens(system.content) + 6 : 0;
+    let fits = 0;
+    for (let i = shortened.length - 1; i >= base; i--) {
+      const cost = this.estimateTokens((shortened[i] as ChatMsg).content) + 6;
+      if (used + cost > tailBudget && fits >= 2) break;
+      fits++;
       used += cost;
     }
-    const omittedCount = shortened.length - tail.length - (system ? 1 : 0);
-    const omitted = shortened.slice(
-      system ? 1 : 0,
-      shortened.length - tail.length,
-    );
+
+    // Snap the cut to a block boundary. Taking exactly what fits slides the
+    // window by one message per turn, which rewrites both the digest and the
+    // head of the tail every time; anchoring holds them still until the block
+    // advances. Rounding the start UP keeps the result within budget.
+    let startIdx = shortened.length - fits;
+    const anchored = base + Math.ceil((startIdx - base) / CONTEXT_BLOCK) * CONTEXT_BLOCK;
+    startIdx = Math.min(Math.max(anchored, base), Math.max(base, shortened.length - 2));
+
+    const tail = shortened.slice(startIdx);
+    const omittedCount = startIdx - base;
+    const omitted = shortened.slice(base, startIdx);
     const digest: ChatMsg = {
       role: "user",
       content: this.summarize(omitted, Math.floor(charBudget * 0.25)),

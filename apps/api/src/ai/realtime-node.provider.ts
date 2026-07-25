@@ -17,7 +17,14 @@ export class RealtimeNodeProvider implements AiProvider {
     private readonly timeoutMs = 60_000,
   ) {}
 
-  async *streamChat(messages: ChatMsg[], model: string): AsyncIterable<string> {
+  // `signal` is part of the AiProvider contract; accepting it here keeps this
+  // implementation honest with the interface instead of silently ignoring an
+  // argument every caller is entitled to pass.
+  async *streamChat(
+    messages: ChatMsg[],
+    model: string,
+    signal?: AbortSignal,
+  ): AsyncIterable<string> {
     const requestId = randomUUID();
     const queue: string[] = [];
     let done = false;
@@ -68,6 +75,17 @@ export class RealtimeNodeProvider implements AiProvider {
       }
     }, this.timeoutMs);
 
+    // An aborted request stops waiting on the node instead of holding the
+    // listeners and the timer until the 60 s timeout expires.
+    const onAbort = () => {
+      if (done) return;
+      error = error ?? new Error('aborted');
+      done = true;
+      ping();
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+
     try {
       if (!sent) throw new Error('realtime node not reachable');
       for (;;) {
@@ -81,6 +99,7 @@ export class RealtimeNodeProvider implements AiProvider {
       if (error) throw error;
     } finally {
       clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
       this.gateway.off('realtime.chat.token', onToken);
       this.gateway.off('realtime.chat.done', onDone);
       this.gateway.off('realtime.chat.error', onError);
