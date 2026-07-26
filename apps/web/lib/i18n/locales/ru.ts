@@ -587,7 +587,7 @@ const dict: Record<string, string> = {
   "sidebar.renamePrompt": "Новое имя проекта:",
   "home.downloadCta": "Скачать для Windows",
   "home.downloadMeta":
-    "Последняя версия приложения: Neurion 1.8.8 для Windows.",
+    "Последняя версия приложения: Neurion 1.8.9 для Windows.",
   "login.startingUp": "Запуск…",
   "login.startingUpHint":
     "Приложение запускается — это займёт несколько секунд.",

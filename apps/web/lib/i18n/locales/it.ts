@@ -6,7 +6,7 @@ const dict: Record<string, string> = {
   "home.description":
     "Una rete di calcolo IA distribuita: chat veloce su una grid della community, con un router Fast / Grid / Fallback, crediti interni e un token di utilità NRN on-chain.",
   "home.downloadCta": "Scarica per Windows",
-  "home.downloadMeta": "Ultima app desktop: Neurion 1.8.8 per Windows.",
+  "home.downloadMeta": "Ultima app desktop: Neurion 1.8.9 per Windows.",
   "home.enterCta": "ENTRA",
   "login.brandSuffix": "AI",
   "login.tabLogin": "accedi",

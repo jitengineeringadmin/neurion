@@ -558,7 +558,7 @@ const dict: Record<string, string> = {
   "sidebar.rename": "重命名",
   "sidebar.renamePrompt": "新的项目名称：",
   "home.downloadCta": "下载 Windows 版",
-  "home.downloadMeta": "最新桌面应用：Neurion 1.8.8 for Windows。",
+  "home.downloadMeta": "最新桌面应用：Neurion 1.8.9 for Windows。",
   "login.startingUp": "正在启动…",
   "login.startingUpHint": "应用正在启动，需要几秒钟。",
   "login.startingUpSlow": "首次启动最多可能需要一分钟（正在启动数据库）…",

@@ -589,7 +589,7 @@ const dict: Record<string, string> = {
   "sidebar.rename": "Umbenennen",
   "sidebar.renamePrompt": "Neuer Projektname:",
   "home.downloadCta": "Für Windows herunterladen",
-  "home.downloadMeta": "Neueste Desktop-App: Neurion 1.8.8 für Windows.",
+  "home.downloadMeta": "Neueste Desktop-App: Neurion 1.8.9 für Windows.",
   "login.startingUp": "Wird gestartet…",
   "login.startingUpHint":
     "Die App startet gerade — das dauert ein paar Sekunden.",
