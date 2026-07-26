@@ -23,23 +23,52 @@ export function Onboarding() {
   const [pull, setPull] = useState<{ percent: number | null; status: string } | null>(null);
   const [err, setErr] = useState('');
   const [rec, setRec] = useState<{ ramGb: number; cores: number; model: { name: string; label: string; size: string; note: string } } | null>(null);
+  // Which engine downloads the model. 'bundled' is Neurion's own llama.cpp:
+  // without it this wizard could only tell the user to go and install ollama,
+  // which is the dependency the bundled engine exists to remove.
+  const [mode, setMode] = useState<'ollama' | 'bundled'>('ollama');
+  const [bundled, setBundled] = useState<{ id: string; label: string; sizeBytes: number; description: string } | null>(null);
   const alive = useRef(true);
 
   // Decide once at mount whether to show: never onboarded AND no models installed.
   useEffect(() => {
     alive.current = true;
     if (typeof window === 'undefined' || localStorage.getItem(DONE_KEY) === '1') return;
+
+    // Prefer whatever the user already runs: someone with ollama keeps using
+    // their own models. The bundled engine is for the machine that has nothing.
     void api<{ engine: string; installed: unknown[] }>('/ai/models/installed')
-      .then((r) => {
+      .then(async (r) => {
         if (!alive.current) return;
         if ((r.installed || []).length > 0) { localStorage.setItem(DONE_KEY, '1'); return; } // existing user
-        setEngineUp(r.engine === 'up');
-        setStep('welcome');
-        // Detect the machine's RAM and pre-pick the best-fitting model, so the user
-        // never has to answer "which model?" — the download button just uses this.
-        void api<{ ramGb: number; cores: number; model: { name: string; label: string; size: string; note: string } }>('/ai/models/recommend')
-          .then((rr) => { if (alive.current) setRec(rr); })
-          .catch(() => undefined);
+        const ollamaUp = r.engine === 'up';
+        setEngineUp(ollamaUp);
+
+        if (ollamaUp) {
+          setStep('welcome');
+          // Detect the machine's RAM and pre-pick the best-fitting model, so the user
+          // never has to answer "which model?" — the download button just uses this.
+          void api<{ ramGb: number; cores: number; model: { name: string; label: string; size: string; note: string } }>('/ai/models/recommend')
+            .then((rr) => { if (alive.current) setRec(rr); })
+            .catch(() => undefined);
+          return;
+        }
+
+        // No ollama: can Neurion install its own engine instead?
+        try {
+          const st = await api<{ state: string; models?: Array<{ id: string; label: string; sizeBytes: number; description: string; recommended: boolean }> }>('/ai/engine/status');
+          if (!alive.current) return;
+          if (st.state === 'ready') { localStorage.setItem(DONE_KEY, '1'); return; }
+          const pick = st.models?.find((m) => m.recommended) ?? st.models?.[0];
+          if (st.state === 'needs_setup' && pick) {
+            setMode('bundled');
+            setBundled(pick);
+            setEngineUp(true); // nothing for the user to install — skip that step
+          }
+        } catch {
+          /* engine endpoint unavailable (hosted build) — fall back to the ollama prompt */
+        }
+        if (alive.current) setStep('welcome');
       })
       .catch(() => undefined); // API not reachable (online build etc.) — no wizard
     return () => { alive.current = false; };
@@ -67,11 +96,18 @@ export function Onboarding() {
     if (pull) return;
     setErr('');
     setPull({ percent: 0, status: '' });
+    // Same wizard, two engines: Neurion's own installs the runtime as well as
+    // the weights, so it reports which stage it is in.
+    const [path, body] =
+      mode === 'bundled'
+        ? (['/ai/engine/setup', { modelId: bundled?.id }] as const)
+        : (['/ai/models/pull', { name: rec?.model.name ?? RECOMMENDED_MODEL }] as const);
     try {
-      await streamSSE('/ai/models/pull', { name: rec?.model.name ?? RECOMMENDED_MODEL }, {
+      await streamSSE(path, body, {
         onEvent: (event, d) => {
-          if (event === 'progress') setPull({ percent: d.percent ?? null, status: d.status ?? '' });
-          else if (event === 'done') { setPull(null); setStep('done'); }
+          if (event === 'progress') {
+            setPull({ percent: d.percent ?? null, status: d.stage ?? d.status ?? '' });
+          } else if (event === 'done') { setPull(null); setStep('done'); }
           else if (event === 'error') { setErr(d.message || 'download failed'); setPull(null); }
         },
       });
@@ -135,7 +171,19 @@ export function Onboarding() {
           <>
             <h2 style={h}>{t('ob.modelTitle')}</h2>
             <p style={sub}>{t('ob.modelBody')}</p>
-            {rec && !pull && (
+            {mode === 'bundled' && bundled && !pull && (
+              <div style={{ border: `1px solid ${theme.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 16, background: theme.bg }}>
+                <div style={{ fontSize: 12, color: theme.muted, marginBottom: 5 }}>⚡ {t('ob.autoRec')}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>
+                  {bundled.label}{' '}
+                  <span style={{ color: theme.muted, fontWeight: 400, fontSize: 13 }}>
+                    (~{(bundled.sizeBytes / 1_000_000_000).toFixed(1)} GB)
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: theme.muted, marginTop: 2, fontFamily: 'var(--font-sans), sans-serif' }}>{bundled.description}</div>
+              </div>
+            )}
+            {mode === 'ollama' && rec && !pull && (
               <div style={{ border: `1px solid ${theme.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 16, background: theme.bg }}>
                 <div style={{ fontSize: 12, color: theme.muted, marginBottom: 5 }}>🖥 {rec.ramGb} GB RAM · {rec.cores} core → {t('ob.autoRec')}</div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>
