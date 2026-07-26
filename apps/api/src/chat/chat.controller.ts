@@ -101,7 +101,8 @@ export class ChatController {
     if (String(this.config.get("NEURION_METER_LOCAL") ?? "false") === "true") {
       return rawCost;
     }
-    const servedByNetwork = plan.lane === "GRID" || (plan.lane === "FAST" && !!plan.nodeId);
+    const servedByNetwork =
+      plan.lane === "GRID" || (plan.lane === "FAST" && !!plan.nodeId);
     return servedByNetwork ? rawCost : 0;
   }
 

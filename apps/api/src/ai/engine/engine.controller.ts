@@ -25,7 +25,10 @@ export class EngineController {
 
   /** Download the engine and a model, then start it, reporting progress live. */
   @Post("setup")
-  async setup(@Body() dto: SelectModelDto, @Res() res: Response): Promise<void> {
+  async setup(
+    @Body() dto: SelectModelDto,
+    @Res() res: Response,
+  ): Promise<void> {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");

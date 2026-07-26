@@ -59,14 +59,17 @@ export interface Consensus {
  * clustering at the deep-verify tolerance. No strict majority => not agreed
  * (escalate to the trusted L3 executor instead of paying anyone).
  */
-export function consensus(jobType: string, replicas: readonly Replica[]): Consensus {
+export function consensus(
+  jobType: string,
+  replicas: readonly Replica[],
+): Consensus {
   const k = replicas.length;
   if (k === 0) return { agreed: false, majority: [], outliers: [] };
 
   const clusters: { rep: Replica; members: string[] }[] = [];
   const sameCluster = (a: Replica, b: Replica): boolean => {
-    if (jobType === 'echo.v1') return a.result.echo === b.result.echo;
-    if (jobType === 'embedding.v1') {
+    if (jobType === "echo.v1") return a.result.echo === b.result.echo;
+    if (jobType === "embedding.v1") {
       const va = a.result.vector as number[] | undefined;
       const vb = b.result.vector as number[] | undefined;
       if (!Array.isArray(va) || !Array.isArray(vb)) return false;
@@ -89,10 +92,16 @@ export function consensus(jobType: string, replicas: readonly Replica[]): Consen
 }
 
 /** Deep-compare a node's embedding output against the trusted reference. */
-export function embeddingMatches(out: readonly number[], ref: readonly number[]): { ok: boolean; cos: number; normRatio: number } {
+export function embeddingMatches(
+  out: readonly number[],
+  ref: readonly number[],
+): { ok: boolean; cos: number; normRatio: number } {
   const cos = cosine(out, ref);
   const refNorm = l2norm(ref);
   const normRatio = refNorm === 0 ? 0 : l2norm(out) / refNorm;
-  const ok = cos >= COSINE_TOLERANCE && normRatio >= NORM_RATIO_BAND[0] && normRatio <= NORM_RATIO_BAND[1];
+  const ok =
+    cos >= COSINE_TOLERANCE &&
+    normRatio >= NORM_RATIO_BAND[0] &&
+    normRatio <= NORM_RATIO_BAND[1];
   return { ok, cos, normRatio };
 }

@@ -6,7 +6,7 @@ Neurion is a distributed AI compute network spanning five surfaces: a NestJS API
 
 | Area | Features |
 |---|---|
-| 1. REST API Endpoints | 76 |
+| 1. REST API Endpoints | 116 |
 | 2. API Realtime Surface (WS / SSE / Redis) | 24 |
 | 3. AI Routing System | 25 |
 | 4. Verification & Trust System | 29 |
@@ -22,7 +22,7 @@ Status legend: 🟢 live · 🟡 partial · ⚪ stub · 🔴 disabled
 
 ## 1. REST API Endpoints (`apps/api/src`)
 
-16 controller modules, 67 active endpoints. JWT-guarded by default (`@Public` exempts); role-gated where noted (SUPER_ADMIN / ADMIN / COMPLIANCE).
+20 controller modules, 116 route decorators. JWT-guarded by default (`@Public` exempts); role-gated where noted (SUPER_ADMIN / ADMIN / COMPLIANCE).
 
 ### Auth (`auth/auth.controller.ts`)
 - **POST /auth/register** — Public registration; creates account, issues session + refresh token; rate-limited 5/min; audit-logged. 🟢 `auth.controller.ts:65-84`

@@ -58,6 +58,9 @@ export class AgentContextService {
   }
 
   compactObservation(text: string, maxChars = 12_000): string {
+    // Stripping NUL is the whole point: Postgres rejects it in text columns, so
+    // it must not survive into a stored message.
+    // eslint-disable-next-line no-control-regex
     const clean = String(text ?? "").replace(/\u0000/g, "");
     if (clean.length <= maxChars) return clean;
     const lines = clean.split(/\r?\n/);
@@ -176,8 +179,12 @@ export class AgentContextService {
     // head of the tail every time; anchoring holds them still until the block
     // advances. Rounding the start UP keeps the result within budget.
     let startIdx = shortened.length - fits;
-    const anchored = base + Math.ceil((startIdx - base) / CONTEXT_BLOCK) * CONTEXT_BLOCK;
-    startIdx = Math.min(Math.max(anchored, base), Math.max(base, shortened.length - 2));
+    const anchored =
+      base + Math.ceil((startIdx - base) / CONTEXT_BLOCK) * CONTEXT_BLOCK;
+    startIdx = Math.min(
+      Math.max(anchored, base),
+      Math.max(base, shortened.length - 2),
+    );
 
     const tail = shortened.slice(startIdx);
     const omittedCount = startIdx - base;

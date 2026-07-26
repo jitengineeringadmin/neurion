@@ -1,7 +1,14 @@
-import { Global, Injectable, Logger, Module, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { randomUUID } from 'node:crypto';
-import Redis from 'ioredis';
+import {
+  Global,
+  Injectable,
+  Logger,
+  Module,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { randomUUID } from "node:crypto";
+import Redis from "ioredis";
 
 /**
  * Optional Redis. When REDIS_URL is set the API runs in horizontally-scalable
@@ -18,16 +25,21 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly config: ConfigService) {}
 
   get enabled(): boolean {
-    return !!this.config.get<string>('REDIS_URL');
+    return !!this.config.get<string>("REDIS_URL");
   }
 
   onModuleInit(): void {
     if (!this.enabled) return;
-    const url = this.config.get<string>('REDIS_URL') as string;
-    const mk = () => new Redis(url, { maxRetriesPerRequest: null, lazyConnect: false });
+    const url = this.config.get<string>("REDIS_URL") as string;
+    const mk = () =>
+      new Redis(url, { maxRetriesPerRequest: null, lazyConnect: false });
     this.clients = { kv: mk(), pub: mk(), sub: mk() };
-    this.clients.kv.on('error', (e) => this.logger.warn(`redis kv error: ${e.message}`));
-    this.logger.log(`Redis multi-instance mode ON (instance ${this.instanceId.slice(0, 8)})`);
+    this.clients.kv.on("error", (e) =>
+      this.logger.warn(`redis kv error: ${e.message}`),
+    );
+    this.logger.log(
+      `Redis multi-instance mode ON (instance ${this.instanceId.slice(0, 8)})`,
+    );
   }
 
   get kv(): Redis | null {

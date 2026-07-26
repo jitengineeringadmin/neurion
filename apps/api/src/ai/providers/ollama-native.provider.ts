@@ -111,7 +111,8 @@ export class OllamaNativeProvider implements AiProvider {
           }
         } catch (e) {
           // A reported engine error must surface; a partial line must not.
-          if (e instanceof Error && e.message && !/JSON/i.test(e.message)) throw e;
+          if (e instanceof Error && e.message && !/JSON/i.test(e.message))
+            throw e;
         }
       }
     }

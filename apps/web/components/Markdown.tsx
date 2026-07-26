@@ -1,6 +1,6 @@
-'use client';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+"use client";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 /**
  * Chat/agent content renderer: models answer in markdown, so show it formatted
@@ -15,7 +15,9 @@ export function Markdown({ children }: { children: string }) {
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ href, children: kids }) => (
-            <a href={href} target="_blank" rel="noreferrer">{kids}</a>
+            <a href={href} target="_blank" rel="noreferrer">
+              {kids}
+            </a>
           ),
         }}
       >

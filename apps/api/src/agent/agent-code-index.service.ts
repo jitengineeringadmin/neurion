@@ -219,13 +219,7 @@ export class AgentCodeIndexService {
         this.addReferenceHits(hits, file.calls, clean, terms, "call");
       }
       if (includeReferences) {
-        this.addReferenceHits(
-          hits,
-          file.references,
-          clean,
-          terms,
-          "reference",
-        );
+        this.addReferenceHits(hits, file.references, clean, terms, "reference");
       }
     }
 
@@ -271,7 +265,9 @@ export class AgentCodeIndexService {
     const definitionPaths = new Set(definitions.map((symbol) => symbol.path));
     const dependencies = index.files
       .filter((file) => definitionPaths.has(file.path))
-      .flatMap((file) => file.imports.map((dependency) => `${file.path} -> ${dependency}`))
+      .flatMap((file) =>
+        file.imports.map((dependency) => `${file.path} -> ${dependency}`),
+      )
       .slice(0, 60);
     const lines = (items: string[]) =>
       items.length ? items.map((item) => `- ${item}`).join("\n") : "- none";
@@ -314,7 +310,8 @@ export class AgentCodeIndexService {
   ): void {
     for (const reference of references) {
       const name = reference.name.toLowerCase();
-      const haystack = `${reference.path} ${reference.owner ?? ""} ${name}`.toLowerCase();
+      const haystack =
+        `${reference.path} ${reference.owner ?? ""} ${name}`.toLowerCase();
       let score = name === clean ? 95 : name.includes(clean) ? 58 : 0;
       for (const term of terms) if (haystack.includes(term)) score += 12;
       if (score > 0) {
@@ -451,7 +448,7 @@ export class AgentCodeIndexService {
     const hasModifier = (node: ts.Node, kind: ts.SyntaxKind): boolean =>
       Boolean(
         ts.canHaveModifiers(node) &&
-          ts.getModifiers(node)?.some((modifier) => modifier.kind === kind),
+        ts.getModifiers(node)?.some((modifier) => modifier.kind === kind),
       );
     const signatureOf = (node: ts.Node): string => {
       const text = node.getText(source).split(/\r?\n/)[0]?.trim() ?? "";
@@ -546,10 +543,7 @@ export class AgentCodeIndexService {
       return false;
     };
     const visit = (node: ts.Node, owner?: string): void => {
-      if (
-        ts.isImportDeclaration(node) ||
-        ts.isExportDeclaration(node)
-      ) {
+      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
         const module = node.moduleSpecifier;
         if (module && ts.isStringLiteralLike(module)) imports.add(module.text);
       } else if (
@@ -699,7 +693,7 @@ export class AgentCodeIndexService {
         {
           kind: "function",
           regex:
-            /^\s*(?:(?:public|private|protected|internal|static|virtual|override|async|final|inline)\s+)+(?:[\w<>\[\],.?*&:]+\s+)+([A-Za-z_]\w*)\s*\(/,
+            /^\s*(?:(?:public|private|protected|internal|static|virtual|override|async|final|inline)\s+)+(?:[\w<>[\],.?*&:]+\s+)+([A-Za-z_]\w*)\s*\(/,
           name: 1,
         },
       );

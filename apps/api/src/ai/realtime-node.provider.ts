@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
-import { AiProvider, ChatMsg } from './providers/ai-provider.interface';
-import { NodeGatewayService } from '../nodes/node-gateway.service';
+import { randomUUID } from "node:crypto";
+import { AiProvider, ChatMsg } from "./providers/ai-provider.interface";
+import { NodeGatewayService } from "../nodes/node-gateway.service";
 
 /**
  * Fast-lane provider bound to a warm realtime node. Sends realtime.chat.request
@@ -8,7 +8,7 @@ import { NodeGatewayService } from '../nodes/node-gateway.service';
  * events into an async token stream, with a timeout.
  */
 export class RealtimeNodeProvider implements AiProvider {
-  readonly name = 'neurion_realtime_node';
+  readonly name = "neurion_realtime_node";
   readonly labeled = false;
 
   constructor(
@@ -49,18 +49,18 @@ export class RealtimeNodeProvider implements AiProvider {
     };
     const onError = (e: { requestId: string; message?: string }) => {
       if (e.requestId === requestId) {
-        error = new Error(e.message ?? 'realtime error');
+        error = new Error(e.message ?? "realtime error");
         done = true;
         ping();
       }
     };
 
-    this.gateway.on('realtime.chat.token', onToken);
-    this.gateway.on('realtime.chat.done', onDone);
-    this.gateway.on('realtime.chat.error', onError);
+    this.gateway.on("realtime.chat.token", onToken);
+    this.gateway.on("realtime.chat.done", onDone);
+    this.gateway.on("realtime.chat.error", onError);
 
     const sent = this.gateway.send(this.nodeId, {
-      type: 'realtime.chat.request',
+      type: "realtime.chat.request",
       requestId,
       model,
       messages,
@@ -69,7 +69,7 @@ export class RealtimeNodeProvider implements AiProvider {
     });
     const timer = setTimeout(() => {
       if (!done) {
-        error = error ?? new Error('realtime timeout');
+        error = error ?? new Error("realtime timeout");
         done = true;
         ping();
       }
@@ -79,15 +79,15 @@ export class RealtimeNodeProvider implements AiProvider {
     // listeners and the timer until the 60 s timeout expires.
     const onAbort = () => {
       if (done) return;
-      error = error ?? new Error('aborted');
+      error = error ?? new Error("aborted");
       done = true;
       ping();
     };
-    signal?.addEventListener('abort', onAbort, { once: true });
+    signal?.addEventListener("abort", onAbort, { once: true });
     if (signal?.aborted) onAbort();
 
     try {
-      if (!sent) throw new Error('realtime node not reachable');
+      if (!sent) throw new Error("realtime node not reachable");
       for (;;) {
         if (queue.length) {
           yield queue.shift() as string;
@@ -99,10 +99,10 @@ export class RealtimeNodeProvider implements AiProvider {
       if (error) throw error;
     } finally {
       clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-      this.gateway.off('realtime.chat.token', onToken);
-      this.gateway.off('realtime.chat.done', onDone);
-      this.gateway.off('realtime.chat.error', onError);
+      signal?.removeEventListener("abort", onAbort);
+      this.gateway.off("realtime.chat.token", onToken);
+      this.gateway.off("realtime.chat.done", onDone);
+      this.gateway.off("realtime.chat.error", onError);
     }
   }
 }

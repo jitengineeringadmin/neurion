@@ -1,5 +1,5 @@
-'use client';
-import { useLang, LANGS, Lang } from '../lib/i18n';
+"use client";
+import { useLang, LANGS, Lang } from "../lib/i18n";
 
 export function LangToggle() {
   const { lang, setLang } = useLang();
@@ -10,19 +10,23 @@ export function LangToggle() {
       aria-label="language"
       title="Language"
       style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
         borderRadius: 8,
-        color: 'var(--accent)',
-        padding: '6px 8px',
-        cursor: 'pointer',
+        color: "var(--accent)",
+        padding: "6px 8px",
+        cursor: "pointer",
         fontSize: 12,
         fontWeight: 500,
-        fontFamily: 'inherit',
+        fontFamily: "inherit",
       }}
     >
       {LANGS.map((l) => (
-        <option key={l.code} value={l.code} style={{ background: 'var(--surface)', color: 'var(--text)' }}>
+        <option
+          key={l.code}
+          value={l.code}
+          style={{ background: "var(--surface)", color: "var(--text)" }}
+        >
           {l.label}
         </option>
       ))}

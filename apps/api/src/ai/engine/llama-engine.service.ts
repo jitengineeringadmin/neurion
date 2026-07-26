@@ -1,9 +1,21 @@
-import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  OnApplicationBootstrap,
+  OnModuleDestroy,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { spawn, ChildProcess, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  rmSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
 import { join } from "node:path";
-import { randomBytes } from "node:crypto";
 import AdmZip from "adm-zip";
 import {
   CATALOG,
@@ -62,7 +74,9 @@ export interface PublicModel {
  * engine.
  */
 @Injectable()
-export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestroy {
+export class LlamaEngineService
+  implements OnApplicationBootstrap, OnModuleDestroy
+{
   private readonly logger = new Logger(LlamaEngineService.name);
   private proc: ChildProcess | null = null;
   private installing: { stage: EngineStage; percent: number } | null = null;
@@ -113,7 +127,9 @@ export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestr
 
   private readState(dir: string): EngineState | null {
     try {
-      return JSON.parse(readFileSync(this.statePath(dir), "utf8")) as EngineState;
+      return JSON.parse(
+        readFileSync(this.statePath(dir), "utf8"),
+      ) as EngineState;
     } catch {
       return null;
     }
@@ -137,10 +153,14 @@ export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestr
     return fileReady(this.binPath(dir), 1024);
   }
 
-  async ensureEngine(dir: string, onProgress: (p: number) => void): Promise<void> {
+  async ensureEngine(
+    dir: string,
+    onProgress: (p: number) => void,
+  ): Promise<void> {
     if (this.engineInstalled(dir)) return;
     const asset = ENGINE_ASSETS[process.platform];
-    if (!asset) throw new Error(`local engine not available for ${process.platform}`);
+    if (!asset)
+      throw new Error(`local engine not available for ${process.platform}`);
 
     mkdirSync(this.binDir(dir), { recursive: true });
     const archive = join(dir, asset.file);
@@ -160,7 +180,9 @@ export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestr
         { windowsHide: true, timeout: 120_000 },
       );
       if (res.status !== 0) {
-        throw new Error(`tar failed: ${res.stderr?.toString().slice(0, 200) ?? res.status}`);
+        throw new Error(
+          `tar failed: ${res.stderr?.toString().slice(0, 200) ?? res.status}`,
+        );
       }
     }
     rmSync(archive, { force: true });
@@ -168,7 +190,10 @@ export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestr
     // MIT obliges the licence to travel with the binaries, and the Windows zip
     // does not carry it.
     try {
-      writeFileSync(join(this.binDir(dir), "LICENSE-llama.cpp.txt"), LLAMA_LICENSE_NOTICE);
+      writeFileSync(
+        join(this.binDir(dir), "LICENSE-llama.cpp.txt"),
+        LLAMA_LICENSE_NOTICE,
+      );
     } catch {
       /* best effort */
     }
@@ -183,12 +208,21 @@ export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestr
     return fileReady(this.modelPath(dir, m.file), m.sizeBytes * 0.9);
   }
 
-  async ensureModel(dir: string, m: CatalogModel, onProgress: (p: number) => void): Promise<void> {
+  async ensureModel(
+    dir: string,
+    m: CatalogModel,
+    onProgress: (p: number) => void,
+  ): Promise<void> {
     if (this.modelInstalled(dir, m)) return;
     mkdirSync(join(dir, "models"), { recursive: true });
-    await downloadFile(m.url, this.modelPath(dir, m.file), (p) => onProgress(p), {
-      expectedBytes: m.sizeBytes,
-    });
+    await downloadFile(
+      m.url,
+      this.modelPath(dir, m.file),
+      (p) => onProgress(p),
+      {
+        expectedBytes: m.sizeBytes,
+      },
+    );
   }
 
   // --- process -----------------------------------------------------------
@@ -207,14 +241,19 @@ export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestr
   async start(dir: string, m: CatalogModel): Promise<void> {
     await this.stop();
     const args = [
-      "-m", this.modelPath(dir, m.file),
-      "-a", this.alias(m.id),
-      "--host", "127.0.0.1",
-      "--port", String(this.port()),
+      "-m",
+      this.modelPath(dir, m.file),
+      "-a",
+      this.alias(m.id),
+      "--host",
+      "127.0.0.1",
+      "--port",
+      String(this.port()),
       // Always explicit. `-c 0` means "read from the model", and models that
       // declare a 262144-token context reserve a working set big enough to
       // bring a normal machine to its knees.
-      "-c", String(m.contextTokens),
+      "-c",
+      String(m.contextTokens),
       "--no-webui",
     ];
     this.logger.log(`starting local engine: ${SERVER_BIN} ${args.join(" ")}`);
@@ -265,7 +304,9 @@ export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestr
     if (!child?.pid) return;
     try {
       if (process.platform === "win32") {
-        spawnSync("taskkill", ["/pid", String(child.pid), "/f", "/t"], { windowsHide: true });
+        spawnSync("taskkill", ["/pid", String(child.pid), "/f", "/t"], {
+          windowsHide: true,
+        });
       } else {
         child.kill("SIGTERM");
       }
@@ -288,7 +329,8 @@ export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestr
         for (const f of readdirSync(d)) {
           if (!f.endsWith(".part")) continue;
           const p = join(d, f);
-          if (Date.now() - statSync(p).mtimeMs > 24 * 3600_000) rmSync(p, { force: true });
+          if (Date.now() - statSync(p).mtimeMs > 24 * 3600_000)
+            rmSync(p, { force: true });
         }
       }
     } catch {
@@ -300,7 +342,8 @@ export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestr
     const state = this.readState(dir);
     if (!state) return;
     const m = findModel(state.modelId);
-    if (!m || !this.engineInstalled(dir) || !this.modelInstalled(dir, m)) return;
+    if (!m || !this.engineInstalled(dir) || !this.modelInstalled(dir, m))
+      return;
     if (await this.probe(1500)) {
       this.ready = true; // survived; adopt it rather than starting a second one
       return;
@@ -333,7 +376,8 @@ export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestr
 
   async status(): Promise<EngineStatus> {
     const dir = this.dir();
-    if (!dir) return { state: "unavailable", reason: "NEURION_TEXT_DIR is not set" };
+    if (!dir)
+      return { state: "unavailable", reason: "NEURION_TEXT_DIR is not set" };
     if (!ENGINE_ASSETS[process.platform]) {
       return { state: "unsupported", platform: process.platform };
     }
@@ -344,9 +388,15 @@ export class LlamaEngineService implements OnApplicationBootstrap, OnModuleDestr
 
     const state = this.readState(dir);
     if (state && this.ready) {
-      return { state: "ready", modelId: state.modelId, port: this.port(), baseUrl: this.baseUrl() };
+      return {
+        state: "ready",
+        modelId: state.modelId,
+        port: this.port(),
+        baseUrl: this.baseUrl(),
+      };
     }
-    if (state && this.proc) return { state: "starting", modelId: state.modelId };
+    if (state && this.proc)
+      return { state: "starting", modelId: state.modelId };
 
     return {
       state: "needs_setup",

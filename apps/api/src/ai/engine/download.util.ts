@@ -1,4 +1,10 @@
-import { createWriteStream, rmSync, renameSync, existsSync, statSync } from "node:fs";
+import {
+  createWriteStream,
+  rmSync,
+  renameSync,
+  existsSync,
+  statSync,
+} from "node:fs";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
@@ -21,7 +27,11 @@ import { pipeline } from "node:stream/promises";
 export async function downloadFile(
   url: string,
   out: string,
-  onProgress?: (percent: number, receivedBytes: number, totalBytes: number | null) => void,
+  onProgress?: (
+    percent: number,
+    receivedBytes: number,
+    totalBytes: number | null,
+  ) => void,
   opts: { expectedBytes?: number; toleranceRatio?: number } = {},
 ): Promise<number> {
   const tmp = `${out}.part`;

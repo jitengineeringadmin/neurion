@@ -1,6 +1,6 @@
-import { Global, Module } from '@nestjs/common';
-import { CreditsService } from './credits.service';
-import { CreditsController } from './credits.controller';
+import { Global, Module } from "@nestjs/common";
+import { CreditsService } from "./credits.service";
+import { CreditsController } from "./credits.controller";
 
 @Global()
 @Module({

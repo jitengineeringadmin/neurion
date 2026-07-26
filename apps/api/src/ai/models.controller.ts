@@ -27,7 +27,7 @@ const QUANT_TAGS = new Set(QUANT_LEVELS.map((q) => q.tag).filter(Boolean));
 const QUANT_INFIXES = ["", "instruct"];
 const OLLAMA_REGISTRY = "https://registry.ollama.ai/v2/library";
 // ollama model name: family[/...][:tag] — letters, digits, . _ - / :
-const NAME_RE = /^[a-zA-Z0-9][\w.\/-]*(:[\w.-]+)?$/;
+const NAME_RE = /^[a-zA-Z0-9][\w./-]*(:[\w.-]+)?$/;
 
 // Curated models, grouped for an LM-Studio-style picker. `name` is the ollama tag.
 const RECOMMENDED = [
@@ -503,7 +503,8 @@ export class ModelsController {
       { minGb: 6, name: "gemma2:2b" },
       { minGb: 0, name: "qwen2.5:1.5b" },
     ];
-    const tier = tiers.find((t) => budgetGb >= t.minGb) ?? tiers[tiers.length - 1]!;
+    const tier =
+      tiers.find((t) => budgetGb >= t.minGb) ?? tiers[tiers.length - 1]!;
     const model =
       RECOMMENDED.find((m) => m.name === tier.name) ??
       RECOMMENDED.find((m) => m.name === "qwen2.5:3b")!;

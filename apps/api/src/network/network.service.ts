@@ -1,5 +1,5 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { Injectable, OnModuleInit } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
 
 export interface HistoryPoint {
   t: number;
@@ -75,20 +75,26 @@ function weiToNrn(wei: string | null | undefined): number {
   }
 }
 
-function weiPct(part: string | null | undefined, whole: string | null | undefined): number {
+function weiPct(
+  part: string | null | undefined,
+  whole: string | null | undefined,
+): number {
   try {
-    const w = BigInt(whole ?? '0');
+    const w = BigInt(whole ?? "0");
     if (w === 0n) return 0;
-    return Number((BigInt(part ?? '0') * 10000n) / w) / 100;
+    return Number((BigInt(part ?? "0") * 10000n) / w) / 100;
   } catch {
     return 0;
   }
 }
 
-function toRecord(rows: Array<Record<string, unknown> & { _count: number }>, key: string): Record<string, number> {
+function toRecord(
+  rows: Array<Record<string, unknown> & { _count: number }>,
+  key: string,
+): Record<string, number> {
   const out: Record<string, number> = {};
   for (const r of rows) {
-    const k = r[key] == null ? 'unknown' : String(r[key]);
+    const k = r[key] == null ? "unknown" : String(r[key]);
     out[k] = r._count;
   }
   return out;
@@ -109,7 +115,7 @@ export class NetworkService implements OnModuleInit {
   onModuleInit(): void {
     void this.snapshot();
     this.timer = setInterval(() => void this.snapshot(), 120_000);
-    if (typeof this.timer.unref === 'function') this.timer.unref();
+    if (typeof this.timer.unref === "function") this.timer.unref();
   }
 
   private async snapshot(): Promise<void> {
@@ -122,7 +128,8 @@ export class NetworkService implements OnModuleInit {
         jobsCompletedTotal: s.overview.jobsCompletedTotal,
         tps: s.performance.avgTokensPerSecond,
       });
-      if (this.history.length > this.HISTORY_CAP) this.history = this.history.slice(-this.HISTORY_CAP);
+      if (this.history.length > this.HISTORY_CAP)
+        this.history = this.history.slice(-this.HISTORY_CAP);
     } catch {
       /* a transient DB hiccup must not kill the timer */
     }
@@ -135,7 +142,8 @@ export class NetworkService implements OnModuleInit {
   // Public, unauthenticated endpoint -> short server-side cache so it is
   // flood-resistant and never hammers the DB faster than the data changes.
   async stats(): Promise<NetworkStats> {
-    if (this.cache && Date.now() - this.cache.at < 5_000) return this.cache.data;
+    if (this.cache && Date.now() - this.cache.at < 5_000)
+      return this.cache.data;
     const data = await this.compute();
     this.cache = { at: Date.now(), data };
     return data;
@@ -145,7 +153,7 @@ export class NetworkService implements OnModuleInit {
     const p = this.prisma;
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
-    const successStatuses = ['COMPLETED', 'VERIFIED', 'REWARDED'] as const;
+    const successStatuses = ["COMPLETED", "VERIFIED", "REWARDED"] as const;
 
     const [
       nodesTotal,
@@ -175,32 +183,44 @@ export class NetworkService implements OnModuleInit {
       emission,
     ] = await Promise.all([
       p.computeNode.count(),
-      p.computeNode.count({ where: { status: 'ONLINE' } }),
-      p.computeNode.count({ where: { lifecycleState: 'ACTIVE' } }),
-      p.job.count({ where: { status: 'PENDING' } }),
-      p.job.count({ where: { status: 'RUNNING' } }),
-      p.job.count({ where: { status: { in: [...successStatuses] }, completedAt: { gte: startOfDay } } }),
+      p.computeNode.count({ where: { status: "ONLINE" } }),
+      p.computeNode.count({ where: { lifecycleState: "ACTIVE" } }),
+      p.job.count({ where: { status: "PENDING" } }),
+      p.job.count({ where: { status: "RUNNING" } }),
+      p.job.count({
+        where: {
+          status: { in: [...successStatuses] },
+          completedAt: { gte: startOfDay },
+        },
+      }),
       p.job.count({ where: { status: { in: [...successStatuses] } } }),
-      p.job.count({ where: { status: 'FAILED' } }),
-      p.tokenPayout.count({ where: { status: 'PENDING' } }),
+      p.job.count({ where: { status: "FAILED" } }),
+      p.tokenPayout.count({ where: { status: "PENDING" } }),
       p.computeNode.count({ where: { nvidiaAvailable: true } }),
       p.computeNode.count({ where: { dockerAvailable: true } }),
-      p.computeNode.count({ where: { supportedModes: { has: 'realtime' } } }),
-      p.computeNode.count({ where: { supportedModes: { has: 'grid' } } }),
+      p.computeNode.count({ where: { supportedModes: { has: "realtime" } } }),
+      p.computeNode.count({ where: { supportedModes: { has: "grid" } } }),
       p.computeNode.aggregate({ _sum: { cpuCores: true } }),
-      p.computeNode.groupBy({ by: ['status'], _count: true }),
-      p.computeNode.groupBy({ by: ['trustLevel'], _count: true }),
-      p.computeNode.groupBy({ by: ['os'], _count: true }),
-      p.computeNode.groupBy({ by: ['regionCode'], _count: true }),
-      p.job.groupBy({ by: ['type'], _count: true }),
-      p.jobVerification.count({ where: { sampled: true, outcome: 'PASS' } }),
-      p.jobVerification.count({ where: { sampled: true, outcome: { in: ['PASS', 'FAIL'] } } }),
+      p.computeNode.groupBy({ by: ["status"], _count: true }),
+      p.computeNode.groupBy({ by: ["trustLevel"], _count: true }),
+      p.computeNode.groupBy({ by: ["os"], _count: true }),
+      p.computeNode.groupBy({ by: ["regionCode"], _count: true }),
+      p.job.groupBy({ by: ["type"], _count: true }),
+      p.jobVerification.count({ where: { sampled: true, outcome: "PASS" } }),
+      p.jobVerification.count({
+        where: { sampled: true, outcome: { in: ["PASS", "FAIL"] } },
+      }),
       p.job.count({ where: { nrnPayoutEligible: true } }),
       p.job.count({ where: { grantedOptimistically: true } }),
       p.computeNode.findMany({
-        select: { loadedModels: true, gpuModel: true, avgTokensPerSecond: true, avgFirstTokenMs: true },
+        select: {
+          loadedModels: true,
+          gpuModel: true,
+          avgTokensPerSecond: true,
+          avgFirstTokenMs: true,
+        },
       }),
-      p.emissionSchedule.findFirst({ orderBy: { updatedAt: 'desc' } }),
+      p.emissionSchedule.findFirst({ orderBy: { updatedAt: "desc" } }),
     ]);
 
     // Array-column aggregation (Prisma can't groupBy array elements) — fleet is
@@ -212,8 +232,10 @@ export class NetworkService implements OnModuleInit {
     let ftSum = 0;
     let ftCount = 0;
     for (const n of nodeRows) {
-      for (const m of n.loadedModels) modelTally.set(m, (modelTally.get(m) ?? 0) + 1);
-      if (n.gpuModel) gpuTally.set(n.gpuModel, (gpuTally.get(n.gpuModel) ?? 0) + 1);
+      for (const m of n.loadedModels)
+        modelTally.set(m, (modelTally.get(m) ?? 0) + 1);
+      if (n.gpuModel)
+        gpuTally.set(n.gpuModel, (gpuTally.get(n.gpuModel) ?? 0) + 1);
       if (n.avgTokensPerSecond && n.avgTokensPerSecond > 0) {
         tpsSum += n.avgTokensPerSecond;
         tpsCount += 1;
@@ -243,10 +265,10 @@ export class NetworkService implements OnModuleInit {
         payoutsPending,
       },
       composition: {
-        byStatus: toRecord(byStatusRaw as never, 'status'),
-        byTrust: toRecord(byTrustRaw as never, 'trustLevel'),
-        byOs: toRecord(byOsRaw as never, 'os'),
-        byRegion: toRecord(byRegionRaw as never, 'regionCode'),
+        byStatus: toRecord(byStatusRaw as never, "status"),
+        byTrust: toRecord(byTrustRaw as never, "trustLevel"),
+        byOs: toRecord(byOsRaw as never, "os"),
+        byRegion: toRecord(byRegionRaw as never, "regionCode"),
         gpuNodes,
         cpuOnlyNodes: Math.max(0, nodesTotal - gpuNodes),
         dockerNodes,
@@ -258,7 +280,9 @@ export class NetworkService implements OnModuleInit {
       health: {
         jobSuccessRate: successTotal > 0 ? jobsSuccess / successTotal : null,
         verificationPassRate: verifTotal > 0 ? verifPass / verifTotal : null,
-        jobsByType: (byTypeRaw as never as Array<{ type: string; _count: number }>)
+        jobsByType: (
+          byTypeRaw as never as Array<{ type: string; _count: number }>
+        )
           .map((r) => ({ type: r.type, count: r._count }))
           .sort((a, b) => b.count - a.count),
         verifiedJobs,
@@ -267,7 +291,10 @@ export class NetworkService implements OnModuleInit {
       economy: {
         emittedThisEpochNrn: weiToNrn(emission?.emittedThisEpochWei),
         epochBudgetNrn: weiToNrn(emission?.epochBudgetWei),
-        epochPct: weiPct(emission?.emittedThisEpochWei, emission?.epochBudgetWei),
+        epochPct: weiPct(
+          emission?.emittedThisEpochWei,
+          emission?.epochBudgetWei,
+        ),
         emittedLifetimeNrn: weiToNrn(emission?.emittedLifetimeWei),
         poolCapNrn: weiToNrn(emission?.poolCapWei),
         lifetimePct: weiPct(emission?.emittedLifetimeWei, emission?.poolCapWei),

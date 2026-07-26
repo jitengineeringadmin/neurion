@@ -594,5 +594,74 @@ const dict: Record<string, string> = {
 
   "sidebar.rename": "Renommer",
   "sidebar.renamePrompt": "Nouveau nom du projet :",
+  "home.downloadCta": "Télécharger pour Windows",
+  "home.downloadMeta":
+    "Dernière application de bureau : Neurion 1.8.8 pour Windows.",
+  "login.startingUp": "Démarrage…",
+  "login.startingUpHint":
+    "L'application démarre — cela prend quelques secondes.",
+  "login.startingUpSlow":
+    "Le premier lancement peut prendre jusqu'à une minute (démarrage de la base de données)…",
+  "agent.phasePreparing": "Préparation de l'exécution",
+  "agent.phaseThinking": "Le modèle travaille",
+  "agent.phaseTool": "Opération : {tool}",
+  "agent.phaseReview": "Relecture indépendante des modifications",
+  "agent.phaseApproval": "En attente de votre approbation",
+  "agent.phaseReconnecting": "Reconnexion à l'exécution en cours",
+  "agent.phaseStopping": "Arrêt de l'exécution",
+  "agent.progressMeta": "Étape {step} · {elapsed}",
+  "agent.stop": "Arrêter",
+  "agent.stopHint":
+    "Arrêter le modèle et tous les processus lancés par cette exécution",
+  "agent.cancelled": "Exécution annulée.",
+  "agent.reconnected":
+    "Connexion rétablie : le travail continue sur cet appareil.",
+  "agent.interrupted":
+    "L'exécution a été interrompue par un redémarrage. Vous pouvez reprendre depuis son état enregistré.",
+  "agent.interruptedLabel": "Interrompue",
+  "agent.resume": "Reprendre",
+  "agent.close": "Fermer",
+  "sessions.assignRemove": "retirer du projet",
+  "chat.attachFile": "Joindre un fichier",
+  "chat.fileAttached": "Fichier joint",
+  "chat.filePromptPlaceholder":
+    "Posez une question sur le fichier… (vide = l'analyser)",
+  "chat.defaultFilePrompt": "Analyse ce fichier.",
+  "chat.fileTooLarge":
+    "Fichier trop volumineux. Utilisez un fichier texte jusqu'à 5 Mo.",
+  "chat.fileUnsupported":
+    "Ce type de fichier n'est pas encore pris en charge. Utilisez PDF, texte, code, CSV, JSON ou journaux.",
+  "chat.fileReadError": "Je n'ai pas pu lire ce fichier.",
+  "chat.fileTruncated": "tronqué",
+  "chat.knowledgeIndexed":
+    "Pagination des connaissances : {total} blocs indexés",
+  "chat.knowledgeLoaded":
+    "Pagination des connaissances : {selected} blocs chargés sur {total}",
+  "skills.title": "Compétences",
+  "skills.sub":
+    "Des ensembles d'instructions réutilisables que l'agent applique de lui-même quand une demande correspond. Ajoutez-en un par type de travail fréquent — le modèle ne charge que ceux qui sont pertinents.",
+  "skills.new": "Nouvelle compétence",
+  "skills.empty":
+    "Aucune compétence pour l'instant. Ajoutez-en une pour enseigner à l'agent une façon de travailler réutilisable.",
+  "skills.name": "Nom",
+  "skills.namePh": "ex. Page d'accueil",
+  "skills.desc": "Description",
+  "skills.descPh": "Ce qu'elle fait / quand l'utiliser",
+  "skills.triggers": "Mots déclencheurs",
+  "skills.triggersPh": "landing, site, site web — séparés par des virgules",
+  "skills.triggersHelp":
+    "La compétence ne se charge que si la demande contient l'un de ces mots. Laissez vide pour l'appliquer toujours.",
+  "skills.body": "Instructions",
+  "skills.bodyPh":
+    "Décrivez les étapes que l'agent doit suivre, par ex. :\n- Toujours utiliser Tailwind via CDN et une police Google.\n- Un seul index.html, sans étape de build.\n- Palette : terracotta, crème, olive. Pas de lorem ipsum.",
+  "skills.save": "Enregistrer la compétence",
+  "skills.cancel": "Annuler",
+  "skills.edit": "Modifier",
+  "skills.delete": "Supprimer",
+  "skills.enabled": "Activée",
+  "skills.on": "Activé",
+  "skills.off": "Désactivé",
+  "skills.always": "toujours active",
+  "ob.autoRec": "choisi pour votre PC",
 };
 export default dict;

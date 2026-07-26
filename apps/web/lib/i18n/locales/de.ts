@@ -588,5 +588,71 @@ const dict: Record<string, string> = {
 
   "sidebar.rename": "Umbenennen",
   "sidebar.renamePrompt": "Neuer Projektname:",
+  "home.downloadCta": "Für Windows herunterladen",
+  "home.downloadMeta": "Neueste Desktop-App: Neurion 1.8.8 für Windows.",
+  "login.startingUp": "Wird gestartet…",
+  "login.startingUpHint":
+    "Die App startet gerade — das dauert ein paar Sekunden.",
+  "login.startingUpSlow":
+    "Der erste Start kann bis zu einer Minute dauern (die Datenbank wird gestartet)…",
+  "agent.phasePreparing": "Lauf wird vorbereitet",
+  "agent.phaseThinking": "Das Modell arbeitet",
+  "agent.phaseTool": "Vorgang: {tool}",
+  "agent.phaseReview": "Änderungen werden unabhängig geprüft",
+  "agent.phaseApproval": "Wartet auf deine Freigabe",
+  "agent.phaseReconnecting":
+    "Verbindung zum laufenden Vorgang wird wiederhergestellt",
+  "agent.phaseStopping": "Lauf wird beendet",
+  "agent.progressMeta": "Schritt {step} · {elapsed}",
+  "agent.stop": "Stoppen",
+  "agent.stopHint":
+    "Das Modell und alle von diesem Lauf gestarteten Prozesse beenden",
+  "agent.cancelled": "Lauf abgebrochen.",
+  "agent.reconnected":
+    "Verbindung wiederhergestellt: Die Arbeit läuft auf diesem Gerät weiter.",
+  "agent.interrupted":
+    "Der Lauf wurde durch einen Neustart unterbrochen. Du kannst ihn aus dem gespeicherten Stand fortsetzen.",
+  "agent.interruptedLabel": "Unterbrochen",
+  "agent.resume": "Fortsetzen",
+  "agent.close": "Schließen",
+  "sessions.assignRemove": "aus Projekt entfernen",
+  "chat.attachFile": "Datei anhängen",
+  "chat.fileAttached": "Datei angehängt",
+  "chat.filePromptPlaceholder": "Frage zur Datei… (leer = analysieren)",
+  "chat.defaultFilePrompt": "Analysiere diese Datei.",
+  "chat.fileTooLarge": "Datei zu groß. Verwende eine Textdatei bis 5 MB.",
+  "chat.fileUnsupported":
+    "Dieser Dateityp wird noch nicht unterstützt. Verwende PDF, Text, Code, CSV, JSON oder Logs.",
+  "chat.fileReadError": "Ich konnte diese Datei nicht lesen.",
+  "chat.fileTruncated": "gekürzt",
+  "chat.knowledgeIndexed": "Wissens-Paging: {total} Blöcke indexiert",
+  "chat.knowledgeLoaded":
+    "Wissens-Paging: {selected} von {total} Blöcken geladen",
+  "skills.title": "Fähigkeiten",
+  "skills.sub":
+    "Wiederverwendbare Anweisungspakete, die der Agent selbstständig anwendet, wenn eine Anfrage dazu passt. Lege für jede häufige Arbeitsart eine an — das Modell lädt nur die passenden.",
+  "skills.new": "Neue Fähigkeit",
+  "skills.empty":
+    "Noch keine Fähigkeiten. Lege eine an, um dem Agenten eine wiederholbare Arbeitsweise beizubringen.",
+  "skills.name": "Name",
+  "skills.namePh": "z. B. Landingpage",
+  "skills.desc": "Beschreibung",
+  "skills.descPh": "Was sie tut / wann sie zu verwenden ist",
+  "skills.triggers": "Auslösewörter",
+  "skills.triggersPh": "Landing, Seite, Website — mit Komma getrennt",
+  "skills.triggersHelp":
+    "Die Fähigkeit wird nur geladen, wenn die Anfrage eines dieser Wörter enthält. Leer lassen, um sie immer anzuwenden.",
+  "skills.body": "Anweisungen",
+  "skills.bodyPh":
+    "Schreibe die Schritte, denen der Agent folgen soll, z. B.:\n- Immer Tailwind über CDN und eine Google-Schriftart verwenden.\n- Eine einzige index.html, kein Build-Schritt.\n- Palette: Terrakotta, Creme, Oliv. Kein Lorem ipsum.",
+  "skills.save": "Fähigkeit speichern",
+  "skills.cancel": "Abbrechen",
+  "skills.edit": "Bearbeiten",
+  "skills.delete": "Löschen",
+  "skills.enabled": "Aktiviert",
+  "skills.on": "An",
+  "skills.off": "Aus",
+  "skills.always": "immer aktiv",
+  "ob.autoRec": "für deinen PC ausgewählt",
 };
 export default dict;

@@ -26,15 +26,28 @@ export interface EngineAsset {
 }
 
 export const ENGINE_ASSETS: Partial<Record<NodeJS.Platform, EngineAsset>> = {
-  win32: { file: `llama-${LLAMA_TAG}-bin-win-cpu-x64.zip`, kind: "zip-flat", approxBytes: 18_200_000 },
-  darwin: { file: `llama-${LLAMA_TAG}-bin-macos-arm64.tar.gz`, kind: "targz-stripped", approxBytes: 10_800_000 },
-  linux: { file: `llama-${LLAMA_TAG}-bin-ubuntu-x64.tar.gz`, kind: "targz-stripped", approxBytes: 16_300_000 },
+  win32: {
+    file: `llama-${LLAMA_TAG}-bin-win-cpu-x64.zip`,
+    kind: "zip-flat",
+    approxBytes: 18_200_000,
+  },
+  darwin: {
+    file: `llama-${LLAMA_TAG}-bin-macos-arm64.tar.gz`,
+    kind: "targz-stripped",
+    approxBytes: 10_800_000,
+  },
+  linux: {
+    file: `llama-${LLAMA_TAG}-bin-ubuntu-x64.tar.gz`,
+    kind: "targz-stripped",
+    approxBytes: 16_300_000,
+  },
 };
 
 export const engineUrl = (file: string): string =>
   `https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_TAG}/${file}`;
 
-export const SERVER_BIN = process.platform === "win32" ? "llama-server.exe" : "llama-server";
+export const SERVER_BIN =
+  process.platform === "win32" ? "llama-server.exe" : "llama-server";
 
 /**
  * llama.cpp is MIT licensed, so redistributing the binaries inside Neurion is
@@ -99,7 +112,8 @@ export const CATALOG: CatalogModel[] = [
   {
     id: "gemma2-2b",
     label: "Gemma 2 · 2B",
-    description: "Predefinito: il più accurato tra i modelli leggeri, gira su qualsiasi PC.",
+    description:
+      "Predefinito: il più accurato tra i modelli leggeri, gira su qualsiasi PC.",
     url: "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/855f67caed130e1befc571b52bd181be2e858883/gemma-2-2b-it-Q4_K_M.gguf",
     file: "gemma-2-2b-it-Q4_K_M.gguf",
     sizeBytes: 1_710_000_000,
@@ -109,7 +123,8 @@ export const CATALOG: CatalogModel[] = [
   {
     id: "qwen2.5-7b",
     label: "Qwen 2.5 · 7B",
-    description: "Più capace sui compiti difficili; richiede circa 6 GB di RAM libera ed è più lento.",
+    description:
+      "Più capace sui compiti difficili; richiede circa 6 GB di RAM libera ed è più lento.",
     url: "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/8911e8a47f92bac19d6f5c64a2e2095bd2f7d031/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
     file: "Qwen2.5-7B-Instruct-Q4_K_M.gguf",
     sizeBytes: 4_680_000_000,

@@ -1,9 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { JobPrivacyLevel } from '@prisma/client';
-import { maxPrivacy } from './privacy.util';
+import { Injectable, Logger } from "@nestjs/common";
+import { JobPrivacyLevel } from "@prisma/client";
+import { maxPrivacy } from "./privacy.util";
 
 export interface ClassificationResult {
-  category: 'NONE' | 'PII' | 'SENSITIVE' | 'FAILSAFE';
+  category: "NONE" | "PII" | "SENSITIVE" | "FAILSAFE";
   flags: string[];
   escalateTo: JobPrivacyLevel;
   hardTrustedOnly: boolean;
@@ -11,9 +11,9 @@ export interface ClassificationResult {
 }
 
 const FAILSAFE: ClassificationResult = {
-  category: 'FAILSAFE',
-  flags: ['CLASSIFIER_FAILSAFE'],
-  escalateTo: 'VERIFIED_ONLY',
+  category: "FAILSAFE",
+  flags: ["CLASSIFIER_FAILSAFE"],
+  escalateTo: "VERIFIED_ONLY",
   hardTrustedOnly: true,
   failedSafe: true,
 };
@@ -43,30 +43,36 @@ export class PrivacyClassifierService {
 
   classify(textRaw: string): ClassificationResult {
     try {
-      const text = (textRaw ?? '').slice(0, PrivacyClassifierService.MAX_LEN);
+      const text = (textRaw ?? "").slice(0, PrivacyClassifierService.MAX_LEN);
       const flags: string[] = [];
-      let escalateTo: JobPrivacyLevel = 'PUBLIC';
+      let escalateTo: JobPrivacyLevel = "PUBLIC";
       let hardTrustedOnly = false;
-      let category: ClassificationResult['category'] = 'NONE';
+      let category: ClassificationResult["category"] = "NONE";
 
       if (PrivacyClassifierService.SECRET.some((r) => r.test(text))) {
-        flags.push('SECRET');
+        flags.push("SECRET");
         hardTrustedOnly = true;
-        category = 'SENSITIVE';
-        escalateTo = maxPrivacy(escalateTo, 'VERIFIED_ONLY');
+        category = "SENSITIVE";
+        escalateTo = maxPrivacy(escalateTo, "VERIFIED_ONLY");
       }
       if (PrivacyClassifierService.ART9.some((r) => r.test(text))) {
-        flags.push('ART9');
+        flags.push("ART9");
         hardTrustedOnly = true;
-        category = 'SENSITIVE';
-        escalateTo = maxPrivacy(escalateTo, 'VERIFIED_ONLY');
+        category = "SENSITIVE";
+        escalateTo = maxPrivacy(escalateTo, "VERIFIED_ONLY");
       }
       if (PrivacyClassifierService.PII.some((r) => r.test(text))) {
-        flags.push('PII');
-        if (category === 'NONE') category = 'PII';
-        escalateTo = maxPrivacy(escalateTo, 'VERIFIED_ONLY');
+        flags.push("PII");
+        if (category === "NONE") category = "PII";
+        escalateTo = maxPrivacy(escalateTo, "VERIFIED_ONLY");
       }
-      return { category, flags, escalateTo, hardTrustedOnly, failedSafe: false };
+      return {
+        category,
+        flags,
+        escalateTo,
+        hardTrustedOnly,
+        failedSafe: false,
+      };
     } catch (err) {
       this.logger.error(`classifier failed -> failing safe UP: ${String(err)}`);
       return FAILSAFE;

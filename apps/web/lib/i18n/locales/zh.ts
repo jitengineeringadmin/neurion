@@ -2,7 +2,8 @@
 const dict: Record<string, string> = {
   "home.brandName": "NEURION",
   "home.tagline": "共享闲置算力。使用 AI。赚取积分和 NRN 代币。",
-  "home.description": "一个分布式 AI 算力网络：在社区网格上进行快速对话，配备 Fast / Grid / Fallback 路由、内部积分以及链上 NRN 实用代币。",
+  "home.description":
+    "一个分布式 AI 算力网络：在社区网格上进行快速对话，配备 Fast / Grid / Fallback 路由、内部积分以及链上 NRN 实用代币。",
   "home.enterCta": "进入",
   "login.brandSuffix": "AI",
   "login.tabLogin": "登录",
@@ -27,7 +28,8 @@ const dict: Record<string, string> = {
   "chat.agentTraceSubAgent": "↳ 子智能体：",
   "chat.agentErrorPrefix": "⚠️ {message}",
   "chat.chatErrorPrefix": "⚠️ {message}",
-  "chat.analyzeFolderGoal": "分析项目文件夹：{cwd}。使用 list_dir 列出文件和子文件夹，用 read_file 读取关键文件，然后用清晰的摘要说明项目的结构、技术栈和用途。只读：不要创建、修改或运行任何内容。",
+  "chat.analyzeFolderGoal":
+    "分析项目文件夹：{cwd}。使用 list_dir 列出文件和子文件夹，用 read_file 读取关键文件，然后用清晰的摘要说明项目的结构、技术栈和用途。只读：不要创建、修改或运行任何内容。",
   "chat.analyzeFolderUserMsg": "📂 分析文件夹",
   "chat.headingChat": "对话",
   "chat.analyzeFolderButtonTitle": "用智能体分析 {cwd}（只读）",
@@ -35,7 +37,8 @@ const dict: Record<string, string> = {
   "chat.agentToggleOn": "🤖 智能体已开启",
   "chat.agentToggleOff": "🤖 智能体已关闭",
   "chat.creditsLabel": "积分：",
-  "chat.emptyStateAgent": "智能体模式：给出一个目标——它会规划、使用工具、处理文件（需经批准）。",
+  "chat.emptyStateAgent":
+    "智能体模式：给出一个目标——它会规划、使用工具、处理文件（需经批准）。",
   "chat.emptyStateChat": "随便问。每个回答都会显示路由、通道和积分消耗。",
   "chat.approvalPrompt": "⚠ 批准 {tool}？",
   "chat.approveButton": "批准",
@@ -46,7 +49,8 @@ const dict: Record<string, string> = {
   "chat.inputPlaceholderChat": "向 Neurion 发消息…",
   "chat.sendButtonRun": "运行",
   "chat.sendButtonSend": "发送",
-  "agent.defaultGoal": "查看我的积分和在线节点，然后用文本 \"hello\" 运行一个 echo 任务并总结。",
+  "agent.defaultGoal":
+    '查看我的积分和在线节点，然后用文本 "hello" 运行一个 echo 任务并总结。',
   "agent.heading": "Code",
   "agent.headingSubtitle": "多智能体 · ReAct",
   "agent.goalPlaceholder": "给智能体一个目标…",
@@ -65,11 +69,13 @@ const dict: Record<string, string> = {
   "agent.subAnswerPrefix": "子回答：",
   "agent.thinkingStatus": "▌ 思考中…",
   "models.pageTitle": "AI 模型",
-  "models.pageSubtitle": "下载一个能在你电脑上运行的模型。越大 = 越聪明但越慢。",
+  "models.pageSubtitle":
+    "下载一个能在你电脑上运行的模型。越大 = 越聪明但越慢。",
   "models.localEngineLabel": "本地引擎：",
   "models.engineUp": "已激活",
   "models.engineDown": "未运行",
-  "models.engineDownBanner": "本地 AI 引擎（ollama）没有响应。请从 {link} 安装它并重新打开此页面。（它很快会内置到应用中。）",
+  "models.engineDownBanner":
+    "本地 AI 引擎（ollama）没有响应。请从 {link} 安装它并重新打开此页面。（它很快会内置到应用中。）",
   "models.ollamaLinkText": "ollama.com",
   "models.downloadingPrefix": "下载中",
   "models.statusStarting": "启动中…",
@@ -110,7 +116,8 @@ const dict: Record<string, string> = {
   "wallet.nrnTokenLabel": "NRN 代币",
   "wallet.chainStatusOn": "开启",
   "wallet.chainStatusOff": "关闭",
-  "wallet.chainInfoLine": "链 {chainId} · 支付 {payoutsStatus} · 1 积分 = {nrnAmount} NRN",
+  "wallet.chainInfoLine":
+    "链 {chainId} · 支付 {payoutsStatus} · 1 积分 = {nrnAmount} NRN",
   "wallet.chainIdPlaceholder": "…",
   "wallet.tokenAddressLabel": "代币：{tokenAddress}",
   "wallet.tokenNotDeployed": "未部署",
@@ -125,7 +132,8 @@ const dict: Record<string, string> = {
   "admin.loading": "加载中…",
   "admin.dashboardHeading": "管理仪表盘",
   "rootmeta.pageTitle": "Neurion AI",
-  "rootmeta.pageDescription": "分布式 AI 算力网络——共享闲置算力、使用 AI、赚取 NRN。",
+  "rootmeta.pageDescription":
+    "分布式 AI 算力网络——共享闲置算力、使用 AI、赚取 NRN。",
   "splash.bootInitializingRuntime": "> 正在初始化 neurion 运行时…",
   "splash.bootConnectingGrid": "> 正在连接算力网格…",
   "splash.bootWarmingPool": "> 正在预热实时池…",
@@ -185,7 +193,8 @@ const dict: Record<string, string> = {
   "auth.pwChangeFail": "无法修改密码。",
   "auth.dangerZone": "危险区域",
   "auth.deleteAccount": "删除账户",
-  "auth.deleteWarn": "这将永久删除你的账户和所有数据（对话、论坛帖子、积分）。此操作无法撤销。输入密码以确认。",
+  "auth.deleteWarn":
+    "这将永久删除你的账户和所有数据（对话、论坛帖子、积分）。此操作无法撤销。输入密码以确认。",
   "auth.deleteConfirm": "删除我的账户",
   "auth.cancel": "取消",
   "auth.deleteFail": "无法删除账户。",
@@ -294,7 +303,8 @@ const dict: Record<string, string> = {
   "models.choose": "选择要下载的模型",
 
   "models.nodeHeading": "共享你的模型（运行节点）",
-  "models.nodeDesc": "使用已下载的模型在 Neurion 网络上运行节点，赚取 NRN。使用你的 neurionproject.org 账户登录。",
+  "models.nodeDesc":
+    "使用已下载的模型在 Neurion 网络上运行节点，赚取 NRN。使用你的 neurionproject.org 账户登录。",
   "models.nodeRunning": "正在共享 — 赚取 NRN 中",
   "models.nodeStop": "停止",
   "models.nodeStart": "开始共享",
@@ -317,7 +327,8 @@ const dict: Record<string, string> = {
   "models.quantLabel": "量化",
   "models.quantDefault": "默认",
   "models.quantSizeVaries": "大小不一",
-  "models.quantHelp": "越低越轻量、越快、内存占用越小；越高质量越好，但下载体积更大。",
+  "models.quantHelp":
+    "越低越轻量、越快、内存占用越小；越高质量越好，但下载体积更大。",
 
   "nav.tabImage": "图像",
   "image.pageTitle": "图像",
@@ -326,7 +337,8 @@ const dict: Record<string, string> = {
   "image.engineLabel": "图像引擎：",
   "image.engineUp": "就绪",
   "image.engineDown": "未找到",
-  "image.engineDownBanner": "未找到本地图像引擎。请启动一个 Stable Diffusion 服务器（{link}）并让 Neurion 指向它（AI_IMAGE_BASE_URL，默认 http://localhost:7860）。",
+  "image.engineDownBanner":
+    "未找到本地图像引擎。请启动一个 Stable Diffusion 服务器（{link}）并让 Neurion 指向它（AI_IMAGE_BASE_URL，默认 http://localhost:7860）。",
   "image.sdLinkText": "Automatic1111 / Forge",
   "image.promptPlaceholder": "描述图像…",
   "image.negativePlaceholder": "负面提示词（可选）——要避免的内容",
@@ -385,7 +397,8 @@ const dict: Record<string, string> = {
   "ob.next": "开始",
   "ob.skip": "跳过",
   "ob.engineTitle": "只需安装一样东西",
-  "ob.engineBody": "Neurion 使用一个小巧的免费引擎（{link}）来运行 AI 模型。安装后回到这里——我会自动检测到。",
+  "ob.engineBody":
+    "Neurion 使用一个小巧的免费引擎（{link}）来运行 AI 模型。安装后回到这里——我会自动检测到。",
   "ob.engineWaiting": "正在等待引擎…",
   "ob.modelTitle": "下载你的第一个模型",
   "ob.modelBody": "只需下载一次（约 1.9 GB），之后一切都在你的电脑上运行。",
@@ -414,7 +427,7 @@ const dict: Record<string, string> = {
   "agent.actionRejected": "操作已在执行前修正：{reason}",
   "agent.t.list_dir": "正在浏览 {v}",
   "agent.t.find_files": "正在查找文件（{v}）",
-  "agent.t.search_files": "正在搜索\"{v}\"",
+  "agent.t.search_files": '正在搜索"{v}"',
   "agent.t.create_project": "正在创建项目 {v}",
   "agent.t.spawn_agent": "正在委派子任务",
   "agent.t.remember": "正在保存笔记",
@@ -437,7 +450,8 @@ const dict: Record<string, string> = {
 
   "image.kindImage": "图片",
   "image.kindVideo": "视频 · 测试版",
-  "video.note": "一段动画短片（约10秒）：AI 生成的场景，配电影式缩放和淡入淡出。在你的电脑上运行。",
+  "video.note":
+    "一段动画短片（约10秒）：AI 生成的场景，配电影式缩放和淡入淡出。在你的电脑上运行。",
   "video.engineMissing": "请先设置图片模型（图片标签页）——短片由 AI 帧构成。",
   "video.unsupported": "请安装 ffmpeg 以在此系统上启用视频。",
   "video.setupBtn": "准备视频（约170 MB，一次性）",
@@ -452,12 +466,14 @@ const dict: Record<string, string> = {
 
   "video.kindClip": "快速短片",
   "video.kindAi": "AI 视频 · 实验性",
-  "video.aiNote": "真正的文本生成视频（Wan 2.1），在你自己的电脑上运行——用内存代替大显卡。慢（480p 约2秒需20–60+分钟），但真实、离线、免费。",
+  "video.aiNote":
+    "真正的文本生成视频（Wan 2.1），在你自己的电脑上运行——用内存代替大显卡。慢（480p 约2秒需20–60+分钟），但真实、离线、免费。",
   "video.aiSetupBtn": "下载 AI 视频模型（约6.7 GB，一次性）",
   "video.aiInstalling": "正在下载 AI 视频模型",
   "video.aiReady": "AI 视频就绪——每段短片需要较长等待",
   "video.aiWorking": "AI 视频生成中（最长可能需要一小时）",
-  "video.reqRam": "未达到最低要求：{have} GB 内存（需要 {need} GB+）。你仍可使用快速短片，或等视频节点上线后使用网络。",
+  "video.reqRam":
+    "未达到最低要求：{have} GB 内存（需要 {need} GB+）。你仍可使用快速短片，或等视频节点上线后使用网络。",
   "video.reqDisk": "磁盘空间不足：剩余 {have} GB（需要 {need} GB+）。",
 
   "video.step": "第 {c}/{t} 步",
@@ -485,14 +501,17 @@ const dict: Record<string, string> = {
   "audio.setupGen": "下载 AI 音乐模型（约650 MB，一次性）",
   "audio.installing": "正在准备音频",
   "audio.mixing": "正在添加配乐",
-  "audio.ttsUnsupported": "旁白目前仅支持 Windows 自动安装（其他系统请手动安装 piper）。",
+  "audio.ttsUnsupported":
+    "旁白目前仅支持 Windows 自动安装（其他系统请手动安装 piper）。",
   "audio.foleyComing": "同步音效（AI 拟音）将随网络 GPU 节点推出。",
   "audio.credit": "音乐：Kevin MacLeod（incompetech.com）· CC BY 4.0",
-  "agent.modelDied": "模型意外停止（可能内存不足）。请重试，或从菜单选择更小的模型。",
+  "agent.modelDied":
+    "模型意外停止（可能内存不足）。请重试，或从菜单选择更小的模型。",
 
   "agent.autoOn": "自主",
   "agent.autoOff": "每步询问",
-  "agent.autoHint": "自主 = 智能体无需询问即可写文件、执行命令。关闭 = 每步都需你批准。",
+  "agent.autoHint":
+    "自主 = 智能体无需询问即可写文件、执行命令。关闭 = 每步都需你批准。",
   "agent.clearHist": "清除历史",
 
   "agent.preview": "预览",
@@ -502,17 +521,21 @@ const dict: Record<string, string> = {
 
   "settings.title": "设置",
   "settings.instructionsTitle": "你的智能体指令",
-  "settings.instructionsSub": "Code 智能体始终遵循的规则——你的技术栈、风格、语言、该做与不该做。简短直接最好，尤其是小型本地模型。",
+  "settings.instructionsSub":
+    "Code 智能体始终遵循的规则——你的技术栈、风格、语言、该做与不该做。简短直接最好，尤其是小型本地模型。",
   "settings.save": "保存",
   "settings.savedActive": "已保存——智能体会遵循",
   "settings.unsaved": "有未保存的更改",
-  "settings.tip": "提示：给一个可复制的具体示例，而不是模糊的规则。小模型更善于跟随示例。",
+  "settings.tip":
+    "提示：给一个可复制的具体示例，而不是模糊的规则。小模型更善于跟随示例。",
   "settings.behaviorTitle": "默认行为",
   "settings.autoDefault": "以自主模式启动 Code 智能体",
-  "settings.autoDefaultSub": "新的运行不会在每次写入/命令时请求批准（仍可按运行切换）。",
+  "settings.autoDefaultSub":
+    "新的运行不会在每次写入/命令时请求批准（仍可按运行切换）。",
 
   "agent.rulesHint": "智能体始终遵循的本项目规则（文件夹中的 NEURION.md）",
-  "agent.rulesSub": "仅针对本项目的规则，叠加在全局设置之上。保存为文件夹中的 NEURION.md；智能体每次运行都会读取。",
+  "agent.rulesSub":
+    "仅针对本项目的规则，叠加在全局设置之上。保存为文件夹中的 NEURION.md；智能体每次运行都会读取。",
   "agent.rulesSave": "保存 NEURION.md",
   "agent.rulesClose": "关闭",
 
@@ -529,9 +552,68 @@ const dict: Record<string, string> = {
   "chat.imagePromptPlaceholder": "询问这张图片…（留空 = 描述它）",
 
   "models.searchPlaceholder": "🔎 搜索模型（如 coder、vision、7b、deepseek）…",
-  "models.noMatch": "无匹配——试试模型家族（qwen、llama、mistral）或规模（7b、14b）。",
+  "models.noMatch":
+    "无匹配——试试模型家族（qwen、llama、mistral）或规模（7b、14b）。",
 
   "sidebar.rename": "重命名",
   "sidebar.renamePrompt": "新的项目名称：",
+  "home.downloadCta": "下载 Windows 版",
+  "home.downloadMeta": "最新桌面应用：Neurion 1.8.8 for Windows。",
+  "login.startingUp": "正在启动…",
+  "login.startingUpHint": "应用正在启动，需要几秒钟。",
+  "login.startingUpSlow": "首次启动最多可能需要一分钟（正在启动数据库）…",
+  "agent.phasePreparing": "正在准备运行",
+  "agent.phaseThinking": "模型正在运行",
+  "agent.phaseTool": "操作：{tool}",
+  "agent.phaseReview": "正在独立复查改动",
+  "agent.phaseApproval": "等待你的批准",
+  "agent.phaseReconnecting": "正在重新连接到运行中的任务",
+  "agent.phaseStopping": "正在停止运行",
+  "agent.progressMeta": "第 {step} 步 · {elapsed}",
+  "agent.stop": "停止",
+  "agent.stopHint": "停止模型以及本次运行启动的所有进程",
+  "agent.cancelled": "运行已取消。",
+  "agent.reconnected": "连接已恢复：任务仍在本设备上运行。",
+  "agent.interrupted": "运行因重启而中断。你可以从保存的状态继续。",
+  "agent.interruptedLabel": "已中断",
+  "agent.resume": "继续",
+  "agent.close": "关闭",
+  "sessions.assignRemove": "从项目中移除",
+  "chat.attachFile": "添加文件",
+  "chat.fileAttached": "已添加文件",
+  "chat.filePromptPlaceholder": "就该文件提问……（留空则直接分析）",
+  "chat.defaultFilePrompt": "分析这个文件。",
+  "chat.fileTooLarge": "文件过大。请使用不超过 5 MB 的文本文件。",
+  "chat.fileUnsupported":
+    "暂不支持该文件类型。请使用 PDF、文本、代码、CSV、JSON 或日志。",
+  "chat.fileReadError": "无法读取此文件。",
+  "chat.fileTruncated": "已截断",
+  "chat.knowledgeIndexed": "知识分页：已索引 {total} 个块",
+  "chat.knowledgeLoaded": "知识分页：已加载 {total} 个块中的 {selected} 个",
+  "skills.title": "技能",
+  "skills.sub":
+    "可复用的指令包，当请求匹配时代理会自动应用。为每类常做的工作添加一个——模型只加载相关的那些。",
+  "skills.new": "新建技能",
+  "skills.empty": "还没有技能。添加一个，教会代理一种可重复的工作方式。",
+  "skills.name": "名称",
+  "skills.namePh": "例如：落地页",
+  "skills.desc": "说明",
+  "skills.descPh": "它做什么／何时使用",
+  "skills.triggers": "触发词",
+  "skills.triggersPh": "落地页, 网站, 站点 — 用逗号分隔",
+  "skills.triggersHelp":
+    "只有当请求包含其中一个词时才加载该技能。留空则始终应用。",
+  "skills.body": "指令",
+  "skills.bodyPh":
+    "写下代理应遵循的步骤，例如：\n- 始终通过 CDN 使用 Tailwind 和一种 Google 字体。\n- 只用一个 index.html，无需构建步骤。\n- 配色：赤陶色、米色、橄榄色。不要使用 lorem ipsum。",
+  "skills.save": "保存技能",
+  "skills.cancel": "取消",
+  "skills.edit": "编辑",
+  "skills.delete": "删除",
+  "skills.enabled": "已启用",
+  "skills.on": "开",
+  "skills.off": "关",
+  "skills.always": "始终启用",
+  "ob.autoRec": "已为你的电脑选择",
 };
 export default dict;

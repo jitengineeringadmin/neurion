@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
 export interface Estimate {
   isHeavy: boolean;
@@ -17,8 +17,12 @@ export class EstimatorService {
   estimate(message: string, attachmentBytes = 0): Estimate {
     const reasons: string[] = [];
     const estInputTokens = Math.ceil((message?.length ?? 0) / 4);
-    const tokenThreshold = Number(this.config.get('AI_GRID_JOB_THRESHOLD_TOKENS') ?? 6000);
-    const fileThresholdMb = Number(this.config.get('AI_GRID_FILE_THRESHOLD_MB') ?? 5);
+    const tokenThreshold = Number(
+      this.config.get("AI_GRID_JOB_THRESHOLD_TOKENS") ?? 6000,
+    );
+    const fileThresholdMb = Number(
+      this.config.get("AI_GRID_FILE_THRESHOLD_MB") ?? 5,
+    );
     const attachmentMb = attachmentBytes / (1024 * 1024);
 
     let isHeavy = false;
@@ -28,7 +32,9 @@ export class EstimatorService {
     }
     if (attachmentMb > fileThresholdMb) {
       isHeavy = true;
-      reasons.push(`attachments ${attachmentMb.toFixed(1)}MB > ${fileThresholdMb}MB`);
+      reasons.push(
+        `attachments ${attachmentMb.toFixed(1)}MB > ${fileThresholdMb}MB`,
+      );
     }
 
     const estCredits = isHeavy ? 10 : estInputTokens > 1500 ? 5 : 2;

@@ -65,7 +65,9 @@ export class AgentReviewService {
       if (full !== root && !full.startsWith(root + sep)) continue;
       const after = await readFile(full, "utf8").catch(() => "");
       if (after === snapshot.before) continue;
-      sections.push(this.compactDiff(snapshot.displayPath, snapshot.before, after));
+      sections.push(
+        this.compactDiff(snapshot.displayPath, snapshot.before, after),
+      );
     }
     const cap = 48_000;
     const joined = sections.join("\n\n");
@@ -97,11 +99,12 @@ export class AgentReviewService {
         issues?: unknown;
       };
       const verdict = String(value.verdict ?? "").toLowerCase();
-      let normalized: AgentReviewResult["verdict"] = verdict === "pass"
-        ? "pass"
-        : verdict === "changes_required"
-          ? "changes_required"
-          : "unknown";
+      let normalized: AgentReviewResult["verdict"] =
+        verdict === "pass"
+          ? "pass"
+          : verdict === "changes_required"
+            ? "changes_required"
+            : "unknown";
       const issues = Array.isArray(value.issues)
         ? value.issues
             .map((issue) => {
@@ -119,7 +122,10 @@ export class AgentReviewService {
             .filter((issue): issue is string => Boolean(issue))
             .slice(0, 10)
         : [];
-      let summary = String(value.summary ?? "No review summary.").slice(0, 4_000);
+      let summary = String(value.summary ?? "No review summary.").slice(
+        0,
+        4_000,
+      );
       if (normalized === "changes_required" && issues.length === 0) {
         normalized = "pass";
         summary = "No grounded blocking issue was found in the supplied diff.";
@@ -168,7 +174,8 @@ export class AgentReviewService {
       `@@ -${contextStart + 1},${removed.length} +${contextStart + 1},${added.length} @@`,
       ...removed.map((line) => `- ${line}`),
       ...added.map((line) => `+ ${line}`),
-      oldEnd - contextStart > removed.length || newEnd - contextStart > added.length
+      oldEnd - contextStart > removed.length ||
+      newEnd - contextStart > added.length
         ? "[file diff truncated]"
         : "",
     ]

@@ -1,14 +1,20 @@
 // Branded transactional email templates (inline styles for mail-client compat).
 // Matrix theme: near-black bg, Neurion green accent.
 
-const BG = '#04070a';
-const SURFACE = '#0a1410';
-const LINE = '#16321f';
-const ACCENT = '#00ff70';
-const TEXT = '#dff6e6';
-const MUTED = '#7fa890';
+const BG = "#04070a";
+const SURFACE = "#0a1410";
+const LINE = "#16321f";
+const ACCENT = "#00ff70";
+const TEXT = "#dff6e6";
+const MUTED = "#7fa890";
 
-function layout(opts: { appUrl: string; title: string; intro: string; bodyHtml: string; footer?: string }): string {
+function layout(opts: {
+  appUrl: string;
+  title: string;
+  intro: string;
+  bodyHtml: string;
+  footer?: string;
+}): string {
   const logo = `${opts.appUrl}/favicon.png`;
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -29,7 +35,7 @@ function layout(opts: { appUrl: string; title: string; intro: string; bodyHtml: 
         </td></tr>
         <tr><td style="padding:24px 32px 28px;">
           <hr style="border:none;border-top:1px solid ${LINE};margin:0 0 14px;">
-          <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED};">${opts.footer ?? 'Neurion — distributed AI compute network. If you did not request this, you can ignore this email.'}</p>
+          <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED};">${opts.footer ?? "Neurion — distributed AI compute network. If you did not request this, you can ignore this email."}</p>
           <p style="margin:8px 0 0;font-size:12px;color:${MUTED};"><a href="${opts.appUrl}" style="color:${ACCENT};text-decoration:none;">neurionproject.org</a></p>
         </td></tr>
       </table>
@@ -54,14 +60,15 @@ export interface Mail {
 
 export function welcomeEmail(appUrl: string, verifyUrl: string | null): Mail {
   const verifyBlock = verifyUrl
-    ? `<p style="margin:0 0 6px;font-size:14px;color:${TEXT};">Confirm your email to secure your account:</p>${button(verifyUrl, 'Verify email')}`
-    : `${button(`${appUrl}/login`, 'Open Neurion')}`;
+    ? `<p style="margin:0 0 6px;font-size:14px;color:${TEXT};">Confirm your email to secure your account:</p>${button(verifyUrl, "Verify email")}`
+    : `${button(`${appUrl}/login`, "Open Neurion")}`;
   return {
-    subject: 'Welcome to Neurion',
+    subject: "Welcome to Neurion",
     html: layout({
       appUrl,
-      title: 'Welcome to Neurion',
-      intro: 'Your account is ready. Run AI privately, or share your compute and earn NRN — a network where only verified work gets paid.',
+      title: "Welcome to Neurion",
+      intro:
+        "Your account is ready. Run AI privately, or share your compute and earn NRN — a network where only verified work gets paid.",
       bodyHtml: verifyBlock,
     }),
   };
@@ -69,37 +76,40 @@ export function welcomeEmail(appUrl: string, verifyUrl: string | null): Mail {
 
 export function verifyEmail(appUrl: string, verifyUrl: string): Mail {
   return {
-    subject: 'Verify your Neurion email',
+    subject: "Verify your Neurion email",
     html: layout({
       appUrl,
-      title: 'Verify your email',
-      intro: 'Confirm this address belongs to you. The link expires in 24 hours.',
-      bodyHtml: button(verifyUrl, 'Verify email'),
+      title: "Verify your email",
+      intro:
+        "Confirm this address belongs to you. The link expires in 24 hours.",
+      bodyHtml: button(verifyUrl, "Verify email"),
     }),
   };
 }
 
 export function resetPasswordEmail(appUrl: string, resetUrl: string): Mail {
   return {
-    subject: 'Reset your Neurion password',
+    subject: "Reset your Neurion password",
     html: layout({
       appUrl,
-      title: 'Reset your password',
-      intro: 'We received a request to reset your password. The link expires in 1 hour. If it wasn’t you, ignore this email — your password stays unchanged.',
-      bodyHtml: button(resetUrl, 'Reset password'),
+      title: "Reset your password",
+      intro:
+        "We received a request to reset your password. The link expires in 1 hour. If it wasn’t you, ignore this email — your password stays unchanged.",
+      bodyHtml: button(resetUrl, "Reset password"),
     }),
   };
 }
 
 export function passwordChangedEmail(appUrl: string): Mail {
   return {
-    subject: 'Your Neurion password was changed',
+    subject: "Your Neurion password was changed",
     html: layout({
       appUrl,
-      title: 'Password changed',
-      intro: 'Your password was just changed. If this was you, no action is needed. If not, reset it immediately and contact support.',
-      bodyHtml: button(`${appUrl}/forgot`, 'Reset password'),
-      footer: 'Neurion security notice.',
+      title: "Password changed",
+      intro:
+        "Your password was just changed. If this was you, no action is needed. If not, reset it immediately and contact support.",
+      bodyHtml: button(`${appUrl}/forgot`, "Reset password"),
+      footer: "Neurion security notice.",
     }),
   };
 }

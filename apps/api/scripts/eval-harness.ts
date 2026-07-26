@@ -41,7 +41,8 @@ const PASSWORD = process.env.EVAL_PASSWORD ?? "neurion123";
 // three and a warning below when someone asks for fewer.
 const RUNS = Number(process.env.EVAL_RUNS ?? 3);
 const TIMEOUT_MS = Number(process.env.EVAL_TIMEOUT_MS ?? 300_000);
-const OUT_DIR = process.env.EVAL_OUT ?? join(HERE, "..", "..", "..", ".runtime", "eval");
+const OUT_DIR =
+  process.env.EVAL_OUT ?? join(HERE, "..", "..", "..", ".runtime", "eval");
 
 interface Expect {
   type: "contains" | "regex" | "json";
@@ -94,7 +95,11 @@ function gpuInfo(): string {
   try {
     const out = execSync(
       'powershell -NoProfile -Command "(Get-CimInstance Win32_VideoController | Select-Object -First 1 -ExpandProperty Name)"',
-      { encoding: "utf8", timeout: 15_000, stdio: ["ignore", "pipe", "ignore"] },
+      {
+        encoding: "utf8",
+        timeout: 15_000,
+        stdio: ["ignore", "pipe", "ignore"],
+      },
     ).trim();
     return out || "unknown";
   } catch {
@@ -103,13 +108,16 @@ function gpuInfo(): string {
 }
 
 /** Which models the local engine currently holds in memory, and on what device. */
-async function residentModels(): Promise<Array<{ name: string; processor: string }>> {
-  const base = (process.env.AI_OPENAI_COMPATIBLE_BASE_URL ?? "http://127.0.0.1:11434/v1").replace(
-    /\/v1\/?$/,
-    "",
-  );
+async function residentModels(): Promise<
+  Array<{ name: string; processor: string }>
+> {
+  const base = (
+    process.env.AI_OPENAI_COMPATIBLE_BASE_URL ?? "http://127.0.0.1:11434/v1"
+  ).replace(/\/v1\/?$/, "");
   try {
-    const res = await fetch(`${base}/api/ps`, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${base}/api/ps`, {
+      signal: AbortSignal.timeout(3000),
+    });
     if (!res.ok) return [];
     const json = (await res.json()) as {
       models?: Array<{ name: string; size_vram?: number; size?: number }>;
@@ -138,7 +146,12 @@ function hardwareProfile(): Record<string, unknown> {
 
 // --- HTTP -----------------------------------------------------------------
 
-async function req<T>(path: string, method: string, body?: unknown, token?: string): Promise<T> {
+async function req<T>(
+  path: string,
+  method: string,
+  body?: unknown,
+  token?: string,
+): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
@@ -148,7 +161,10 @@ async function req<T>(path: string, method: string, body?: unknown, token?: stri
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}: ${text.slice(0, 300)}`);
+  if (!res.ok)
+    throw new Error(
+      `${method} ${path} -> ${res.status}: ${text.slice(0, 300)}`,
+    );
   return (text ? JSON.parse(text) : {}) as T;
 }
 
@@ -178,7 +194,10 @@ async function streamOnce(
 
   const res = await fetch(`${BASE}/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     // No conversationId: every run starts a fresh conversation, otherwise the
     // history grows between runs and the prompt-token count drifts.
     body: JSON.stringify({ message: prompt, preferredModel: model }),
@@ -216,7 +235,14 @@ async function streamOnce(
       else if (ev === "error") errored = String(data.message ?? "error");
     }
   }
-  return { text, ttftClientMs, totalMs: Date.now() - t0, routing, final, errored };
+  return {
+    text,
+    ttftClientMs,
+    totalMs: Date.now() - t0,
+    routing,
+    final,
+    errored,
+  };
 }
 
 // --- quality --------------------------------------------------------------
@@ -225,7 +251,10 @@ function check(text: string, e: Expect): boolean {
   const body = text.trim();
   if (e.type === "contains") {
     const hay = e.caseSensitive === false ? body.toLowerCase() : body;
-    const needle = e.caseSensitive === false ? String(e.value).toLowerCase() : String(e.value);
+    const needle =
+      e.caseSensitive === false
+        ? String(e.value).toLowerCase()
+        : String(e.value);
     return hay.includes(needle);
   }
   if (e.type === "regex") {
@@ -242,7 +271,10 @@ function check(text: string, e: Expect): boolean {
     const end = stripped.lastIndexOf("}");
     if (start === -1 || end === -1) return false;
     try {
-      const obj = JSON.parse(stripped.slice(start, end + 1)) as Record<string, unknown>;
+      const obj = JSON.parse(stripped.slice(start, end + 1)) as Record<
+        string,
+        unknown
+      >;
       return (e.keys ?? []).every((k) => k in obj);
     } catch {
       return false;
@@ -260,20 +292,34 @@ function fmt(n: number | undefined, digits = 0): string {
 async function main(): Promise<void> {
   // Guard rails: with NODE_ENV=test or a forced mock the router never reaches a
   // real engine, and the harness would happily report the mock's latency.
-  if (process.env.NODE_ENV === "test") throw new Error("refusing to run with NODE_ENV=test (forces the mock provider)");
-  if (process.env.AI_PROVIDER_DEFAULT === "mock") throw new Error("refusing to run with AI_PROVIDER_DEFAULT=mock");
+  if (process.env.NODE_ENV === "test")
+    throw new Error(
+      "refusing to run with NODE_ENV=test (forces the mock provider)",
+    );
+  if (process.env.AI_PROVIDER_DEFAULT === "mock")
+    throw new Error("refusing to run with AI_PROVIDER_DEFAULT=mock");
 
-  const health = await req<{ status: string; version?: string }>("/health", "GET");
-  if (health.status !== "ok") throw new Error(`API not healthy: ${JSON.stringify(health)}`);
+  const health = await req<{ status: string; version?: string }>(
+    "/health",
+    "GET",
+  );
+  if (health.status !== "ok")
+    throw new Error(`API not healthy: ${JSON.stringify(health)}`);
   const router = await req<{ status: string }>("/health/ai-router", "GET");
   if (router.status !== "ok") {
-    throw new Error(`ai-router is '${router.status}' — no local engine reachable, every run would measure the mock`);
+    throw new Error(
+      `ai-router is '${router.status}' — no local engine reachable, every run would measure the mock`,
+    );
   }
 
-  const { accessToken } = await req<{ accessToken: string }>("/auth/login", "POST", {
-    email: EMAIL,
-    password: PASSWORD,
-  });
+  const { accessToken } = await req<{ accessToken: string }>(
+    "/auth/login",
+    "POST",
+    {
+      email: EMAIL,
+      password: PASSWORD,
+    },
+  );
 
   const available = await req<{ models: string[]; chatDefault: string | null }>(
     "/ai/models",
@@ -285,25 +331,42 @@ async function main(): Promise<void> {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  if (requested.length === 0) throw new Error("no models to evaluate (set EVAL_MODELS)");
+  if (requested.length === 0)
+    throw new Error("no models to evaluate (set EVAL_MODELS)");
   const missing = requested.filter((m) => !available.models.includes(m));
   if (missing.length > 0) {
-    throw new Error(`models not served by any local engine: ${missing.join(", ")}`);
+    throw new Error(
+      `models not served by any local engine: ${missing.join(", ")}`,
+    );
   }
 
-  const dataset = JSON.parse(readFileSync(join(HERE, "eval", "dataset.json"), "utf8")) as {
+  const dataset = JSON.parse(
+    readFileSync(join(HERE, "eval", "dataset.json"), "utf8"),
+  ) as {
     cases: Case[];
   };
-  const only = (process.env.EVAL_CASES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  const cases = only.length > 0 ? dataset.cases.filter((c) => only.includes(c.id)) : dataset.cases;
+  const only = (process.env.EVAL_CASES ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const cases =
+    only.length > 0
+      ? dataset.cases.filter((c) => only.includes(c.id))
+      : dataset.cases;
   if (cases.length === 0) throw new Error("no cases selected");
 
   const hw = hardwareProfile();
   const before = await residentModels();
   console.log(`Neurion eval — API ${API} (v${health.version ?? "?"})`);
-  console.log(`  ${hw.cpu} · ${hw.threads}t · ${hw.ramFreeGb}/${hw.ramTotalGb} GB liberi · GPU: ${hw.gpu}`);
-  console.log(`  residenti all'avvio: ${before.length ? before.map((m) => `${m.name}(${m.processor})`).join(", ") : "nessuno"}`);
-  console.log(`  ${requested.length} modelli × ${cases.length} casi × ${RUNS} run (+1 cold scartato dalle medie)`);
+  console.log(
+    `  ${hw.cpu} · ${hw.threads}t · ${hw.ramFreeGb}/${hw.ramTotalGb} GB liberi · GPU: ${hw.gpu}`,
+  );
+  console.log(
+    `  residenti all'avvio: ${before.length ? before.map((m) => `${m.name}(${m.processor})`).join(", ") : "nessuno"}`,
+  );
+  console.log(
+    `  ${requested.length} modelli × ${cases.length} casi × ${RUNS} run (+1 cold scartato dalle medie)`,
+  );
   if (RUNS < 3) {
     console.log(
       `  ATTENZIONE: ${RUNS} run per caso. I modelli campionano, quindi la percentuale di successo\n` +
@@ -324,7 +387,13 @@ async function main(): Promise<void> {
       for (let run = 0; run <= RUNS; run++) {
         const cold = firstOfModel;
         firstOfModel = false;
-        const r: RunResult = { model, caseId: c.id, category: c.category, cold, valid: false };
+        const r: RunResult = {
+          model,
+          caseId: c.id,
+          category: c.category,
+          cold,
+          valid: false,
+        };
         try {
           const s = await streamOnce(accessToken, model, c.prompt);
           const servedModel = String(s.routing?.model ?? "");
@@ -334,9 +403,12 @@ async function main(): Promise<void> {
 
           if (s.errored) r.invalidReason = `error: ${s.errored}`;
           else if (!s.final) r.invalidReason = "stream ended without final";
-          else if (provider === "mock" || labeled) r.invalidReason = `mock fallback (${routeReason})`;
-          else if (routeReason === "NO_ONLINE_ENGINE") r.invalidReason = "no online engine";
-          else if (servedModel !== model) r.invalidReason = `served ${servedModel}, asked ${model}`;
+          else if (provider === "mock" || labeled)
+            r.invalidReason = `mock fallback (${routeReason})`;
+          else if (routeReason === "NO_ONLINE_ENGINE")
+            r.invalidReason = "no online engine";
+          else if (servedModel !== model)
+            r.invalidReason = `served ${servedModel}, asked ${model}`;
 
           r.provider = provider;
           r.servedModel = servedModel;
@@ -349,14 +421,22 @@ async function main(): Promise<void> {
             r.valid = true;
             r.pass = check(s.text, c.expect);
             r.response = s.text.slice(0, 2000);
-            const serverTtft = Number((s.final as { firstTokenMs?: number })?.firstTokenMs ?? NaN);
+            const serverTtft = Number(
+              (s.final as { firstTokenMs?: number })?.firstTokenMs ?? NaN,
+            );
             if (Number.isFinite(serverTtft)) {
               r.serverFirstTokenMs = serverTtft;
-              if (r.ttftClientMs !== undefined) r.overheadMs = r.ttftClientMs - serverTtft;
+              if (r.ttftClientMs !== undefined)
+                r.overheadMs = r.ttftClientMs - serverTtft;
             }
-            const usage = (s.final as { tokenUsage?: { completionTokens?: number } })?.tokenUsage;
+            const usage = (
+              s.final as { tokenUsage?: { completionTokens?: number } }
+            )?.tokenUsage;
             r.completionTokens = usage?.completionTokens;
-            r.genMs = r.ttftClientMs !== undefined ? s.totalMs - r.ttftClientMs : undefined;
+            r.genMs =
+              r.ttftClientMs !== undefined
+                ? s.totalMs - r.ttftClientMs
+                : undefined;
             // Reasoning models (qwen3 etc.) emit their thinking on a channel the
             // client never sees, so nothing streams for seconds and then the
             // answer lands at once. Dividing the token count by the streaming
@@ -366,7 +446,8 @@ async function main(): Promise<void> {
               r.tokPerSecWall = (r.completionTokens / s.totalMs) * 1000;
             }
             if (r.genMs && r.genMs > 0) {
-              if (r.completionTokens) r.tokPerSecStream = (r.completionTokens / r.genMs) * 1000;
+              if (r.completionTokens)
+                r.tokPerSecStream = (r.completionTokens / r.genMs) * 1000;
               r.charPerSec = (s.text.length / r.genMs) * 1000;
             }
           }
@@ -381,7 +462,9 @@ async function main(): Promise<void> {
             `  ${r.pass ? "ok  " : "FAIL"} ${c.id.padEnd(22)} ${tag.padEnd(5)} ttft ${fmt(r.ttftClientMs)}ms  tot ${fmt(r.totalMs)}ms  ${fmt(r.tokPerSecWall, 1)} tok/s`,
           );
         } else {
-          console.log(`  SKIP ${c.id.padEnd(22)} ${tag.padEnd(5)} ${r.invalidReason}`);
+          console.log(
+            `  SKIP ${c.id.padEnd(22)} ${tag.padEnd(5)} ${r.invalidReason}`,
+          );
         }
       }
     }
@@ -406,7 +489,9 @@ async function main(): Promise<void> {
   for (const model of requested) {
     const mw = warm.filter((r) => r.model === model);
     const mc = valid.filter((r) => r.model === model && r.cold);
-    const passRate = mw.length ? mw.filter((r) => r.pass).length / mw.length : 0;
+    const passRate = mw.length
+      ? mw.filter((r) => r.pass).length / mw.length
+      : 0;
     const s = {
       model,
       samples: mw.length,
@@ -414,10 +499,14 @@ async function main(): Promise<void> {
       ttftMedianMs: median(mw.map((r) => r.ttftClientMs!)),
       totalMedianMs: median(mw.map((r) => r.totalMs!)),
       tokPerSecMedian: median(mw.map((r) => r.tokPerSecWall!).filter(Boolean)),
-      tokPerSecStreamMedian: median(mw.map((r) => r.tokPerSecStream!).filter(Boolean)),
+      tokPerSecStreamMedian: median(
+        mw.map((r) => r.tokPerSecStream!).filter(Boolean),
+      ),
       // Single sample by construction: the one request that paid the model load.
       coldTtftMs: median(mc.map((r) => r.ttftClientMs!)),
-      overheadMedianMs: median(mw.map((r) => r.overheadMs!).filter((n) => Number.isFinite(n))),
+      overheadMedianMs: median(
+        mw.map((r) => r.overheadMs!).filter((n) => Number.isFinite(n)),
+      ),
       invalid: results.filter((r) => r.model === model && !r.valid).length,
     };
     summaries.push(s);
@@ -430,7 +519,11 @@ async function main(): Promise<void> {
   if (invalid.length > 0) {
     console.log(`\n${invalid.length} run non validi (esclusi dalle medie):`);
     const reasons = new Map<string, number>();
-    for (const r of invalid) reasons.set(r.invalidReason ?? "?", (reasons.get(r.invalidReason ?? "?") ?? 0) + 1);
+    for (const r of invalid)
+      reasons.set(
+        r.invalidReason ?? "?",
+        (reasons.get(r.invalidReason ?? "?") ?? 0) + 1,
+      );
     for (const [why, n] of reasons) console.log(`  ${n}×  ${why}`);
   }
 
@@ -460,7 +553,9 @@ async function main(): Promise<void> {
 
   // A run that never reached a real engine is a failed measurement, not a slow one.
   if (valid.length === 0) {
-    console.error("\nNESSUN run valido — la misura non ha prodotto nulla di utilizzabile.");
+    console.error(
+      "\nNESSUN run valido — la misura non ha prodotto nulla di utilizzabile.",
+    );
     process.exit(1);
   }
 }

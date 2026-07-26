@@ -16,7 +16,9 @@ import type { ChatMsg } from "../src/ai/providers/ai-provider.interface";
 
 // compile() touches only config + modelRegistry; both are stubbed so the suite
 // runs offline with no database.
-const config = { get: (k: string) => ({ AI_AGENT_CONTEXT_TOKENS: "8192" })[k] } as never;
+const config = {
+  get: (k: string) => ({ AI_AGENT_CONTEXT_TOKENS: "8192" })[k],
+} as never;
 const prisma = { modelRegistry: { findFirst: async () => null } } as never;
 const svc = new AgentContextService(prisma, config);
 
@@ -41,8 +43,14 @@ const SYSTEM: ChatMsg = { role: "system", content: "You are Neurion." };
 function history(turns: number): ChatMsg[] {
   const msgs: ChatMsg[] = [SYSTEM];
   for (let i = 0; i < turns; i++) {
-    msgs.push({ role: "user", content: `Domanda numero ${i}. ` + "contesto ".repeat(400) });
-    msgs.push({ role: "assistant", content: `Risposta numero ${i}. ` + "dettaglio ".repeat(400) });
+    msgs.push({
+      role: "user",
+      content: `Domanda numero ${i}. ` + "contesto ".repeat(400),
+    });
+    msgs.push({
+      role: "assistant",
+      content: `Risposta numero ${i}. ` + "dettaglio ".repeat(400),
+    });
   }
   return msgs;
 }
@@ -50,7 +58,13 @@ function history(turns: number): ChatMsg[] {
 /** How many leading messages two compilations agree on, byte for byte. */
 function sharedPrefix(a: ChatMsg[], b: ChatMsg[]): number {
   let n = 0;
-  while (n < a.length && n < b.length && a[n]!.role === b[n]!.role && a[n]!.content === b[n]!.content) n++;
+  while (
+    n < a.length &&
+    n < b.length &&
+    a[n]!.role === b[n]!.role &&
+    a[n]!.content === b[n]!.content
+  )
+    n++;
   return n;
 }
 
@@ -66,13 +80,21 @@ void (async () => {
     const msgs = history(30);
     const a = await svc.compile(msgs, "test-model");
     const b = await svc.compile(msgs, "test-model");
-    assert.equal(a.messages.length, b.messages.length, "different message count");
+    assert.equal(
+      a.messages.length,
+      b.messages.length,
+      "different message count",
+    );
     assert.deepEqual(a.messages, b.messages);
   });
 
   await test("a long history does get compressed (the path under test is reached)", async () => {
     const out = await svc.compile(history(30), "test-model");
-    assert.equal(out.compressed, true, "history was not long enough to compress");
+    assert.equal(
+      out.compressed,
+      true,
+      "history was not long enough to compress",
+    );
   });
 
   await test("the system prompt stays first", async () => {
@@ -87,7 +109,10 @@ void (async () => {
     const next: ChatMsg[] = [
       ...base,
       { role: "user", content: "Domanda nuova. " + "contesto ".repeat(400) },
-      { role: "assistant", content: "Risposta nuova. " + "dettaglio ".repeat(400) },
+      {
+        role: "assistant",
+        content: "Risposta nuova. " + "dettaglio ".repeat(400),
+      },
     ];
     const a = await svc.compile(base, "test-model");
     const b = await svc.compile(next, "test-model");
@@ -111,7 +136,10 @@ void (async () => {
       msgs = [
         ...msgs,
         { role: "user", content: `Turno ${turn}. ` + "contesto ".repeat(400) },
-        { role: "assistant", content: `Esito ${turn}. ` + "dettaglio ".repeat(400) },
+        {
+          role: "assistant",
+          content: `Esito ${turn}. ` + "dettaglio ".repeat(400),
+        },
       ];
       const now = (await svc.compile(msgs, "test-model")).messages;
       if (sharedPrefix(prev, now) >= prev.length - 2) reused++;

@@ -10,7 +10,11 @@ const text = (minLength = 0, maxLength = 1_000_000): AgentValueSchema => ({
   minLength,
   maxLength,
 });
-const number = (min?: number, max?: number, integer = false): AgentValueSchema => ({
+const number = (
+  min?: number,
+  max?: number,
+  integer = false,
+): AgentValueSchema => ({
   type: "number",
   min,
   max,
@@ -61,10 +65,9 @@ const TOOL_SCHEMAS: Record<string, AgentToolInputSchema> = {
   remember: schema({ note: text(1, 20_000) }, ["note"]),
   recall: schema({}),
   set_plan: schema({ steps: list(text(1, 500), 50) }, ["steps"]),
-  update_plan: schema(
-    { index: number(0, 1_000, true), done: boolean },
-    ["index"],
-  ),
+  update_plan: schema({ index: number(0, 1_000, true), done: boolean }, [
+    "index",
+  ]),
   read_many_files: schema({ paths: list(text(1, 4_000), 20) }, ["paths"]),
   create_project: schema(
     {
@@ -110,22 +113,21 @@ const TOOL_SCHEMAS: Record<string, AgentToolInputSchema> = {
   ),
   symbol_graph: schema({ symbol: text(1, 500) }, ["symbol"]),
   verify_project: schema({}),
-  search_files: schema(
-    { dir: text(1, 4_000), query: text(1, 5_000) },
-    ["query"],
-  ),
+  search_files: schema({ dir: text(1, 4_000), query: text(1, 5_000) }, [
+    "query",
+  ]),
   find_files: schema({ dir: text(1, 4_000), pattern: text(1, 500) }),
   web_fetch: schema({ url: text(1, 8_000) }, ["url"]),
   stat_path: schema({ path: text(1, 4_000) }, ["path"]),
   make_dir: schema({ path: text(1, 4_000) }, ["path"]),
-  append_file: schema(
-    { path: text(1, 4_000), content: text() },
-    ["path", "content"],
-  ),
-  move_path: schema(
-    { from: text(1, 4_000), to: text(1, 4_000) },
-    ["from", "to"],
-  ),
+  append_file: schema({ path: text(1, 4_000), content: text() }, [
+    "path",
+    "content",
+  ]),
+  move_path: schema({ from: text(1, 4_000), to: text(1, 4_000) }, [
+    "from",
+    "to",
+  ]),
   delete_path: schema({ path: text(1, 4_000) }, ["path"]),
   get_credits: schema({}),
   list_nodes: schema({}),
@@ -137,23 +139,23 @@ const TOOL_SCHEMAS: Record<string, AgentToolInputSchema> = {
     ["type", "text"],
   ),
   read_file: schema({ path: text(1, 4_000) }, ["path"]),
-  write_file: schema(
-    { path: text(1, 4_000), content: text() },
-    ["path", "content"],
-  ),
-  edit_file: schema(
-    { path: text(1, 4_000), find: text(1), replace: text() },
-    ["path", "find", "replace"],
-  ),
+  write_file: schema({ path: text(1, 4_000), content: text() }, [
+    "path",
+    "content",
+  ]),
+  edit_file: schema({ path: text(1, 4_000), find: text(1), replace: text() }, [
+    "path",
+    "find",
+    "replace",
+  ]),
   list_dir: schema({ path: text(1, 4_000) }),
-  run_command: schema(
-    { command: text(1), cwd: text(1, 4_000) },
-    ["command"],
-  ),
+  run_command: schema({ command: text(1), cwd: text(1, 4_000) }, ["command"]),
   spawn_agent: schema({ goal: text(1, 20_000) }, ["goal"]),
 };
 
-export function agentToolSchema(name: string): AgentToolInputSchema | undefined {
+export function agentToolSchema(
+  name: string,
+): AgentToolInputSchema | undefined {
   return TOOL_SCHEMAS[name];
 }
 
@@ -399,7 +401,9 @@ export class AgentToolValidationService {
     return output;
   }
 
-  private sanitizeObject(input: Record<string, unknown>): Record<string, unknown> {
+  private sanitizeObject(
+    input: Record<string, unknown>,
+  ): Record<string, unknown> {
     const output: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(input)) {
       if (["__proto__", "prototype", "constructor"].includes(key)) continue;

@@ -1,5 +1,5 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { createParamDecorator, ExecutionContext } from "@nestjs/common";
+import { UserRole } from "@prisma/client";
 
 export interface AuthUser {
   sub: string;
@@ -8,7 +8,9 @@ export interface AuthUser {
   workspaceId: string;
 }
 
-export const CurrentUser = createParamDecorator((_data: unknown, ctx: ExecutionContext): AuthUser => {
-  const req = ctx.switchToHttp().getRequest<{ user: AuthUser }>();
-  return req.user;
-});
+export const CurrentUser = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): AuthUser => {
+    const req = ctx.switchToHttp().getRequest<{ user: AuthUser }>();
+    return req.user;
+  },
+);

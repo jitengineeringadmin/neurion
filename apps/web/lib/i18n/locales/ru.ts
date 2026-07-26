@@ -1,8 +1,10 @@
 // AUTO-GENERATED locale. Edit translations here.
 const dict: Record<string, string> = {
   "home.brandName": "NEURION",
-  "home.tagline": "Делитесь незанятой мощностью. Получайте доступ к ИИ. Зарабатывайте кредиты и токен NRN.",
-  "home.description": "Распределённая сеть ИИ-вычислений: быстрый чат на коммьюнити-гриде с маршрутизатором Fast / Grid / Fallback, внутренними кредитами и on-chain служебным токеном NRN.",
+  "home.tagline":
+    "Делитесь незанятой мощностью. Получайте доступ к ИИ. Зарабатывайте кредиты и токен NRN.",
+  "home.description":
+    "Распределённая сеть ИИ-вычислений: быстрый чат на коммьюнити-гриде с маршрутизатором Fast / Grid / Fallback, внутренними кредитами и on-chain служебным токеном NRN.",
   "home.enterCta": "ВОЙТИ",
   "login.brandSuffix": "AI",
   "login.tabLogin": "вход",
@@ -27,16 +29,20 @@ const dict: Record<string, string> = {
   "chat.agentTraceSubAgent": "↳ суб-агент: ",
   "chat.agentErrorPrefix": "⚠️ {message}",
   "chat.chatErrorPrefix": "⚠️ {message}",
-  "chat.analyzeFolderGoal": "Проанализируй папку проекта: {cwd}. Используй list_dir, чтобы перечислить файлы и подпапки, прочитай ключевые файлы через read_file, затем понятно опиши структуру, технологический стек и назначение проекта в кратком резюме. Только чтение: ничего не создавай, не изменяй и не запускай.",
+  "chat.analyzeFolderGoal":
+    "Проанализируй папку проекта: {cwd}. Используй list_dir, чтобы перечислить файлы и подпапки, прочитай ключевые файлы через read_file, затем понятно опиши структуру, технологический стек и назначение проекта в кратком резюме. Только чтение: ничего не создавай, не изменяй и не запускай.",
   "chat.analyzeFolderUserMsg": "📂 Проанализировать папку",
   "chat.headingChat": "Чат",
-  "chat.analyzeFolderButtonTitle": "Проанализировать {cwd} с помощью агента (только чтение)",
+  "chat.analyzeFolderButtonTitle":
+    "Проанализировать {cwd} с помощью агента (только чтение)",
   "chat.analyzeFolderButton": "📂 Анализ папки",
   "chat.agentToggleOn": "🤖 Агент вкл",
   "chat.agentToggleOff": "🤖 Агент выкл",
   "chat.creditsLabel": "кредиты:",
-  "chat.emptyStateAgent": "Режим агента: задайте цель — он планирует, использует инструменты, работает с файлами (с подтверждением).",
-  "chat.emptyStateChat": "Спрашивайте что угодно. Маршрутизация, канал и стоимость в кредитах показаны для каждого ответа.",
+  "chat.emptyStateAgent":
+    "Режим агента: задайте цель — он планирует, использует инструменты, работает с файлами (с подтверждением).",
+  "chat.emptyStateChat":
+    "Спрашивайте что угодно. Маршрутизация, канал и стоимость в кредитах показаны для каждого ответа.",
   "chat.approvalPrompt": "⚠ одобрить {tool}?",
   "chat.approveButton": "Одобрить",
   "chat.denyButton": "Отклонить",
@@ -46,7 +52,8 @@ const dict: Record<string, string> = {
   "chat.inputPlaceholderChat": "Сообщение Neurion…",
   "chat.sendButtonRun": "Запустить",
   "chat.sendButtonSend": "Отправить",
-  "agent.defaultGoal": "Проверь мои кредиты и узлы онлайн, затем запусти задачу echo с текстом \"hello\" и сделай резюме.",
+  "agent.defaultGoal":
+    'Проверь мои кредиты и узлы онлайн, затем запусти задачу echo с текстом "hello" и сделай резюме.',
   "agent.heading": "Code",
   "agent.headingSubtitle": "мульти-агент · ReAct",
   "agent.goalPlaceholder": "Задайте агенту цель…",
@@ -65,11 +72,13 @@ const dict: Record<string, string> = {
   "agent.subAnswerPrefix": "суб-ответ:",
   "agent.thinkingStatus": "▌ размышляю…",
   "models.pageTitle": "Модели ИИ",
-  "models.pageSubtitle": "Скачайте модель, которая работает на вашем компьютере. Больше = умнее, но медленнее.",
+  "models.pageSubtitle":
+    "Скачайте модель, которая работает на вашем компьютере. Больше = умнее, но медленнее.",
   "models.localEngineLabel": "Локальный движок:",
   "models.engineUp": "активен",
   "models.engineDown": "не запущен",
-  "models.engineDownBanner": "Локальный ИИ-движок (ollama) не отвечает. Установите его с {link} и переоткройте эту страницу. (Скоро он будет встроен в приложение.)",
+  "models.engineDownBanner":
+    "Локальный ИИ-движок (ollama) не отвечает. Установите его с {link} и переоткройте эту страницу. (Скоро он будет встроен в приложение.)",
   "models.ollamaLinkText": "ollama.com",
   "models.downloadingPrefix": "Загрузка",
   "models.statusStarting": "запуск…",
@@ -102,7 +111,8 @@ const dict: Record<string, string> = {
   "nodes.heading": "Узлы",
   "nodes.registerNodeLabel": "Зарегистрировать вычислительный узел",
   "nodes.registerButton": "Зарегистрировать",
-  "nodes.saveNodeKeyNotice": "Сохраните этот nodeKey сейчас — показывается один раз:",
+  "nodes.saveNodeKeyNotice":
+    "Сохраните этот nodeKey сейчас — показывается один раз:",
   "nodes.jobsLabel": "задачи",
   "nodes.statusOnline": "ОНЛАЙН",
   "nodes.emptyState": "Пока нет узлов.",
@@ -110,7 +120,8 @@ const dict: Record<string, string> = {
   "wallet.nrnTokenLabel": "Токен NRN",
   "wallet.chainStatusOn": "вкл",
   "wallet.chainStatusOff": "выкл",
-  "wallet.chainInfoLine": "сеть {chainId} · выплаты {payoutsStatus} · 1 кредит = {nrnAmount} NRN",
+  "wallet.chainInfoLine":
+    "сеть {chainId} · выплаты {payoutsStatus} · 1 кредит = {nrnAmount} NRN",
   "wallet.chainIdPlaceholder": "…",
   "wallet.tokenAddressLabel": "токен: {tokenAddress}",
   "wallet.tokenNotDeployed": "не развёрнут",
@@ -125,7 +136,8 @@ const dict: Record<string, string> = {
   "admin.loading": "Загрузка…",
   "admin.dashboardHeading": "Админ-панель",
   "rootmeta.pageTitle": "Neurion AI",
-  "rootmeta.pageDescription": "Распределённая сеть ИИ-вычислений — делитесь незанятой мощностью, получайте доступ к ИИ, зарабатывайте NRN.",
+  "rootmeta.pageDescription":
+    "Распределённая сеть ИИ-вычислений — делитесь незанятой мощностью, получайте доступ к ИИ, зарабатывайте NRN.",
   "splash.bootInitializingRuntime": "> инициализация среды neurion…",
   "splash.bootConnectingGrid": "> подключение к вычислительному гриду…",
   "splash.bootWarmingPool": "> прогрев realtime-пула…",
@@ -139,7 +151,8 @@ const dict: Record<string, string> = {
   "sessions.deleteTooltip": "удалить",
   "sessions.promptProjectName": "Название проекта?",
   "sessions.promptProjectFolder": "Папка проекта?",
-  "sessions.promptAssignToProject": "Назначить проекту (номер, пусто = ни одному):",
+  "sessions.promptAssignToProject":
+    "Назначить проекту (номер, пусто = ни одному):",
   "sessions.defaultProjectName": "проект",
   "sessions.newSessionButton": "Новая сессия",
   "sessions.newProjectFolderButton": "Проект (папка)",
@@ -154,9 +167,11 @@ const dict: Record<string, string> = {
   "themetoggle.darkLabel": "тёмная",
   "auth.forgotLink": "Забыли пароль?",
   "auth.forgotTitle": "Сброс пароля",
-  "auth.forgotIntro": "Введите свой email, и мы отправим вам ссылку для сброса.",
+  "auth.forgotIntro":
+    "Введите свой email, и мы отправим вам ссылку для сброса.",
   "auth.forgotSubmit": "Отправить ссылку для сброса",
-  "auth.forgotSent": "Если этот email зарегистрирован, ссылка для сброса уже в пути. Проверьте почту.",
+  "auth.forgotSent":
+    "Если этот email зарегистрирован, ссылка для сброса уже в пути. Проверьте почту.",
   "auth.backToLogin": "Назад ко входу",
   "auth.resetTitle": "Задать новый пароль",
   "auth.newPassword": "Новый пароль",
@@ -185,13 +200,15 @@ const dict: Record<string, string> = {
   "auth.pwChangeFail": "Не удалось сменить пароль.",
   "auth.dangerZone": "Опасная зона",
   "auth.deleteAccount": "Удалить аккаунт",
-  "auth.deleteWarn": "Это навсегда удалит ваш аккаунт и все ваши данные (чаты, посты на форуме, кредиты). Это нельзя отменить. Введите пароль для подтверждения.",
+  "auth.deleteWarn":
+    "Это навсегда удалит ваш аккаунт и все ваши данные (чаты, посты на форуме, кредиты). Это нельзя отменить. Введите пароль для подтверждения.",
   "auth.deleteConfirm": "Удалить мой аккаунт",
   "auth.cancel": "Отмена",
   "auth.deleteFail": "Не удалось удалить аккаунт.",
   "nav.tabForum": "Форум",
   "forum.title": "Форум сообщества",
-  "forum.subtitle": "Спрашивайте, делитесь, предлагайте. Создан вместе с сообществом.",
+  "forum.subtitle":
+    "Спрашивайте, делитесь, предлагайте. Создан вместе с сообществом.",
   "forum.newThread": "+ Новая тема",
   "forum.titlePlaceholder": "Заголовок",
   "forum.bodyPlaceholder": "Напишите своё сообщение…",
@@ -215,7 +232,8 @@ const dict: Record<string, string> = {
   "forum.catIdeas": "Идеи",
   "forum.catAnnouncements": "Объявления",
   "forum.participate": "Присоединиться к обсуждению",
-  "forum.publicSubtitle": "Читайте, что обсуждает сообщество. Войдите, чтобы публиковать и отвечать.",
+  "forum.publicSubtitle":
+    "Читайте, что обсуждает сообщество. Войдите, чтобы публиковать и отвечать.",
   "forum.loginToReply": "Хотите ответить?",
   "forum.allSections": "Все разделы",
   "forum.messages": "сообщений",
@@ -227,7 +245,8 @@ const dict: Record<string, string> = {
   "auth.profileSaved": "Профиль сохранён.",
 
   "network.title": "Центр управления сетью",
-  "network.subtitle": "Состояние вычислительной сети Neurion в реальном времени — узлы, мощности, задачи и движение токенов",
+  "network.subtitle":
+    "Состояние вычислительной сети Neurion в реальном времени — узлы, мощности, задачи и движение токенов",
   "network.openApp": "Открыть приложение",
   "network.updated": "Обновлено {time}",
   "network.loading": "Загрузка состояния сети…",
@@ -294,13 +313,15 @@ const dict: Record<string, string> = {
   "models.choose": "Выберите модель для загрузки",
 
   "models.nodeHeading": "Поделитесь моделями (запустите узел)",
-  "models.nodeDesc": "Запустите узел в сети Neurion со своими загруженными моделями и зарабатывайте NRN. Войдите с помощью аккаунта neurionproject.org.",
+  "models.nodeDesc":
+    "Запустите узел в сети Neurion со своими загруженными моделями и зарабатывайте NRN. Войдите с помощью аккаунта neurionproject.org.",
   "models.nodeRunning": "Делитесь — зарабатываете NRN",
   "models.nodeStop": "Остановить",
   "models.nodeStart": "Начать делиться",
   "models.nodeEmail": "Эл. почта neurionproject.org",
   "models.nodePass": "пароль",
-  "models.nodeNeedsEngine": "Сначала загрузите модель (локальный движок должен быть запущен).",
+  "models.nodeNeedsEngine":
+    "Сначала загрузите модель (локальный движок должен быть запущен).",
   "models.nodeUnavailable": "Узел недоступен в этой сборке.",
 
   "agent.compute": "Вычисления",
@@ -309,15 +330,18 @@ const dict: Record<string, string> = {
   "agent.modeLocal": "Локально (мой PC)",
   "agent.modeNetwork": "Только сеть",
   "agent.netModel": "сетевая модель",
-  "agent.computeAsk": "Сетевой узел может запустить {model} (расходует кредиты). Использовать?",
+  "agent.computeAsk":
+    "Сетевой узел может запустить {model} (расходует кредиты). Использовать?",
   "agent.useNetwork": "Использовать сеть",
   "agent.useLocal": "Использовать локально",
-  "agent.computeFallback": "сбой сетевого узла — переключено на вашу локальную модель",
+  "agent.computeFallback":
+    "сбой сетевого узла — переключено на вашу локальную модель",
 
   "models.quantLabel": "Квантизация",
   "models.quantDefault": "По умолчанию",
   "models.quantSizeVaries": "размер зависит",
-  "models.quantHelp": "Ниже — легче, быстрее, меньше памяти. Выше — лучше качество, больше загрузка.",
+  "models.quantHelp":
+    "Ниже — легче, быстрее, меньше памяти. Выше — лучше качество, больше загрузка.",
 
   "nav.tabImage": "Изображение",
   "image.pageTitle": "Изображение",
@@ -326,10 +350,12 @@ const dict: Record<string, string> = {
   "image.engineLabel": "Движок изображений:",
   "image.engineUp": "готов",
   "image.engineDown": "не найден",
-  "image.engineDownBanner": "Локальный движок изображений не найден. Запустите сервер Stable Diffusion ({link}) и укажите его в Neurion (AI_IMAGE_BASE_URL, по умолчанию http://localhost:7860).",
+  "image.engineDownBanner":
+    "Локальный движок изображений не найден. Запустите сервер Stable Diffusion ({link}) и укажите его в Neurion (AI_IMAGE_BASE_URL, по умолчанию http://localhost:7860).",
   "image.sdLinkText": "Automatic1111 / Forge",
   "image.promptPlaceholder": "Опишите изображение…",
-  "image.negativePlaceholder": "Негативный запрос (необязательно) — чего избегать",
+  "image.negativePlaceholder":
+    "Негативный запрос (необязательно) — чего избегать",
   "image.size": "Размер",
   "image.steps": "Шаги",
   "image.generate": "Сгенерировать",
@@ -351,15 +377,18 @@ const dict: Record<string, string> = {
   "network.email": "эл. почта для сети",
   "network.password": "пароль",
   "network.connect": "Подключиться",
-  "network.connectFailed": "не удалось войти — проверьте свою учётную запись сети",
+  "network.connectFailed":
+    "не удалось войти — проверьте свою учётную запись сети",
 
   "image.setupPrompt": "Для генерации изображений нужна разовая настройка.",
-  "image.setupSub": "Один раз загрузится ~{size} МБ и останется на вашем ПК — ничего устанавливать не нужно.",
+  "image.setupSub":
+    "Один раз загрузится ~{size} МБ и останется на вашем ПК — ничего устанавливать не нужно.",
   "image.setupBtn": "Настроить генерацию изображений",
   "image.installing": "Готовим движок…",
   "image.installEngine": "загружаем программу",
   "image.installModel": "загружаем модель",
-  "image.unsupported": "Локальная генерация изображений пока недоступна на этой системе — используйте сетевой режим.",
+  "image.unsupported":
+    "Локальная генерация изображений пока недоступна на этой системе — используйте сетевой режим.",
   "image.genNoteGpu": "Несколько секунд на GPU, несколько минут на CPU.",
 
   "image.sizeSmall": "Маленький · быстро",
@@ -378,17 +407,20 @@ const dict: Record<string, string> = {
   "image.recommended": "рекомендуется",
 
   "ob.title": "Добро пожаловать в Neurion",
-  "ob.sub": "Ваш ИИ на вашем компьютере — а когда нужно больше мощности, поможет общая сеть.",
+  "ob.sub":
+    "Ваш ИИ на вашем компьютере — а когда нужно больше мощности, поможет общая сеть.",
   "ob.b1": "Общайтесь с ИИ-моделями, работающими на вашем ПК",
   "ob.b2": "Генерируйте изображения локально",
   "ob.b3": "Делитесь свободной мощностью и зарабатывайте кредиты",
   "ob.next": "Начать",
   "ob.skip": "Пропустить",
   "ob.engineTitle": "Нужно установить только одно",
-  "ob.engineBody": "Neurion использует небольшой бесплатный движок ({link}) для запуска ИИ-моделей. Установите его и вернитесь сюда — я замечу автоматически.",
+  "ob.engineBody":
+    "Neurion использует небольшой бесплатный движок ({link}) для запуска ИИ-моделей. Установите его и вернитесь сюда — я замечу автоматически.",
   "ob.engineWaiting": "Ожидание движка…",
   "ob.modelTitle": "Загрузите свою первую модель",
-  "ob.modelBody": "Одна загрузка (~1,9 ГБ) — и дальше всё работает на вашем компьютере.",
+  "ob.modelBody":
+    "Одна загрузка (~1,9 ГБ) — и дальше всё работает на вашем компьютере.",
   "ob.modelBtn": "Скачать рекомендуемую модель",
   "ob.doneTitle": "Всё готово!",
   "ob.doneBody": "Спрашивайте что угодно — всё работает на вашем компьютере.",
@@ -431,15 +463,19 @@ const dict: Record<string, string> = {
 
   "sidebar.openFolder": "Открыть папку",
   "sidebar.projectsHeading": "Проекты",
-  "sidebar.noProjects": "Пока нет проектов — откройте папку, и агент будет работать в ней.",
+  "sidebar.noProjects":
+    "Пока нет проектов — откройте папку, и агент будет работать в ней.",
   "sidebar.galleryHeading": "Ваши изображения",
   "sidebar.galleryEmpty": "Сгенерированные изображения появятся здесь.",
 
   "image.kindImage": "Картинка",
   "image.kindVideo": "Видео · бета",
-  "video.note": "Анимированный клип (~10с): сцены от ИИ с кинематографичным зумом и переходами. Работает на вашем ПК.",
-  "video.engineMissing": "Сначала настройте модель изображений (вкладка Картинка) — клип собирается из ИИ-кадров.",
-  "video.unsupported": "Установите ffmpeg, чтобы включить видео в этой системе.",
+  "video.note":
+    "Анимированный клип (~10с): сцены от ИИ с кинематографичным зумом и переходами. Работает на вашем ПК.",
+  "video.engineMissing":
+    "Сначала настройте модель изображений (вкладка Картинка) — клип собирается из ИИ-кадров.",
+  "video.unsupported":
+    "Установите ffmpeg, чтобы включить видео в этой системе.",
   "video.setupBtn": "Подготовить видео (~170 МБ, один раз)",
   "video.installing": "Подготовка видео",
   "video.ready": "Видеодвижок готов",
@@ -452,13 +488,16 @@ const dict: Record<string, string> = {
 
   "video.kindClip": "Быстрый клип",
   "video.kindAi": "ИИ-видео · экспериментально",
-  "video.aiNote": "Настоящее text-to-video (Wan 2.1) на ВАШЕМ компьютере — RAM заменяет большую GPU. Медленно (20–60+ мин на ~2с в 480p), но по-настоящему, офлайн и бесплатно.",
+  "video.aiNote":
+    "Настоящее text-to-video (Wan 2.1) на ВАШЕМ компьютере — RAM заменяет большую GPU. Медленно (20–60+ мин на ~2с в 480p), но по-настоящему, офлайн и бесплатно.",
   "video.aiSetupBtn": "Скачать ИИ-модель видео (~6,7 ГБ, один раз)",
   "video.aiInstalling": "Скачиваю ИИ-модель видео",
   "video.aiReady": "ИИ-видео готово — долгое ожидание на клип",
   "video.aiWorking": "ИИ-видео в работе (может занять до часа)",
-  "video.reqRam": "Минимальные требования не выполнены: {have} ГБ RAM (нужно {need} ГБ+). Используйте Быстрый клип или сеть, когда появятся видео-узлы.",
-  "video.reqDisk": "Недостаточно места на диске: {have} ГБ свободно (нужно {need} ГБ+).",
+  "video.reqRam":
+    "Минимальные требования не выполнены: {have} ГБ RAM (нужно {need} ГБ+). Используйте Быстрый клип или сеть, когда появятся видео-узлы.",
+  "video.reqDisk":
+    "Недостаточно места на диске: {have} ГБ свободно (нужно {need} ГБ+).",
 
   "video.step": "Шаг {c} из {t}",
   "video.left": "осталось ~{m} мин",
@@ -479,40 +518,51 @@ const dict: Record<string, string> = {
   "audio.moodDark": "Мрачно",
   "audio.voicePlaceholder": "Что говорит голос (пусто = промпт)",
   "audio.genPlaceholder": "Опишите музыку (пусто = промпт)",
-  "audio.genNote": "Генерируется на вашем CPU — добавляет минуты. Экспериментально.",
+  "audio.genNote":
+    "Генерируется на вашем CPU — добавляет минуты. Экспериментально.",
   "audio.setupMusic": "Скачать музыкальный пакет (~25 МБ, один раз)",
   "audio.setupTts": "Скачать голос (~80 МБ, один раз)",
   "audio.setupGen": "Скачать ИИ-модель музыки (~650 МБ, один раз)",
   "audio.installing": "Готовлю звук",
   "audio.mixing": "Добавляю саундтрек",
-  "audio.ttsUnsupported": "Голос пока авто-устанавливается только в Windows (иначе установите piper вручную).",
-  "audio.foleyComing": "Синхронные звуковые эффекты (ИИ-фоли) появятся с GPU-узлами сети.",
+  "audio.ttsUnsupported":
+    "Голос пока авто-устанавливается только в Windows (иначе установите piper вручную).",
+  "audio.foleyComing":
+    "Синхронные звуковые эффекты (ИИ-фоли) появятся с GPU-узлами сети.",
   "audio.credit": "Музыка: Kevin MacLeod (incompetech.com) · CC BY 4.0",
-  "agent.modelDied": "Модель неожиданно остановилась (вероятно, не хватило памяти). Повторите или выберите модель поменьше.",
+  "agent.modelDied":
+    "Модель неожиданно остановилась (вероятно, не хватило памяти). Повторите или выберите модель поменьше.",
 
   "agent.autoOn": "Автономно",
   "agent.autoOff": "Спрашивать каждое действие",
-  "agent.autoHint": "Автономно = агент пишет файлы и выполняет команды без запроса. Выкл = вы подтверждаете каждое действие.",
+  "agent.autoHint":
+    "Автономно = агент пишет файлы и выполняет команды без запроса. Выкл = вы подтверждаете каждое действие.",
   "agent.clearHist": "Очистить историю",
 
   "agent.preview": "Превью",
   "agent.previewHint": "Показать живой предпросмотр HTML-страницы в папке",
   "agent.previewRefresh": "Обновить",
-  "agent.previewEmpty": "В папке пока нет HTML-страницы — превью появится, когда агент её создаст.",
+  "agent.previewEmpty":
+    "В папке пока нет HTML-страницы — превью появится, когда агент её создаст.",
 
   "settings.title": "Настройки",
   "settings.instructionsTitle": "Ваши инструкции для агента",
-  "settings.instructionsSub": "Правила, которым агент Code всегда следует — ваш стек, стиль, язык, что можно и нельзя. Коротко и прямо работает лучше, особенно с малыми локальными моделями.",
+  "settings.instructionsSub":
+    "Правила, которым агент Code всегда следует — ваш стек, стиль, язык, что можно и нельзя. Коротко и прямо работает лучше, особенно с малыми локальными моделями.",
   "settings.save": "Сохранить",
   "settings.savedActive": "Сохранено — агент им следует",
   "settings.unsaved": "несохранённые изменения",
-  "settings.tip": "Совет: дайте конкретный пример для копирования, а не расплывчатые правила. Малые модели лучше следуют примерам.",
+  "settings.tip":
+    "Совет: дайте конкретный пример для копирования, а не расплывчатые правила. Малые модели лучше следуют примерам.",
   "settings.behaviorTitle": "Поведение по умолчанию",
   "settings.autoDefault": "Запускать агент Code в автономном режиме",
-  "settings.autoDefaultSub": "Новые запуски не будут спрашивать подтверждение на каждую запись/команду (можно менять для каждого запуска).",
+  "settings.autoDefaultSub":
+    "Новые запуски не будут спрашивать подтверждение на каждую запись/команду (можно менять для каждого запуска).",
 
-  "agent.rulesHint": "Правила для ЭТОГО проекта, которым агент всегда следует (NEURION.md в папке)",
-  "agent.rulesSub": "Правила только для ЭТОГО проекта, вдобавок к глобальным настройкам. Сохраняются как NEURION.md в папке; агент читает их при каждом запуске.",
+  "agent.rulesHint":
+    "Правила для ЭТОГО проекта, которым агент всегда следует (NEURION.md в папке)",
+  "agent.rulesSub":
+    "Правила только для ЭТОГО проекта, вдобавок к глобальным настройкам. Сохраняются как NEURION.md в папке; агент читает их при каждом запуске.",
   "agent.rulesSave": "Сохранить NEURION.md",
   "agent.rulesClose": "Закрыть",
 
@@ -528,10 +578,81 @@ const dict: Record<string, string> = {
   "chat.imageAttached": "Изображение прикреплено",
   "chat.imagePromptPlaceholder": "Спросите об изображении… (пусто = опишите)",
 
-  "models.searchPlaceholder": "🔎 Поиск моделей (напр. coder, vision, 7b, deepseek)…",
-  "models.noMatch": "Ничего не найдено — попробуйте семейство (qwen, llama, mistral) или размер (7b, 14b).",
+  "models.searchPlaceholder":
+    "🔎 Поиск моделей (напр. coder, vision, 7b, deepseek)…",
+  "models.noMatch":
+    "Ничего не найдено — попробуйте семейство (qwen, llama, mistral) или размер (7b, 14b).",
 
   "sidebar.rename": "Переименовать",
   "sidebar.renamePrompt": "Новое имя проекта:",
+  "home.downloadCta": "Скачать для Windows",
+  "home.downloadMeta":
+    "Последняя версия приложения: Neurion 1.8.8 для Windows.",
+  "login.startingUp": "Запуск…",
+  "login.startingUpHint":
+    "Приложение запускается — это займёт несколько секунд.",
+  "login.startingUpSlow":
+    "Первый запуск может занять до минуты (запускается база данных)…",
+  "agent.phasePreparing": "Подготовка запуска",
+  "agent.phaseThinking": "Модель работает",
+  "agent.phaseTool": "Операция: {tool}",
+  "agent.phaseReview": "Независимая проверка изменений",
+  "agent.phaseApproval": "Ожидание вашего подтверждения",
+  "agent.phaseReconnecting": "Переподключение к активному запуску",
+  "agent.phaseStopping": "Остановка запуска",
+  "agent.progressMeta": "Шаг {step} · {elapsed}",
+  "agent.stop": "Остановить",
+  "agent.stopHint":
+    "Остановить модель и все процессы, запущенные этим запуском",
+  "agent.cancelled": "Запуск отменён.",
+  "agent.reconnected":
+    "Соединение восстановлено: работа продолжается на этом устройстве.",
+  "agent.interrupted":
+    "Запуск был прерван перезапуском. Вы можете продолжить с сохранённого состояния.",
+  "agent.interruptedLabel": "Прервано",
+  "agent.resume": "Продолжить",
+  "agent.close": "Закрыть",
+  "sessions.assignRemove": "убрать из проекта",
+  "chat.attachFile": "Прикрепить файл",
+  "chat.fileAttached": "Файл прикреплён",
+  "chat.filePromptPlaceholder":
+    "Спросите о файле… (пусто — просто проанализировать)",
+  "chat.defaultFilePrompt": "Проанализируй этот файл.",
+  "chat.fileTooLarge":
+    "Файл слишком большой. Используйте текстовый файл до 5 МБ.",
+  "chat.fileUnsupported":
+    "Этот тип файла пока не поддерживается. Используйте PDF, текст, код, CSV, JSON или логи.",
+  "chat.fileReadError": "Не удалось прочитать этот файл.",
+  "chat.fileTruncated": "обрезано",
+  "chat.knowledgeIndexed":
+    "Постраничные знания: проиндексировано блоков — {total}",
+  "chat.knowledgeLoaded":
+    "Постраничные знания: загружено {selected} из {total} блоков",
+  "skills.title": "Навыки",
+  "skills.sub":
+    "Переиспользуемые наборы инструкций, которые агент применяет сам, когда запрос им соответствует. Добавьте по одному на каждый частый вид работы — модель загружает только подходящие.",
+  "skills.new": "Новый навык",
+  "skills.empty":
+    "Навыков пока нет. Добавьте один, чтобы научить агента повторяемому способу работы.",
+  "skills.name": "Название",
+  "skills.namePh": "напр. Лендинг",
+  "skills.desc": "Описание",
+  "skills.descPh": "Что делает / когда использовать",
+  "skills.triggers": "Слова-триггеры",
+  "skills.triggersPh": "лендинг, сайт, страница — через запятую",
+  "skills.triggersHelp":
+    "Навык загружается, только если запрос содержит одно из этих слов. Оставьте пустым, чтобы применять всегда.",
+  "skills.body": "Инструкции",
+  "skills.bodyPh":
+    "Опишите шаги, которым должен следовать агент, напр.:\n- Всегда использовать Tailwind через CDN и шрифт Google.\n- Один index.html, без сборки.\n- Палитра: терракота, кремовый, оливковый. Без lorem ipsum.",
+  "skills.save": "Сохранить навык",
+  "skills.cancel": "Отмена",
+  "skills.edit": "Изменить",
+  "skills.delete": "Удалить",
+  "skills.enabled": "Включён",
+  "skills.on": "Вкл",
+  "skills.off": "Выкл",
+  "skills.always": "всегда активен",
+  "ob.autoRec": "подобрано для вашего ПК",
 };
 export default dict;

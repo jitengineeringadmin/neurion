@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
-import { Mail } from './templates';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
+import { Mail } from "./templates";
 
 /**
  * Transactional email via SMTP (e.g. Aruba: smtps.aruba.it:465).
@@ -15,20 +15,23 @@ export class MailService {
   private transporter: Transporter | null = null;
 
   constructor(private readonly config: ConfigService) {
-    const host = this.config.get<string>('SMTP_HOST');
-    const user = this.config.get<string>('SMTP_USER');
-    const pass = this.config.get<string>('SMTP_PASS');
+    const host = this.config.get<string>("SMTP_HOST");
+    const user = this.config.get<string>("SMTP_USER");
+    const pass = this.config.get<string>("SMTP_PASS");
     if (host && user && pass) {
-      const port = Number(this.config.get<string>('SMTP_PORT') ?? 465);
+      const port = Number(this.config.get<string>("SMTP_PORT") ?? 465);
       this.transporter = nodemailer.createTransport({
         host,
         port,
-        secure: this.config.get<string>('SMTP_SECURE') !== 'false' && port === 465,
+        secure:
+          this.config.get<string>("SMTP_SECURE") !== "false" && port === 465,
         auth: { user, pass },
       });
       this.logger.log(`SMTP configured: ${host}:${port} as ${user}`);
     } else {
-      this.logger.warn('SMTP not configured (SMTP_HOST/USER/PASS) — emails are disabled.');
+      this.logger.warn(
+        "SMTP not configured (SMTP_HOST/USER/PASS) — emails are disabled.",
+      );
     }
   }
 
@@ -37,11 +40,16 @@ export class MailService {
   }
 
   appUrl(): string {
-    return this.config.get<string>('APP_PUBLIC_URL') ?? 'https://neurionproject.org';
+    return (
+      this.config.get<string>("APP_PUBLIC_URL") ?? "https://neurionproject.org"
+    );
   }
 
   private from(): string {
-    return this.config.get<string>('SMTP_FROM') ?? `Neurion <noreply@neurionproject.org>`;
+    return (
+      this.config.get<string>("SMTP_FROM") ??
+      `Neurion <noreply@neurionproject.org>`
+    );
   }
 
   /** Send an email; never throws (logs + returns false on failure). */
@@ -51,7 +59,12 @@ export class MailService {
       return false;
     }
     try {
-      await this.transporter.sendMail({ from: this.from(), to, subject: mail.subject, html: mail.html });
+      await this.transporter.sendMail({
+        from: this.from(),
+        to,
+        subject: mail.subject,
+        html: mail.html,
+      });
       return true;
     } catch (e) {
       this.logger.error(`email failed -> ${to}: ${(e as Error).message}`);

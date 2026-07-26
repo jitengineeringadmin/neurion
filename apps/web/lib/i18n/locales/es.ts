@@ -590,5 +590,74 @@ const dict: Record<string, string> = {
 
   "sidebar.rename": "Renombrar",
   "sidebar.renamePrompt": "Nuevo nombre del proyecto:",
+  "home.downloadCta": "Descargar para Windows",
+  "home.downloadMeta":
+    "Última aplicación de escritorio: Neurion 1.8.8 para Windows.",
+  "login.startingUp": "Iniciando…",
+  "login.startingUpHint":
+    "La aplicación se está iniciando: tarda unos segundos.",
+  "login.startingUpSlow":
+    "El primer arranque puede tardar hasta un minuto (iniciando la base de datos)…",
+  "agent.phasePreparing": "Preparando la ejecución",
+  "agent.phaseThinking": "El modelo está trabajando",
+  "agent.phaseTool": "Operación: {tool}",
+  "agent.phaseReview": "Revisando los cambios de forma independiente",
+  "agent.phaseApproval": "Esperando tu aprobación",
+  "agent.phaseReconnecting": "Reconectando con la ejecución activa",
+  "agent.phaseStopping": "Deteniendo la ejecución",
+  "agent.progressMeta": "Paso {step} · {elapsed}",
+  "agent.stop": "Detener",
+  "agent.stopHint":
+    "Detener el modelo y todos los procesos iniciados por esta ejecución",
+  "agent.cancelled": "Ejecución cancelada.",
+  "agent.reconnected":
+    "Conexión restablecida: el trabajo sigue en marcha en este dispositivo.",
+  "agent.interrupted":
+    "La ejecución se interrumpió por un reinicio. Puedes reanudarla desde su estado guardado.",
+  "agent.interruptedLabel": "Interrumpida",
+  "agent.resume": "Reanudar",
+  "agent.close": "Cerrar",
+  "sessions.assignRemove": "quitar del proyecto",
+  "chat.attachFile": "Adjuntar un archivo",
+  "chat.fileAttached": "Archivo adjunto",
+  "chat.filePromptPlaceholder":
+    "Pregunta sobre el archivo… (vacío = analizarlo)",
+  "chat.defaultFilePrompt": "Analiza este archivo.",
+  "chat.fileTooLarge":
+    "Archivo demasiado grande. Usa un archivo de texto de hasta 5 MB.",
+  "chat.fileUnsupported":
+    "Este tipo de archivo aún no es compatible. Usa PDF, texto, código, CSV, JSON o registros.",
+  "chat.fileReadError": "No he podido leer este archivo.",
+  "chat.fileTruncated": "truncado",
+  "chat.knowledgeIndexed":
+    "Paginación de conocimiento: {total} bloques indexados",
+  "chat.knowledgeLoaded":
+    "Paginación de conocimiento: {selected} de {total} bloques cargados",
+  "skills.title": "Habilidades",
+  "skills.sub":
+    "Paquetes de instrucciones reutilizables que el agente aplica por su cuenta cuando una petición encaja. Añade uno por cada tipo de trabajo habitual: el modelo carga solo los relevantes.",
+  "skills.new": "Nueva habilidad",
+  "skills.empty":
+    "Aún no hay habilidades. Añade una para enseñar al agente una forma de trabajar repetible.",
+  "skills.name": "Nombre",
+  "skills.namePh": "p. ej. Página de aterrizaje",
+  "skills.desc": "Descripción",
+  "skills.descPh": "Qué hace / cuándo usarla",
+  "skills.triggers": "Palabras clave",
+  "skills.triggersPh": "landing, sitio, web — separadas por comas",
+  "skills.triggersHelp":
+    "La habilidad se carga solo si la petición contiene una de estas palabras. Déjalo vacío para aplicarla siempre.",
+  "skills.body": "Instrucciones",
+  "skills.bodyPh":
+    "Escribe los pasos que debe seguir el agente, p. ej.:\n- Usa siempre Tailwind por CDN y una fuente de Google.\n- Un único index.html, sin paso de compilación.\n- Paleta: terracota, crema, oliva. Nada de lorem ipsum.",
+  "skills.save": "Guardar habilidad",
+  "skills.cancel": "Cancelar",
+  "skills.edit": "Editar",
+  "skills.delete": "Eliminar",
+  "skills.enabled": "Activada",
+  "skills.on": "Activado",
+  "skills.off": "Desactivado",
+  "skills.always": "siempre activa",
+  "ob.autoRec": "elegido para tu PC",
 };
 export default dict;

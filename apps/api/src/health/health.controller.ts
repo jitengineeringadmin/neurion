@@ -1,11 +1,14 @@
-import { Controller, Get } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { connect } from 'node:net';
-import { PrismaService } from '../prisma/prisma.service';
-import { Public } from '../common/decorators/public.decorator';
+import { Controller, Get } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { connect } from "node:net";
+import { PrismaService } from "../prisma/prisma.service";
+import { Public } from "../common/decorators/public.decorator";
 
 async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+  return Promise.race([
+    p,
+    new Promise<T>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms)),
+  ]);
 }
 
 /**
@@ -15,19 +18,22 @@ async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
  */
 const VERSION: string = (() => {
   if (process.env.NEURION_VERSION) return process.env.NEURION_VERSION;
-  for (const rel of ['../../package.json', '../package.json']) {
+  for (const rel of ["../../package.json", "../package.json"]) {
     try {
+      // The path is resolved at runtime against two possible layouts, which a
+      // static import cannot express.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const pkg = require(rel) as { version?: string };
       if (pkg?.version) return pkg.version;
     } catch {
       /* try the next layout */
     }
   }
-  return 'unknown';
+  return "unknown";
 })();
 
 @Public()
-@Controller('health')
+@Controller("health")
 export class HealthController {
   constructor(
     private readonly prisma: PrismaService,
@@ -36,73 +42,91 @@ export class HealthController {
 
   @Get()
   root() {
-    return { status: 'ok', service: 'neurion-api', version: VERSION };
+    return { status: "ok", service: "neurion-api", version: VERSION };
   }
 
-  @Get('db')
+  @Get("db")
   async db() {
     try {
-      await this.prisma.$queryRawUnsafe('SELECT 1');
-      return { status: 'ok' };
+      await this.prisma.$queryRawUnsafe("SELECT 1");
+      return { status: "ok" };
     } catch {
-      return { status: 'down' };
+      return { status: "down" };
     }
   }
 
-  @Get('redis')
+  @Get("redis")
   async redis() {
-    const url = new URL(this.config.get<string>('REDIS_URL') ?? 'redis://localhost:6379');
+    const url = new URL(
+      this.config.get<string>("REDIS_URL") ?? "redis://localhost:6379",
+    );
     return new Promise((resolve) => {
-      const sock = connect({ host: url.hostname, port: Number(url.port || 6379) }, () => {
-        sock.end();
-        resolve({ status: 'ok' });
-      });
-      sock.on('error', () => resolve({ status: 'down' }));
+      const sock = connect(
+        { host: url.hostname, port: Number(url.port || 6379) },
+        () => {
+          sock.end();
+          resolve({ status: "ok" });
+        },
+      );
+      sock.on("error", () => resolve({ status: "down" }));
       sock.setTimeout(1000, () => {
         sock.destroy();
-        resolve({ status: 'down' });
+        resolve({ status: "down" });
       });
     });
   }
 
-  @Get('storage')
+  @Get("storage")
   async storage() {
     try {
-      const ep = this.config.get<string>('S3_ENDPOINT') ?? 'http://localhost:9000';
+      const ep =
+        this.config.get<string>("S3_ENDPOINT") ?? "http://localhost:9000";
       const res = await withTimeout(fetch(`${ep}/minio/health/live`), 1500);
-      return { status: res.ok ? 'ok' : 'down' };
+      return { status: res.ok ? "ok" : "down" };
     } catch {
-      return { status: 'down' };
+      return { status: "down" };
     }
   }
 
-  @Get('contracts')
+  @Get("contracts")
   async contracts() {
     try {
-      const rpc = this.config.get<string>('RPC_URL') ?? 'http://127.0.0.1:8545';
+      const rpc = this.config.get<string>("RPC_URL") ?? "http://127.0.0.1:8545";
       const res = await withTimeout(
         fetch(rpc, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_chainId', id: 1 }),
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: "eth_chainId",
+            id: 1,
+          }),
         }),
         1500,
       );
       const json = (await res.json()) as { result?: string };
-      return { status: json.result ? 'ok' : 'down', chainId: json.result ?? null };
+      return {
+        status: json.result ? "ok" : "down",
+        chainId: json.result ?? null,
+      };
     } catch {
-      return { status: 'down' };
+      return { status: "down" };
     }
   }
 
-  @Get('ai-router')
+  @Get("ai-router")
   async aiRouter() {
     try {
-      const base = this.config.get<string>('AI_OPENAI_COMPATIBLE_BASE_URL') ?? 'http://localhost:11434/v1';
+      const base =
+        this.config.get<string>("AI_OPENAI_COMPATIBLE_BASE_URL") ??
+        "http://localhost:11434/v1";
       const res = await withTimeout(fetch(`${base}/models`), 1000);
-      return { status: res.ok ? 'ok' : 'fallback_only', provider: 'openai_compatible' };
+      return {
+        status: res.ok ? "ok" : "fallback_only",
+        provider: "openai_compatible",
+      };
     } catch {
-      return { status: 'fallback_only', provider: 'mock' };
+      return { status: "fallback_only", provider: "mock" };
     }
   }
 }
