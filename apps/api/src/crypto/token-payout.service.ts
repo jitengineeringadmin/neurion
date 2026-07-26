@@ -35,12 +35,30 @@ export class TokenPayoutService {
     if (dbUser.payoutHold || dbUser.kycStatus === 'PAYOUT_BLOCKED' || dbUser.kycStatus === 'KYC_REJECTED') {
       throw new ForbiddenException('payouts blocked for this account');
     }
-    const threshold = Number(process.env.KYC_PAYOUT_THRESHOLD_CREDITS ?? 1000);
-    if (credits >= threshold && dbUser.kycStatus !== 'KYC_APPROVED') {
-      throw new ForbiddenException(`KYC required for payouts >= ${threshold} credits`);
+    // The threshold applies to what this account has cashed out in total over a
+    // rolling window, not to one request in isolation: checking a single amount
+    // let anyone stay under it forever by splitting one payout into several.
+    const threshold = Number(process.env['KYC_PAYOUT_THRESHOLD_CREDITS'] ?? 1000);
+    if (dbUser.kycStatus !== 'KYC_APPROVED') {
+      const windowDays = Number(process.env['KYC_PAYOUT_WINDOW_DAYS'] ?? 30);
+      const since = new Date(Date.now() - windowDays * 24 * 3600_000);
+      const prior = await this.prisma.tokenPayout.aggregate({
+        where: {
+          userId: user.sub,
+          createdAt: { gte: since },
+          status: { notIn: ['FAILED', 'CANCELLED'] },
+        },
+        _sum: { grossCredits: true },
+      });
+      const already = prior._sum.grossCredits ?? 0;
+      if (already + credits >= threshold) {
+        throw new ForbiddenException(
+          `KYC required: ${already + credits} credits in the last ${windowDays} days reaches the ${threshold} limit`,
+        );
+      }
     }
 
-    // convert: spend the credits now (refunded if the on-chain tx fails)
+    // convert: spend the credits now (refunded if the send never reaches the chain)
     await this.credits.spend(user.sub, credits, 'payout.request');
     // protocol take-rate (PROTOCOL_FEE_BPS) on cash-out -> treasury; user receives NRN for the net
     const fee = await this.credits.collectFee(credits, `payout:${user.sub}:${Date.now()}`);
@@ -53,6 +71,9 @@ export class TokenPayoutService {
         amountWei: this.creditsToWei(net).toString(),
         chainId: this.config.chainId,
         status: 'PENDING',
+        // Recorded so a failure can refund what was actually paid, fee included.
+        grossCredits: credits,
+        feeCredits: fee,
       },
     });
     await this.audit.log({
@@ -98,11 +119,18 @@ export class TokenPayoutService {
         continue;
       }
 
+      // Tracks whether the transaction ever left this process. Everything before
+      // that point can be safely undone; nothing after it can.
+      let submitted = false;
       try {
         const rewardId = ethers.id(payout.id);
         const payReward = vault.getFunction('payReward');
         const tx = await payReward(rewardId, payout.walletAddress, amountWei, payout.id);
-        await this.prisma.tokenPayout.update({ where: { id }, data: { status: 'SUBMITTED', txHash: tx.hash } });
+        submitted = true;
+        await this.prisma.tokenPayout.update({
+          where: { id },
+          data: { status: 'SUBMITTED', txHash: tx.hash, submittedAt: new Date() },
+        });
         await tx.wait(1);
         await this.prisma.tokenPayout.update({ where: { id }, data: { status: 'CONFIRMED' } });
         await this.audit.log({
@@ -115,11 +143,35 @@ export class TokenPayoutService {
         results.push({ id, status: 'CONFIRMED', txHash: tx.hash });
       } catch (err) {
         const message = (err as Error).message;
-        await this.emission.release(amountWei); // give back the unminted reservation
+
+        if (submitted) {
+          // The send is already on the chain. Waiting for it can fail for
+          // reasons that say nothing about the transaction — an RPC timeout, a
+          // dropped connection, this process restarting — and it may confirm
+          // seconds later. Refunding here would hand the user both the tokens
+          // and their credits back, so the payout stays SUBMITTED and is left
+          // for reconciliation against its txHash. The emission reservation is
+          // likewise NOT released: those tokens may well have been minted.
+          await this.prisma.tokenPayout.update({
+            where: { id },
+            data: { errorMessage: `confirmation not observed: ${message}` },
+          });
+          this.logger.error(
+            `payout ${id} submitted but not confirmed (${message}) — left SUBMITTED for reconciliation, NOT refunded`,
+          );
+          results.push({ id, status: 'SUBMITTED_UNCONFIRMED', error: message });
+          continue;
+        }
+
+        // Never reached the chain: undo everything.
+        await this.emission.release(amountWei);
         await this.prisma.tokenPayout.update({ where: { id }, data: { status: 'FAILED', errorMessage: message } });
-        // refund the converted credits (idempotent per payout)
-        await this.credits.grant(payout.userId, this.weiToCredits(payout.amountWei), 'payout.refund', `refund:${id}`);
-        this.logger.error(`payout ${id} failed: ${message}`);
+        // Refund what the user actually paid — the gross, fee included. Refunding
+        // the net (all amountWei ever held) kept the fee on a payout that never
+        // happened. Older rows have no gross recorded; fall back to the net.
+        const refund = payout.grossCredits > 0 ? payout.grossCredits : this.weiToCredits(payout.amountWei);
+        await this.credits.grant(payout.userId, refund, 'payout.refund', `refund:${id}`);
+        this.logger.error(`payout ${id} failed before submission: ${message} — refunded ${refund} credits`);
         results.push({ id, status: 'FAILED', error: message });
       }
     }

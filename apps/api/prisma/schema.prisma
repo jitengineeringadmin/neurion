@@ -764,6 +764,15 @@ model TokenPayout {
   txHash        String?
   status        PayoutStatus @default(PENDING)
   errorMessage  String?
+  // What the user actually paid, so a failed payout can be made whole. Only the
+  // NET reached amountWei, so refunding from that silently kept the fee on a
+  // payout that never happened.
+  grossCredits  Int          @default(0)
+  feeCredits    Int          @default(0)
+  // Set once the transaction is handed to the chain. After that a refund is no
+  // longer safe: the send may still confirm, and paying the credits back too
+  // would hand out both.
+  submittedAt   DateTime?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
