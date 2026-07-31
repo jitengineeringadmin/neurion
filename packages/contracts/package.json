@@ -1,6 +1,6 @@
 {
   "name": "@neurion/contracts",
-  "version": "1.8.9",
+  "version": "1.8.10",
   "private": true,
   "scripts": {
     "build": "hardhat compile",

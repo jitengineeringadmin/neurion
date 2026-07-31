@@ -6,7 +6,7 @@ const dict: Record<string, string> = {
   "home.description":
     "A distributed AI compute network: fast chat over a community grid, with a Fast / Grid / Fallback router, internal credits and an on-chain NRN utility token.",
   "home.downloadCta": "Download for Windows",
-  "home.downloadMeta": "Latest desktop app: Neurion 1.8.9 for Windows.",
+  "home.downloadMeta": "Latest desktop app: Neurion 1.8.10 for Windows.",
   "home.enterCta": "ENTER",
   "login.brandSuffix": "AI",
   "login.tabLogin": "login",
@@ -620,5 +620,8 @@ const dict: Record<string, string> = {
   "skills.off": "Off",
   "skills.always": "always on",
   "ob.autoRec": "picked for your PC",
+  "models.bundledTitle": "Neurion can run a model on its own",
+  "models.bundledBody":
+    "No separate program to install: Neurion downloads its own engine and a model picked for this computer. It stays on your machine and works offline.",
 };
 export default dict;

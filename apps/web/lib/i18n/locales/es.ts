@@ -592,7 +592,7 @@ const dict: Record<string, string> = {
   "sidebar.renamePrompt": "Nuevo nombre del proyecto:",
   "home.downloadCta": "Descargar para Windows",
   "home.downloadMeta":
-    "Última aplicación de escritorio: Neurion 1.8.9 para Windows.",
+    "Última aplicación de escritorio: Neurion 1.8.10 para Windows.",
   "login.startingUp": "Iniciando…",
   "login.startingUpHint":
     "La aplicación se está iniciando: tarda unos segundos.",
@@ -659,5 +659,8 @@ const dict: Record<string, string> = {
   "skills.off": "Desactivado",
   "skills.always": "siempre activa",
   "ob.autoRec": "elegido para tu PC",
+  "models.bundledTitle": "Neurion puede ejecutar un modelo por su cuenta",
+  "models.bundledBody":
+    "No hay que instalar otro programa: Neurion descarga su propio motor y un modelo elegido para este ordenador. Todo se queda en tu máquina y funciona sin conexión.",
 };
 export default dict;

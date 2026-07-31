@@ -69,6 +69,25 @@ export default function ModelsPage() {
   const t = useT();
   const { user } = useAuth();
   const [engine, setEngine] = useState<"up" | "down" | "…">("…");
+  // Neurion's own engine. Without this the page told a user with no ollama to
+  // go and install one — while the app already ships an engine it can set up
+  // itself.
+  const [bundled, setBundled] = useState<{
+    state: string;
+    modelId?: string;
+    models?: Array<{
+      id: string;
+      label: string;
+      sizeBytes: number;
+      description: string;
+      recommended: boolean;
+    }>;
+  } | null>(null);
+  const [bundledBusy, setBundledBusy] = useState<{
+    stage: string;
+    percent: number;
+  } | null>(null);
+  const [bundledErr, setBundledErr] = useState("");
   const [installed, setInstalled] = useState<Installed[]>([]);
   const [reco, setReco] = useState<Reco[]>([]);
   const [quants, setQuants] = useState<Quant[]>([{ tag: "", hint: "" }]);
@@ -104,7 +123,56 @@ export default function ModelsPage() {
     ).catch(() => ({ engine: "down", installed: [] as Installed[] }));
     setEngine(inst.engine === "up" ? "up" : "down");
     setInstalled(inst.installed);
+    // Only relevant when ollama is absent: someone already running it keeps
+    // using their own models and never needs to see this.
+    if (inst.engine !== "up") {
+      setBundled(
+        await api<{
+          state: string;
+          modelId?: string;
+          models?: Array<{
+            id: string;
+            label: string;
+            sizeBytes: number;
+            description: string;
+            recommended: boolean;
+          }>;
+        }>("/ai/engine/status").catch(() => null),
+      );
+    }
   };
+
+  /** Install and start Neurion's own engine, reporting progress as it goes. */
+  async function setupBundled(modelId: string) {
+    if (bundledBusy) return;
+    setBundledErr("");
+    setBundledBusy({ stage: "engine", percent: 0 });
+    try {
+      await streamSSE(
+        "/ai/engine/setup",
+        { modelId },
+        {
+          onEvent: (event, d) => {
+            if (event === "progress")
+              setBundledBusy({
+                stage: d.stage ?? "",
+                percent: d.percent ?? 0,
+              });
+            else if (event === "done") {
+              setBundledBusy(null);
+              void load();
+            } else if (event === "error") {
+              setBundledErr(d.message || "setup failed");
+              setBundledBusy(null);
+            }
+          },
+        },
+      );
+    } catch (e) {
+      setBundledErr((e as Error).message);
+      setBundledBusy(null);
+    }
+  }
   useEffect(() => {
     void load();
     void api<{ recommended: Reco[]; quants?: Quant[] }>(
@@ -272,7 +340,88 @@ export default function ModelsPage() {
           </b>
         </span>
       </div>
+      {/* No ollama, but Neurion can install its own engine: offer that instead
+          of sending the user off to fetch a second program. */}
       {engine === "down" &&
+        bundled &&
+        bundled.state !== "ready" &&
+        (() => {
+          const pick =
+            bundled.models?.find((m) => m.recommended) ?? bundled.models?.[0];
+          return (
+            <div
+              style={{
+                border: `1px solid ${theme.accent}`,
+                borderRadius: 10,
+                padding: 14,
+                fontSize: 13,
+                color: theme.text,
+                marginBottom: 16,
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                ⚡ {t("models.bundledTitle")}
+              </div>
+              <div style={{ color: theme.muted, marginBottom: 12 }}>
+                {t("models.bundledBody")}
+              </div>
+              {bundledBusy ? (
+                <div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: 12,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span style={{ color: theme.muted }}>
+                      {bundledBusy.stage}
+                    </span>
+                    <span style={{ color: theme.accent }}>
+                      {bundledBusy.percent}%
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      height: 8,
+                      background: "var(--surface-2)",
+                      borderRadius: 6,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${Math.max(3, bundledBusy.percent)}%`,
+                        background: theme.accent,
+                        transition: "width .3s",
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                pick && (
+                  <button
+                    style={{ ...button, padding: "9px 18px" }}
+                    onClick={() => void setupBundled(pick.id)}
+                  >
+                    ⬇ {pick.label} · {fmt(pick.sizeBytes)}
+                  </button>
+                )
+              )}
+              {bundledErr && (
+                <div style={{ color: theme.red, fontSize: 12, marginTop: 10 }}>
+                  ⚠ {bundledErr}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      {/* Fallback for a build with no bundled engine (hosted, or an
+          unsupported platform): the old prompt still applies there. */}
+      {engine === "down" &&
+        (!bundled || bundled.state === "unsupported") &&
         (() => {
           const parts = t("models.engineDownBanner").split("{link}");
           return (

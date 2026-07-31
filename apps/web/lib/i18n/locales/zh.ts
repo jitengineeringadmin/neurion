@@ -558,7 +558,7 @@ const dict: Record<string, string> = {
   "sidebar.rename": "重命名",
   "sidebar.renamePrompt": "新的项目名称：",
   "home.downloadCta": "下载 Windows 版",
-  "home.downloadMeta": "最新桌面应用：Neurion 1.8.9 for Windows。",
+  "home.downloadMeta": "最新桌面应用：Neurion 1.8.10 for Windows。",
   "login.startingUp": "正在启动…",
   "login.startingUpHint": "应用正在启动，需要几秒钟。",
   "login.startingUpSlow": "首次启动最多可能需要一分钟（正在启动数据库）…",
@@ -615,5 +615,8 @@ const dict: Record<string, string> = {
   "skills.off": "关",
   "skills.always": "始终启用",
   "ob.autoRec": "已为你的电脑选择",
+  "models.bundledTitle": "Neurion 可以自己运行模型",
+  "models.bundledBody":
+    "无需另外安装程序：Neurion 会下载自带的引擎，以及一个为这台电脑挑选的模型。全部留在你的机器上，可离线使用。",
 };
 export default dict;
