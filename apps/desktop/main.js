@@ -41,11 +41,16 @@ const NODE_API = process.env.NEURION_NODE_API || 'https://neurionproject.org';
 const nodeConfigPath = () => path.join(app.getPath('userData'), 'neurion-node.yaml');
 
 // Embedded Postgres — standalone, no Docker.
-const PG_PORT = 5433;
+// Preferred port, not a demand. Anything else on the machine can already own
+// 5433 — another project's docker-compose, a system PostgreSQL — and connecting
+// to it fails with "password authentication failed", which points the user at
+// the wrong problem entirely. The real port is chosen at startup by findFreePort().
+const PG_PORT_PREFERRED = Number(process.env.NEURION_PG_PORT || 5433);
+let PG_PORT = PG_PORT_PREFERRED;
 const PG_USER = 'neurion';
 const PG_PASS = 'neurion';
 const PG_DB = 'neurion';
-const DB_URL = `postgresql://${PG_USER}:${PG_PASS}@localhost:${PG_PORT}/${PG_DB}`;
+const dbUrl = () => `postgresql://${PG_USER}:${PG_PASS}@localhost:${PG_PORT}/${PG_DB}`;
 
 const children = [];
 let pg = null;
@@ -372,6 +377,31 @@ async function ensureUtf8Database() {
   }
 }
 
+/**
+ * Find a port nothing is listening on, starting from the preferred one. Docker
+ * publishing another project's database on 5433 is enough to make the embedded
+ * server unreachable, and the resulting "password authentication failed" points
+ * at the wrong thing entirely — the connection succeeded, just to a stranger.
+ */
+function findFreePort(start, attempts = 20) {
+  return new Promise((resolve) => {
+    let port = start;
+    const tryPort = () => {
+      if (attempts-- <= 0) return resolve(start); // give up and let the caller fail loudly
+      const s = net.connect({ host: '127.0.0.1', port }, () => {
+        s.destroy();
+        port++;
+        tryPort(); // someone is listening here
+      });
+      s.on('error', () => {
+        s.destroy();
+        resolve(port); // nothing answered: free
+      });
+    };
+    tryPort();
+  });
+}
+
 async function startDb() {
   const EmbeddedPostgres = await loadEmbeddedPostgres();
   const dataDir = path.join(app.getPath('userData'), 'pgdata');
@@ -439,8 +469,9 @@ async function reclaimStack() {
     }
   }
   clearStalePgLock();
+  // Deliberately not waiting on the Postgres port: startStack picks a free one
+  // after this runs, so a port held by something that is not ours costs nothing.
   await Promise.all([
-    waitPortFree('localhost', PG_PORT, 12000),
     waitPortFree('localhost', 8091, 12000),
     waitPortFree('localhost', 3091, 12000),
     // 8095 is the bundled llama.cpp server. It is a child of the API, so a
@@ -483,7 +514,7 @@ function migrationsFingerprint() {
 
 async function startStack() {
   // children + tooling all use the embedded DB
-  ENV.DATABASE_URL = DB_URL;
+  ENV.DATABASE_URL = dbUrl();
   // Desktop ports are part of the packaged runtime contract. Never inherit the
   // monorepo development ports from a build-machine .env file.
   ENV.NEURION_API_PORT = '8091';
@@ -517,6 +548,14 @@ async function startStack() {
 
   // free ports held by a not-yet-dead previous instance (in-place update race)
   await reclaimStack();
+
+  // Now that our own leftovers are gone, take 5433 if it is genuinely free and
+  // step aside if it is not. Whatever else is on this machine keeps its port.
+  PG_PORT = await findFreePort(PG_PORT_PREFERRED);
+  if (PG_PORT !== PG_PORT_PREFERRED) {
+    bootLog('db', `port ${PG_PORT_PREFERRED} is in use by something else — using ${PG_PORT} instead`);
+  }
+  ENV.DATABASE_URL = dbUrl();
 
   // first run = no Postgres cluster yet (the slow initdb path) — drives both the
   // splash message and whether we seed.

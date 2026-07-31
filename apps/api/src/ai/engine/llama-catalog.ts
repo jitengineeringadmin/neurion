@@ -85,6 +85,13 @@ export interface CatalogModel {
   description: string;
   url: string;
   file: string;
+  /**
+   * Set for a model the user supplied from their own disk: the weights are
+   * used where they already are, never copied into the app's directory. People
+   * keep GGUF files in one place and share them between tools; duplicating
+   * several gigabytes to satisfy our layout would be rude.
+   */
+  absolutePath?: string;
   sizeBytes: number;
   /** Context the server is started with. Never 0: that means "read from the
    *  model", and some models declare 262144, which reserves a working set

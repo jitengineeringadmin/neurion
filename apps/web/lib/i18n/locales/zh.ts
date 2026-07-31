@@ -618,5 +618,15 @@ const dict: Record<string, string> = {
   "models.bundledTitle": "Neurion 可以自己运行模型",
   "models.bundledBody":
     "无需另外安装程序：Neurion 会下载自带的引擎，以及一个为这台电脑挑选的模型。全部留在你的机器上，可离线使用。",
+  "models.engineUpBundled": "运行中（Neurion 引擎）",
+  "models.useLocalFile": "使用我已有的模型",
+  "models.needsOllama":
+    "该目录通过 ollama 下载，而 ollama 未在运行。请使用上方 Neurion 自带的引擎，或使用你已有的模型。",
+  "models.localFileTitle": "使用本机文件夹中的模型",
+  "models.localFileBody":
+    "已经有 .gguf 文件了？把路径告诉 Neurion，它就在原位运行——不复制，也不重新下载。",
+  "models.localFileActive": "Neurion 正在使用你的模型文件。",
+  "models.localPathPlaceholder": "C:\\models\\my-model.gguf",
+  "models.useLocalConfirm": "使用此文件",
 };
 export default dict;

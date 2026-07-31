@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, streamSSE, getProdToken } from "../../../lib/api";
-import { theme, button, input } from "../../../lib/ui";
+import { theme, button, input, ghostButton } from "../../../lib/ui";
 import { useT } from "../../../lib/i18n";
 import { useAuth } from "../../../lib/auth";
 
@@ -75,6 +75,8 @@ export default function ModelsPage() {
   const [bundled, setBundled] = useState<{
     state: string;
     modelId?: string;
+    label?: string;
+    path?: string;
     models?: Array<{
       id: string;
       label: string;
@@ -116,6 +118,14 @@ export default function ModelsPage() {
   const [nPass, setNPass] = useState("");
   const [nErr, setNErr] = useState("");
   const [nBusy, setNBusy] = useState(false);
+  // "Take the model from this folder" — always reachable, never buried inside
+  // an error state. askPath is the no-native-dialog fallback.
+  const [askPath, setAskPath] = useState(false);
+  const [localPath, setLocalPath] = useState("");
+
+  // Either engine counts. Reporting only ollama told a user with Neurion's own
+  // engine running that no engine was running.
+  const anyEngineUp = engine === "up" || bundled?.state === "ready";
 
   const load = async () => {
     const inst = await api<{ engine: string; installed: Installed[] }>(
@@ -123,13 +133,16 @@ export default function ModelsPage() {
     ).catch(() => ({ engine: "down", installed: [] as Installed[] }));
     setEngine(inst.engine === "up" ? "up" : "down");
     setInstalled(inst.installed);
-    // Only relevant when ollama is absent: someone already running it keeps
-    // using their own models and never needs to see this.
-    if (inst.engine !== "up") {
+    // Asked for unconditionally. Gating this on "ollama is absent" meant that a
+    // machine with ollama running could never be told that Neurion's own engine
+    // was up, nor which model it had loaded.
+    {
       setBundled(
         await api<{
           state: string;
           modelId?: string;
+          label?: string;
+          path?: string;
           models?: Array<{
             id: string;
             label: string;
@@ -141,6 +154,45 @@ export default function ModelsPage() {
       );
     }
   };
+
+  /**
+   * Run a GGUF the user already has. The desktop shell opens the file picker,
+   * because a browser can hand back file contents but never a real path, and
+   * the engine needs the path — nothing is copied.
+   */
+  async function useLocalModel(typedPath?: string) {
+    const shell = (
+      window as unknown as {
+        neurion?: { pickModel?: () => Promise<{ path: string | null }> };
+      }
+    ).neurion;
+    setBundledErr("");
+    let chosen = typedPath?.trim() ?? "";
+    if (!chosen) {
+      // No native dialog (browser, or a shell without the handler): let the
+      // path be typed instead of silently doing nothing.
+      if (!shell?.pickModel) {
+        setAskPath(true);
+        return;
+      }
+      const picked = await shell.pickModel().catch(() => ({ path: null }));
+      chosen = picked?.path ?? "";
+    }
+    if (!chosen) return;
+    setAskPath(false);
+    setBundledBusy({ stage: "starting", percent: 100 });
+    try {
+      await api("/ai/engine/use-local", {
+        method: "POST",
+        body: JSON.stringify({ path: chosen }),
+      });
+      await load();
+    } catch (e) {
+      setBundledErr((e as Error).message);
+    } finally {
+      setBundledBusy(null);
+    }
+  }
 
   /** Install and start Neurion's own engine, reporting progress as it goes. */
   async function setupBundled(modelId: string) {
@@ -321,12 +373,11 @@ export default function ModelsPage() {
             width: 9,
             height: 9,
             borderRadius: 9,
-            background:
-              engine === "up"
-                ? theme.accent
-                : engine === "down"
-                  ? "#e0533d"
-                  : theme.muted,
+            background: anyEngineUp
+              ? theme.accent
+              : engine === "down"
+                ? "#e0533d"
+                : theme.muted,
           }}
         />
         <span style={{ color: theme.muted }}>
@@ -334,12 +385,85 @@ export default function ModelsPage() {
           <b style={{ color: theme.text }}>
             {engine === "up"
               ? t("models.engineUp")
-              : engine === "down"
-                ? t("models.engineDown")
-                : "…"}
+              : bundled?.state === "ready"
+                ? t("models.engineUpBundled")
+                : engine === "down"
+                  ? t("models.engineDown")
+                  : "…"}
           </b>
         </span>
       </div>
+      {/* Pointing Neurion at a model you already have is a first-class action,
+          not a consolation prize for a missing ollama. It used to appear only
+          inside the "no engine" banner, so anyone with a working setup could
+          never reach it. */}
+      <div
+        style={{
+          border: `1px solid ${theme.border}`,
+          borderRadius: 10,
+          padding: 14,
+          fontSize: 13,
+          marginBottom: 16,
+        }}
+      >
+        <div style={{ fontWeight: 600, marginBottom: 6 }}>
+          📂 {t("models.localFileTitle")}
+        </div>
+        <div style={{ color: theme.muted, marginBottom: 12 }}>
+          {t("models.localFileBody")}
+        </div>
+        {bundled?.state === "ready" && bundled.modelId === "local" && (
+          <div style={{ color: theme.accent, marginBottom: 10 }}>
+            ✓ {t("models.localFileActive")}
+            {bundled.label ? ` — ${bundled.label}` : ""}
+            {/* The full path, small and quiet: enough to tell two files with
+                the same name apart. */}
+            {bundled.path && (
+              <div
+                style={{
+                  color: theme.muted,
+                  fontSize: 11,
+                  marginTop: 2,
+                  wordBreak: "break-all",
+                }}
+              >
+                {bundled.path}
+              </div>
+            )}
+          </div>
+        )}
+        {askPath ? (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input
+              value={localPath}
+              onChange={(e) => setLocalPath(e.target.value)}
+              placeholder={t("models.localPathPlaceholder")}
+              style={{ ...input, flex: "1 1 320px", minWidth: 0 }}
+            />
+            <button
+              style={{ ...button, padding: "8px 16px" }}
+              disabled={!localPath.trim() || !!bundledBusy}
+              onClick={() => void useLocalModel(localPath)}
+            >
+              {t("models.useLocalConfirm")}
+            </button>
+          </div>
+        ) : (
+          <button
+            style={{ ...ghostButton, padding: "9px 18px" }}
+            disabled={!!bundledBusy}
+            onClick={() => void useLocalModel()}
+          >
+            {t("models.useLocalFile")}
+          </button>
+        )}
+        {bundledErr && (
+          <div style={{ color: theme.red, fontSize: 12, marginTop: 10 }}>
+            ⚠ {bundledErr}
+          </div>
+        )}
+      </div>
+
       {/* No ollama, but Neurion can install its own engine: offer that instead
           of sending the user off to fetch a second program. */}
       {engine === "down" &&
@@ -401,14 +525,23 @@ export default function ModelsPage() {
                   </div>
                 </div>
               ) : (
-                pick && (
-                  <button
-                    style={{ ...button, padding: "9px 18px" }}
-                    onClick={() => void setupBundled(pick.id)}
-                  >
-                    ⬇ {pick.label} · {fmt(pick.sizeBytes)}
-                  </button>
-                )
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                  }}
+                >
+                  {pick && (
+                    <button
+                      style={{ ...button, padding: "9px 18px" }}
+                      onClick={() => void setupBundled(pick.id)}
+                    >
+                      ⬇ {pick.label} · {fmt(pick.sizeBytes)}
+                    </button>
+                  )}
+                </div>
               )}
               {bundledErr && (
                 <div style={{ color: theme.red, fontSize: 12, marginTop: 10 }}>
@@ -728,6 +861,12 @@ export default function ModelsPage() {
                       <button
                         onClick={() => void download(selModel.name, quant)}
                         disabled={!!pulling || engine !== "up"}
+                        // This catalogue is ollama's, so without ollama the
+                        // button cannot work. It used to just sit there dead
+                        // with no explanation.
+                        title={
+                          engine !== "up" ? t("models.needsOllama") : undefined
+                        }
                         style={{
                           ...button,
                           padding: "6px 14px",
@@ -737,6 +876,20 @@ export default function ModelsPage() {
                         ⬇ {t("models.downloadButton")}
                         {selQuant && quant ? ` · ${quant}` : ""}
                       </button>
+                    )}
+                    {/* A disabled button with no explanation reads as a broken
+                        app. Say why it cannot work here. */}
+                    {engine !== "up" && !pulling && (
+                      <div
+                        style={{
+                          color: theme.muted,
+                          fontSize: 12,
+                          marginTop: 8,
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {t("models.needsOllama")}
+                      </div>
                     )}
                   </div>
                 );

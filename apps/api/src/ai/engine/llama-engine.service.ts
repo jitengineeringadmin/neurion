@@ -37,6 +37,9 @@ export interface EngineState {
   file: string;
   contextTokens: number;
   port: number;
+  /** Set when the weights live outside the app directory (user-supplied). */
+  absolutePath?: string;
+  label?: string;
 }
 
 export type EngineStatus =
@@ -45,7 +48,16 @@ export type EngineStatus =
   | { state: "needs_setup"; models: PublicModel[] }
   | { state: "installing"; stage: EngineStage; percent: number }
   | { state: "starting"; modelId: string }
-  | { state: "ready"; modelId: string; port: number; baseUrl: string }
+  | {
+      state: "ready";
+      modelId: string;
+      /** Human name of what is loaded. For a user-supplied file, its filename. */
+      label?: string;
+      /** Set only when the model came from a path the user chose. */
+      path?: string;
+      port: number;
+      baseUrl: string;
+    }
   | { state: "error"; message: string };
 
 export interface PublicModel {
@@ -109,6 +121,10 @@ export class LlamaEngineService
   }
   private modelPath(dir: string, file: string): string {
     return join(dir, "models", file);
+  }
+  /** Where this model's weights actually are: the user's own path, or ours. */
+  private weightsPath(dir: string, m: CatalogModel): string {
+    return m.absolutePath ?? this.modelPath(dir, m.file);
   }
   private statePath(dir: string): string {
     return join(dir, "engine.json");
@@ -205,7 +221,72 @@ export class LlamaEngineService
   }
 
   private modelInstalled(dir: string, m: CatalogModel): boolean {
-    return fileReady(this.modelPath(dir, m.file), m.sizeBytes * 0.9);
+    return fileReady(this.weightsPath(dir, m), m.sizeBytes * 0.9);
+  }
+
+  /**
+   * Describe a GGUF the user already has on disk as if it were a catalog entry,
+   * so the rest of the lifecycle — start, persist, respawn — needs no special
+   * case. Its size is read from the file rather than declared, because nothing
+   * here downloaded it.
+   */
+  private localModel(
+    absolutePath: string,
+    contextTokens: number,
+  ): CatalogModel {
+    const name = absolutePath.split(/[\\/]/).pop() ?? "model.gguf";
+    let sizeBytes = 0;
+    try {
+      sizeBytes = statSync(absolutePath).size;
+    } catch {
+      /* missing file is caught by the caller's readiness check */
+    }
+    return {
+      id: "local",
+      label: name.replace(/\.gguf$/i, ""),
+      description: absolutePath,
+      url: "",
+      file: name,
+      absolutePath,
+      sizeBytes,
+      contextTokens,
+      recommended: false,
+    };
+  }
+
+  /**
+   * Run a model the user points at, wherever it lives. People accumulate GGUF
+   * files and share them between tools; requiring a re-download of something
+   * already on the disk would be the wrong answer.
+   */
+  async useLocalModel(
+    absolutePath: string,
+    contextTokens?: number,
+  ): Promise<void> {
+    const dir = this.dir();
+    if (!dir) throw new Error("no engine directory configured");
+    if (!/\.gguf$/i.test(absolutePath)) {
+      throw new Error("only .gguf model files are supported");
+    }
+    if (!existsSync(absolutePath)) {
+      throw new Error(`file not found: ${absolutePath}`);
+    }
+    // The engine binary still has to be there, even when the weights are not ours.
+    this.lastError = null;
+    this.setInstalling("engine", 0);
+    try {
+      await this.ensureEngine(dir, (p) => this.setInstalling("engine", p));
+      this.setInstalling("starting", 100);
+      await this.start(
+        dir,
+        this.localModel(
+          absolutePath,
+          contextTokens ?? Number(this.config.get("AI_OLLAMA_NUM_CTX") ?? 4096),
+        ),
+      );
+    } finally {
+      this.clearInstalling();
+    }
   }
 
   async ensureModel(
@@ -242,7 +323,7 @@ export class LlamaEngineService
     await this.stop();
     const args = [
       "-m",
-      this.modelPath(dir, m.file),
+      this.weightsPath(dir, m),
       "-a",
       this.alias(m.id),
       "--host",
@@ -287,6 +368,8 @@ export class LlamaEngineService
           file: m.file,
           contextTokens: m.contextTokens,
           port: this.port(),
+          absolutePath: m.absolutePath,
+          label: m.label,
         });
         this.logger.log(`local engine ready on ${this.baseUrl()} (${m.id})`);
         return;
@@ -341,7 +424,11 @@ export class LlamaEngineService
     // this process along with the tree.
     const state = this.readState(dir);
     if (!state) return;
-    const m = findModel(state.modelId);
+    // A user-supplied model has no catalog entry, so rebuild one from the saved
+    // state; otherwise their choice would be silently forgotten on every restart.
+    const m = state.absolutePath
+      ? this.localModel(state.absolutePath, state.contextTokens)
+      : findModel(state.modelId);
     if (!m || !this.engineInstalled(dir) || !this.modelInstalled(dir, m))
       return;
     if (await this.probe(1500)) {
@@ -391,6 +478,9 @@ export class LlamaEngineService
       return {
         state: "ready",
         modelId: state.modelId,
+        // "local" alone does not tell anyone WHICH of their files is loaded.
+        label: state.label,
+        path: state.absolutePath,
         port: this.port(),
         baseUrl: this.baseUrl(),
       };

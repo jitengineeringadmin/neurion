@@ -662,5 +662,15 @@ const dict: Record<string, string> = {
   "models.bundledTitle": "Neurion puede ejecutar un modelo por su cuenta",
   "models.bundledBody":
     "No hay que instalar otro programa: Neurion descarga su propio motor y un modelo elegido para este ordenador. Todo se queda en tu máquina y funciona sin conexión.",
+  "models.engineUpBundled": "en ejecución (motor de Neurion)",
+  "models.useLocalFile": "Usar un modelo que ya tengo",
+  "models.needsOllama":
+    "Este catálogo se descarga mediante ollama, que no está en ejecución. Usa el motor de Neurion de arriba, o un modelo que ya tengas.",
+  "models.localFileTitle": "Usar un modelo de una carpeta de este PC",
+  "models.localFileBody":
+    "¿Ya tienes un archivo .gguf? Indícaselo a Neurion y se usa donde está: no se copia ni se vuelve a descargar.",
+  "models.localFileActive": "Neurion está usando tu archivo de modelo.",
+  "models.localPathPlaceholder": "C:\\modelos\\mi-modelo.gguf",
+  "models.useLocalConfirm": "Usar este archivo",
 };
 export default dict;

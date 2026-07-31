@@ -22,7 +22,7 @@ import { TrustedExecutorService } from "../src/jobs/verification/trusted-executo
 
 const URL =
   process.env.DATABASE_URL_TEST ||
-  "postgresql://neurion:neurion@localhost:5433/neurion_test";
+  `postgresql://neurion:neurion@localhost:${process.env.NEURION_PG_PORT ?? 5433}/neurion_test`;
 if (!/test/i.test(URL)) {
   console.error(
     "refusing to run: DATABASE_URL_TEST must point at a *test* database",

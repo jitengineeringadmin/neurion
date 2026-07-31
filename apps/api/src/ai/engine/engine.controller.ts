@@ -9,6 +9,13 @@ class SelectModelDto {
   modelId!: string;
 }
 
+class UseLocalModelDto {
+  /** Absolute path to a .gguf the user already has. */
+  @IsString()
+  @MaxLength(4000)
+  path!: string;
+}
+
 /**
  * Setup surface for the bundled inference engine. Mirrors the image engine's
  * shape (status endpoint + SSE progress on selection) because the web app
@@ -20,6 +27,18 @@ export class EngineController {
 
   @Get("status")
   async status() {
+    return this.engine.status();
+  }
+
+  /**
+   * Run a GGUF the user already has, from wherever it is. Nothing is copied:
+   * people keep these files in one place and share them between tools, and
+   * asking them to re-download several gigabytes they already own would be the
+   * wrong answer.
+   */
+  @Post("use-local")
+  async useLocal(@Body() dto: UseLocalModelDto) {
+    await this.engine.useLocalModel(dto.path);
     return this.engine.status();
   }
 
