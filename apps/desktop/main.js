@@ -902,7 +902,9 @@ ipcMain.handle('pick-model', async () => {
   const res = await dialog.showOpenDialog(mainWindow, {
     title: 'Neurion',
     properties: ['openFile'],
-    filters: [{ name: 'Image model', extensions: ['safetensors', 'gguf', 'ckpt'] }],
+    // Shared by the image engine and the text engine, so the label cannot say
+    // "Image model" any more — a user picking a GGUF for chat sees this too.
+    filters: [{ name: 'Model file', extensions: ['gguf', 'safetensors', 'ckpt'] }],
   });
   if (res.canceled || !res.filePaths[0]) return { path: null };
   const p = res.filePaths[0].replace(/\\/g, '/');
