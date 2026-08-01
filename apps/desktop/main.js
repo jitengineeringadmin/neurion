@@ -484,6 +484,7 @@ async function reclaimStack() {
       /* best effort */
     }
   }
+  killStrayEngines();
   clearStalePgLock();
   // Deliberately not waiting on the Postgres port: startStack picks a free one
   // after this runs, so a port held by something that is not ours costs nothing.
@@ -494,6 +495,30 @@ async function reclaimStack() {
     // previous instance can still be holding the port while it dies.
     waitPortFree('localhost', 8095, 12000),
   ]);
+}
+
+// The llama.cpp server is a child of the API, and the API is not always given
+// the chance to shut down politely — a force-kill, a crash, a failed start that
+// the supervisor taskkills. When that happens the engine survives its parent
+// with a whole model resident: 2.3 GB measured on this machine, for nothing, and
+// another one every time it happens. It does not necessarily hold port 8095, so
+// waiting for the port to free never noticed it.
+//
+// Matched by executable PATH, not by name: someone may run their own llama.cpp
+// and it is not ours to kill.
+function killStrayEngines() {
+  if (process.platform !== 'win32') return;
+  const ours = path.join(app.getPath('userData'), 'text-engine');
+  try {
+    spawnSync(
+      'powershell',
+      ['-NoProfile', '-Command',
+        `Get-CimInstance Win32_Process -Filter "Name='llama-server.exe'" | Where-Object { $_.ExecutablePath -like '${ours.replace(/'/g, "''")}*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`],
+      { windowsHide: true, timeout: 8000 },
+    );
+  } catch {
+    /* best effort */
+  }
 }
 
 // An unclean shutdown (crash, force-kill, forced close, an OS reboot) leaves
@@ -1104,11 +1129,21 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 
+// spawnSync, not sh(): this runs while the app is quitting, and an asynchronous
+// taskkill never gets to run — Electron is gone first. That is how a llama.cpp
+// server kept surviving its parent with a whole model resident (2.3 GB measured),
+// one more every time the app was closed.
 function killChildren() {
   for (const c of children) {
     try {
-      if (process.platform === 'win32') sh('taskkill', ['/pid', String(c.pid), '/f', '/t']);
-      else c.kill('SIGTERM');
+      if (process.platform === 'win32') {
+        spawnSync('taskkill', ['/pid', String(c.pid), '/f', '/t'], {
+          windowsHide: true,
+          timeout: 5000,
+        });
+      } else {
+        c.kill('SIGTERM');
+      }
     } catch {
       /* ignore */
     }
@@ -1118,8 +1153,15 @@ function killChildren() {
 function stopNode() {
   if (!nodeProc) return;
   try {
-    if (process.platform === 'win32') sh('taskkill', ['/pid', String(nodeProc.pid), '/f', '/t']);
-    else nodeProc.kill('SIGTERM');
+    // Synchronous for the same reason as killChildren: this runs on the way out.
+    if (process.platform === 'win32') {
+      spawnSync('taskkill', ['/pid', String(nodeProc.pid), '/f', '/t'], {
+        windowsHide: true,
+        timeout: 5000,
+      });
+    } else {
+      nodeProc.kill('SIGTERM');
+    }
   } catch {
     /* ignore */
   }
@@ -1129,6 +1171,9 @@ function stopNode() {
 function stopAll() {
   stopNode();
   killChildren();
+  // Whatever still slipped through — a child re-spawned by the API's own
+  // watchdog a moment before we quit, for instance.
+  killStrayEngines();
   if (pg) {
     try {
       pg.stop();
