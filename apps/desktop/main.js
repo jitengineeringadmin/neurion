@@ -948,6 +948,21 @@ ipcMain.handle('pick-model', async () => {
   return { path: p, name: p.split('/').pop() };
 });
 
+// Open the folder Neurion downloads its models into, so a user can drop their
+// own GGUF files straight in instead of going through a dialog. The path is
+// computed here rather than accepted from the page: the renderer must not be
+// able to ask the shell to open an arbitrary directory.
+ipcMain.handle('models:open-folder', async () => {
+  const dir = path.join(app.getPath('userData'), 'text-engine', 'models');
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch {
+    /* it may already exist */
+  }
+  const problem = await shell.openPath(dir);
+  return { ok: !problem, path: dir, error: problem || undefined };
+});
+
 // --- start a local ollama the user already has -----------------------------
 // Neurion ships its own engine and never requires ollama. But the model
 // catalogue on the Models page is ollama's, so with ollama installed-but-stopped

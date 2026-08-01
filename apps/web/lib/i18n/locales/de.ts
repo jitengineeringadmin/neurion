@@ -675,5 +675,13 @@ const dict: Record<string, string> = {
   "models.recommendedTag": "empfohlen",
   "models.inUse": "aktiv",
   "models.useThisOne": "Dieses verwenden",
+  "models.addFolder": "Ordner mit Modellen hinzufügen",
+  "models.openModelsFolder": "Neurions Modellordner öffnen",
+  "models.watchedFolders": "Ordner, in denen Neurion sucht",
+  "models.neurionFolder": "Neurions Ordner — Dateien hier ablegen",
+  "models.removeFolder": "entfernen",
+  "models.noModelsInFolders":
+    "In diesen Ordnern wurden noch keine .gguf-Dateien gefunden.",
+  "models.splitModel": "geteilte Datei, nicht nutzbar",
 };
 export default dict;

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Res } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Post, Res } from "@nestjs/common";
 import { IsString, MaxLength } from "class-validator";
 import { Response } from "express";
 import { LlamaEngineService } from "./llama-engine.service";
@@ -7,6 +7,13 @@ class SelectModelDto {
   @IsString()
   @MaxLength(120)
   modelId!: string;
+}
+
+class FolderDto {
+  /** Absolute path to a folder the user keeps models in. */
+  @IsString()
+  @MaxLength(4000)
+  path!: string;
 }
 
 class UseLocalModelDto {
@@ -40,6 +47,31 @@ export class EngineController {
   async useLocal(@Body() dto: UseLocalModelDto) {
     await this.engine.useLocalModel(dto.path);
     return this.engine.status();
+  }
+
+  /**
+   * Every .gguf Neurion can see: its own downloads plus any folder the user
+   * pointed it at. This is what makes "I keep my models over there" and "I just
+   * dropped a file in" both work without copying gigabytes around.
+   */
+  @Get("local-models")
+  localModels() {
+    return {
+      folders: this.engine.modelFolders(),
+      models: this.engine.scanModelFolders(),
+    };
+  }
+
+  @Post("folders")
+  addFolder(@Body() dto: FolderDto) {
+    const folders = this.engine.addModelFolder(dto.path);
+    return { folders, models: this.engine.scanModelFolders() };
+  }
+
+  @Delete("folders")
+  removeFolder(@Body() dto: FolderDto) {
+    const folders = this.engine.removeModelFolder(dto.path);
+    return { folders, models: this.engine.scanModelFolders() };
   }
 
   /** Download the engine and a model, then start it, reporting progress live. */

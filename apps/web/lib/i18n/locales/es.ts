@@ -680,5 +680,13 @@ const dict: Record<string, string> = {
   "models.recommendedTag": "recomendado",
   "models.inUse": "en uso",
   "models.useThisOne": "Usar este",
+  "models.addFolder": "Añadir una carpeta de modelos",
+  "models.openModelsFolder": "Abrir la carpeta de modelos de Neurion",
+  "models.watchedFolders": "Carpetas en las que busca Neurion",
+  "models.neurionFolder": "carpeta de Neurion: deja aquí los archivos",
+  "models.removeFolder": "quitar",
+  "models.noModelsInFolders":
+    "Todavía no se han encontrado archivos .gguf en estas carpetas.",
+  "models.splitModel": "archivo dividido, no utilizable",
 };
 export default dict;

@@ -636,5 +636,12 @@ const dict: Record<string, string> = {
   "models.recommendedTag": "推荐",
   "models.inUse": "使用中",
   "models.useThisOne": "使用这个",
+  "models.addFolder": "添加模型文件夹",
+  "models.openModelsFolder": "打开 Neurion 的模型文件夹",
+  "models.watchedFolders": "Neurion 查找的文件夹",
+  "models.neurionFolder": "Neurion 自己的文件夹 — 把文件放这里",
+  "models.removeFolder": "移除",
+  "models.noModelsInFolders": "这些文件夹中暂未找到 .gguf 文件。",
+  "models.splitModel": "分卷文件，无法使用",
 };
 export default dict;

@@ -125,6 +125,17 @@ export default function ModelsPage() {
   // Only offered when the desktop shell can actually do it. In a browser there
   // is no way to start a local program, so the control must not appear.
   const [canStartOllama, setCanStartOllama] = useState(false);
+  const [canOpenFolder, setCanOpenFolder] = useState(false);
+  const [localFolders, setLocalFolders] = useState<string[]>([]);
+  const [localFound, setLocalFound] = useState<
+    Array<{
+      path: string;
+      name: string;
+      sizeBytes: number;
+      inUse: boolean;
+      split: boolean;
+    }>
+  >([]);
   const [startingOllama, setStartingOllama] = useState(false);
   const [localPath, setLocalPath] = useState("");
 
@@ -159,6 +170,82 @@ export default function ModelsPage() {
       );
     }
   };
+
+  type LocalScan = {
+    folders: string[];
+    models: Array<{
+      path: string;
+      name: string;
+      sizeBytes: number;
+      inUse: boolean;
+      split: boolean;
+    }>;
+  };
+  const applyScan = (r: LocalScan | null): void => {
+    if (!r) return;
+    setLocalFolders(r.folders ?? []);
+    setLocalFound(r.models ?? []);
+  };
+
+  /** Everything Neurion can see across its own folder and the user's. */
+  async function loadLocalModels() {
+    applyScan(
+      await api<LocalScan>("/ai/engine/local-models").catch(() => null),
+    );
+  }
+
+  /** Point Neurion at a folder full of models, using the native picker. */
+  async function addFolder() {
+    const shell = (
+      window as unknown as {
+        neurion?: { pickFolder?: (i?: string) => Promise<{ path?: string }> };
+      }
+    ).neurion;
+    setBundledErr("");
+    let chosen = "";
+    if (shell?.pickFolder) {
+      const picked = await shell.pickFolder().catch(() => ({ path: "" }));
+      chosen = picked?.path ?? "";
+    } else {
+      // No native dialog (a browser): fall back to typing the path, same as
+      // the single-file case.
+      chosen = window.prompt(t("models.addFolder")) ?? "";
+    }
+    if (!chosen.trim()) return;
+    try {
+      applyScan(
+        await api<LocalScan>("/ai/engine/folders", {
+          method: "POST",
+          body: JSON.stringify({ path: chosen.trim() }),
+        }),
+      );
+    } catch (e) {
+      setBundledErr((e as Error).message);
+    }
+  }
+
+  async function removeFolder(folder: string) {
+    try {
+      applyScan(
+        await api<LocalScan>("/ai/engine/folders", {
+          method: "DELETE",
+          body: JSON.stringify({ path: folder }),
+        }),
+      );
+    } catch (e) {
+      setBundledErr((e as Error).message);
+    }
+  }
+
+  /** Open Neurion's own models folder so files can be dropped in by hand. */
+  async function openModelsFolder() {
+    const shell = (
+      window as unknown as {
+        neurion?: { openModelsFolder?: () => Promise<unknown> };
+      }
+    ).neurion;
+    await shell?.openModelsFolder?.();
+  }
 
   /** Start a local ollama the user already installed, then let the poll notice. */
   async function startOllama() {
@@ -211,6 +298,7 @@ export default function ModelsPage() {
         body: JSON.stringify({ path: chosen }),
       });
       await load();
+      await loadLocalModels();
     } catch (e) {
       setBundledErr((e as Error).message);
     } finally {
@@ -274,6 +362,13 @@ export default function ModelsPage() {
         (window as unknown as { neurion?: { startOllama?: unknown } }).neurion
           ?.startOllama != null,
     );
+    setCanOpenFolder(
+      typeof window !== "undefined" &&
+        (window as unknown as { neurion?: { openModelsFolder?: unknown } })
+          .neurion?.openModelsFolder != null,
+    );
+    void loadLocalModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -660,13 +755,157 @@ export default function ModelsPage() {
             </button>
           </div>
         ) : (
-          <button
-            style={{ ...ghostButton, padding: "9px 18px" }}
-            disabled={!!bundledBusy}
-            onClick={() => void useLocalModel()}
-          >
-            {t("models.useLocalFile")}
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              style={{ ...ghostButton, padding: "9px 18px" }}
+              disabled={!!bundledBusy}
+              onClick={() => void useLocalModel()}
+            >
+              {t("models.useLocalFile")}
+            </button>
+            {/* A whole folder, not one file: people keep several models
+                together, and picking them one at a time is not how anyone
+                organises a disk. */}
+            <button
+              style={{ ...ghostButton, padding: "9px 18px" }}
+              disabled={!!bundledBusy}
+              onClick={() => void addFolder()}
+            >
+              {t("models.addFolder")}
+            </button>
+            {canOpenFolder && (
+              <button
+                style={{ ...ghostButton, padding: "9px 18px" }}
+                onClick={() => void openModelsFolder()}
+              >
+                {t("models.openModelsFolder")}
+              </button>
+            )}
+          </div>
+        )}
+        {/* Folders the user pointed us at, and everything found inside them.
+            Nothing is copied: a model is used where it already lies. */}
+        {localFolders.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 12, color: theme.muted, marginBottom: 6 }}>
+              {t("models.watchedFolders")}
+            </div>
+            <div style={{ display: "grid", gap: 4, marginBottom: 10 }}>
+              {localFolders.map((f, i) => (
+                <div
+                  key={f}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 11,
+                    color: theme.muted,
+                    wordBreak: "break-all",
+                  }}
+                >
+                  <span style={{ flex: 1 }}>{f}</span>
+                  {i === 0 ? (
+                    // Neurion's own folder: it holds the downloads, so it is not
+                    // removable — but it IS the one to drop files into.
+                    <span style={{ color: theme.accent, whiteSpace: "nowrap" }}>
+                      {t("models.neurionFolder")}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => void removeFolder(f)}
+                      style={{
+                        ...ghostButton,
+                        padding: "2px 8px",
+                        fontSize: 11,
+                      }}
+                    >
+                      {t("models.removeFolder")}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {localFound.length > 0 ? (
+              <div style={{ display: "grid", gap: 6 }}>
+                {localFound.map((m) => (
+                  <div
+                    key={m.path}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      border: `1px solid ${m.inUse ? theme.accent : theme.border}`,
+                      borderRadius: 8,
+                      padding: "8px 10px",
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12 }}>{m.name}</div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: theme.muted,
+                          wordBreak: "break-all",
+                        }}
+                      >
+                        {m.path}
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: theme.muted,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {fmt(m.sizeBytes)}
+                    </span>
+                    {m.inUse ? (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: theme.accent,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        ✓ {t("models.inUse")}
+                      </span>
+                    ) : m.split ? (
+                      // A later part of a split model cannot be loaded alone.
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: theme.amber,
+                          whiteSpace: "nowrap",
+                        }}
+                        title={t("models.splitModel")}
+                      >
+                        {t("models.splitModel")}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => void useLocalModel(m.path)}
+                        disabled={!!bundledBusy}
+                        style={{
+                          ...ghostButton,
+                          padding: "5px 12px",
+                          fontSize: 12,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {t("models.useThisOne")}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: theme.muted }}>
+                {t("models.noModelsInFolders")}
+              </div>
+            )}
+          </div>
         )}
         {bundledErr && (
           <div style={{ color: theme.red, fontSize: 12, marginTop: 10 }}>

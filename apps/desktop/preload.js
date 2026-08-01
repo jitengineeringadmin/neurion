@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('neurion', {
   // and does not need ollama — but when someone has one sitting there with models
   // already downloaded, refusing to start it just strands them.
   startOllama: () => ipcRenderer.invoke('ollama:start'),
+  // Where downloads land, and where a user can drop their own .gguf files.
+  openModelsFolder: () => ipcRenderer.invoke('models:open-folder'),
   node: {
     status: () => ipcRenderer.invoke('node:status'),
     start: (creds) => ipcRenderer.invoke('node:start', creds),

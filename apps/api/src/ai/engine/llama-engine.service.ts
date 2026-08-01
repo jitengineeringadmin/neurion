@@ -160,6 +160,151 @@ export class LlamaEngineService
     }
   }
 
+  // --- the user's own model folders --------------------------------------
+  // Two ways in, because people organise their models in two ways: point Neurion
+  // at the folder where they already keep them, or just drop files into
+  // Neurion's own models folder and expect them to appear. Both work here, and
+  // nothing is ever copied — a GGUF is used where it already lies.
+
+  private foldersPath(dir: string): string {
+    return join(dir, "model-folders.json");
+  }
+
+  /** Folders the user asked Neurion to watch. Neurion's own is always included. */
+  modelFolders(): string[] {
+    const dir = this.dir();
+    if (!dir) return [];
+    let saved: string[] = [];
+    try {
+      saved = JSON.parse(
+        readFileSync(this.foldersPath(dir), "utf8"),
+      ) as string[];
+    } catch {
+      saved = [];
+    }
+    const own = join(dir, "models");
+    // Own folder first: it is the one we tell people to drop files into.
+    return [own, ...saved.filter((f) => f !== own)];
+  }
+
+  addModelFolder(folder: string): string[] {
+    const dir = this.dir();
+    if (!dir) throw new Error("no engine directory configured");
+    const clean = folder.trim();
+    if (!clean) throw new Error("no folder given");
+    if (!existsSync(clean)) throw new Error(`folder not found: ${clean}`);
+    if (!statSync(clean).isDirectory()) {
+      throw new Error(`not a folder: ${clean}`);
+    }
+    const own = join(dir, "models");
+    const current = this.modelFolders().filter((f) => f !== own);
+    if (!current.includes(clean)) current.push(clean);
+    writeFileSync(this.foldersPath(dir), JSON.stringify(current, null, 2));
+    return this.modelFolders();
+  }
+
+  removeModelFolder(folder: string): string[] {
+    const dir = this.dir();
+    if (!dir) throw new Error("no engine directory configured");
+    const own = join(dir, "models");
+    // Neurion's own folder cannot be removed: it is where downloads land.
+    const current = this.modelFolders().filter(
+      (f) => f !== own && f !== folder,
+    );
+    writeFileSync(this.foldersPath(dir), JSON.stringify(current, null, 2));
+    return this.modelFolders();
+  }
+
+  /**
+   * Every .gguf across the watched folders. One level of subdirectories is
+   * searched too, because tools like LM Studio store each model in its own
+   * folder — a flat scan would find nothing in a directory that visibly
+   * contains models, which reads as "Neurion is broken".
+   *
+   * Split files (…-00001-of-00003.gguf) are reported but marked, since
+   * llama-server needs the first part and our downloader cannot assemble them.
+   */
+  scanModelFolders(): Array<{
+    path: string;
+    name: string;
+    sizeBytes: number;
+    folder: string;
+    inUse: boolean;
+    split: boolean;
+  }> {
+    const dir = this.dir();
+    const state = dir ? this.readState(dir) : null;
+    const active = state?.absolutePath
+      ? state.absolutePath
+      : state && dir
+        ? join(dir, "models", state.file)
+        : null;
+
+    const out: Array<{
+      path: string;
+      name: string;
+      sizeBytes: number;
+      folder: string;
+      inUse: boolean;
+      split: boolean;
+    }> = [];
+    const seen = new Set<string>();
+
+    const consider = (full: string, folder: string): void => {
+      if (!/\.gguf$/i.test(full)) return;
+      const key = full.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      let sizeBytes = 0;
+      try {
+        sizeBytes = statSync(full).size;
+      } catch {
+        return;
+      }
+      const name = full.split(/[\\/]/).pop() ?? full;
+      out.push({
+        path: full,
+        name,
+        sizeBytes,
+        folder,
+        inUse: active != null && active.toLowerCase() === key,
+        // A later part on its own cannot be loaded; the first part can.
+        split: /-\d{5}-of-\d{5}\.gguf$/i.test(name),
+      });
+    };
+
+    for (const folder of this.modelFolders()) {
+      let entries: string[] = [];
+      try {
+        entries = readdirSync(folder);
+      } catch {
+        continue; // a removable drive that is not plugged in today
+      }
+      for (const entry of entries) {
+        const full = join(folder, entry);
+        let isDir = false;
+        try {
+          isDir = statSync(full).isDirectory();
+        } catch {
+          continue;
+        }
+        if (isDir) {
+          try {
+            for (const sub of readdirSync(full)) {
+              consider(join(full, sub), folder);
+            }
+          } catch {
+            /* unreadable subdirectory */
+          }
+        } else {
+          consider(full, folder);
+        }
+      }
+    }
+    out.sort((a, b) => a.name.localeCompare(b.name));
+    return out;
+  }
+
   // --- install -----------------------------------------------------------
 
   private engineInstalled(dir: string): boolean {
