@@ -11,7 +11,7 @@ const THREADS: Seed[] = [
     section: 'announcements',
     title: 'Welcome to the Neurion community forum',
     pinned: true,
-    body: `This is the home of the Neurion community. Neurion is a permissionless, distributed AI compute network: run AI privately on your own machine, or share your idle compute, run verified work and earn NRN.
+    body: `This is the home of the Neurion community. Neurion runs AI on your own machine — chat, a coding agent and images — and lets people pass models and spare power to each other, with nobody in the middle.
 
 A few house rules:
 • Be helpful and respectful — we're building this together.
@@ -46,13 +46,11 @@ Report issues in the Desktop App section.`,
     title: 'FAQ — Frequently Asked Questions (read me first)',
     pinned: true,
     body: `Q: What is Neurion?
-A: A distributed AI compute network. You can run AI privately on your own machine, or share your compute, run verified jobs and earn NRN. A router sends each request to the Fast lane (community nodes), the Grid (job nodes) or a Fallback engine.
+A: AI that runs on your own computer. You can work entirely locally, and you can share models and spare power with other people. A router sends each request to the Fast lane (community nodes), the Grid (job nodes) or the engine on your own machine.
 
 Q: Is it free?
-A: Running models locally on your own machine is free. Using network compute spends internal credits; hosting a node earns them (and NRN).
+A: Everything on your own machine is free. Using other people's compute spends internal credits; sharing yours earns them back.
 
-Q: What's the difference between credits and NRN?
-A: Credits are the internal unit you spend/earn for compute. NRN is the on-chain utility token you can convert credits into once on-chain payouts are enabled (target chain: Base).
 
 Q: Do I need a powerful GPU?
 A: To just use AI locally, a normal machine + a small model is enough. To host a node serving bigger models, you need real GPU hardware (see the Running a node section).
@@ -97,21 +95,21 @@ CPU-only works for tiny models but is slow. More VRAM = bigger models = higher r
 2. Register a node in the app (Network → Nodes → Register). Save the nodeKey shown once.
 3. Configure the agent with your nodeKey and start it.
 4. The agent advertises your capability (VRAM/GPU) and starts receiving jobs.
-5. Verified jobs earn credits/NRN; failed verification slashes stake.
+5. Verified jobs earn credits; failed verification slashes stake.
 
 Keep the node online and honest — reputation compounds, and your earnings scale with it.`,
   },
   {
     section: 'rewards-nrn',
-    title: 'How rewards and NRN payouts work',
-    body: `You earn credits for each verified job your node completes. A protocol fee (currently 10%) goes to the treasury. Credits convert to NRN, the on-chain utility token, once on-chain payouts are enabled.
+    title: 'How sharing works',
+    body: `You earn credits for each verified job your node completes, and they are yours in full — nothing is taken as a fee. They are a way of keeping track of who has given and who has taken, not money.
 
 Reward scales with: model class × active compute × verification tier × reputation. Bigger/harder jobs on higher-trust nodes pay more. Cheating forfeits your stake and drags your other nodes' reputation — honesty is the profitable strategy.`,
   },
   {
     section: 'rewards-nrn',
     title: 'When do on-chain payouts (Base) go live?',
-    body: `On-chain NRN payouts settle on Base (Base Sepolia testnet first). They're gated behind: deploying the token + reward vault contracts, wiring a reward signer, and a contract audit before mainnet. Until then, credits accrue off-chain and convert once payouts are switched on. Track announcements here.`,
+    body: `Neurion has no token and no payouts. Sharing here works the way file sharing always did: you pass on what you already have because it costs you almost nothing, and because a network where everyone does that cannot be switched off by anyone. Track announcements here.`,
   },
   {
     section: 'verification-trust',

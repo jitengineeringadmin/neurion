@@ -20,7 +20,7 @@ node:
     maxJobSeconds: 1800
     maxDiskMb: 50000
 # realtime lane — serve streaming chat from a local OpenAI-compatible engine and
-# earn NRN. Two common backends:
+# serve other people. Two common backends:
 #   * ollama         -> baseUrl http://localhost:11434/v1
 #   * ds4 / DwarfStar -> run `ds4-server` (antirez DeepSeek V4 engine) and point
 #                        baseUrl at it, e.g. http://localhost:8080/v1

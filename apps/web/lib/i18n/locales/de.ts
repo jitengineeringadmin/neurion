@@ -2,9 +2,9 @@
 const dict: Record<string, string> = {
   "home.brandName": "NEURION",
   "home.tagline":
-    "Teile ungenutzte Leistung. Nutze KI. Verdiene Credits und den NRN-Token.",
+    "KI auf deinem eigenen Rechner. Modelle, die Menschen untereinander teilen.",
   "home.description":
-    "Ein verteiltes KI-Compute-Netzwerk: schneller Chat über ein Community-Grid, mit einem Fast / Grid / Fallback-Router, internen Credits und einem On-Chain-NRN-Utility-Token.",
+    "Chat, ein Agent, der in deinen Ordnern arbeitet, und Bilder — alles auf deinem eigenen Rechner. Die Modelle wandern von einem Computer zum nächsten, niemand kann sie abschalten.",
   "home.enterCta": "BETRETEN",
   "login.brandSuffix": "AI",
   "login.tabLogin": "anmelden",
@@ -119,12 +119,12 @@ const dict: Record<string, string> = {
   "admin.dashboardHeading": "Admin-Dashboard",
   "rootmeta.pageTitle": "Neurion AI",
   "rootmeta.pageDescription":
-    "Verteiltes KI-Compute-Netzwerk — teile ungenutzte Leistung, nutze KI, verdiene NRN.",
+    "KI, die auf deinem eigenen Rechner läuft — Chat, Code-Agent und Bilder, mit Modellen, die Menschen untereinander teilen.",
   "splash.bootInitializingRuntime": "> Neurion-Runtime wird initialisiert…",
   "splash.bootConnectingGrid": "> Compute-Grid wird verbunden…",
   "splash.bootWarmingPool": "> Echtzeit-Pool wird aufgewärmt…",
   "splash.bootVerifyingNodes": "> Nodes werden verifiziert [OK]",
-  "splash.bootLedgerOnline": "> NRN-Ledger online [OK]",
+  "splash.bootLedgerOnline": "> lokaler Speicher bereit [OK]",
   "splash.bootAccessGranted": "> Zugriff gewährt.",
   "splash.productName": "NEURION",
   "sessions.newChatTitle": "Neuer Chat",
@@ -292,8 +292,8 @@ const dict: Record<string, string> = {
 
   "models.nodeHeading": "Modelle teilen (Node betreiben)",
   "models.nodeDesc":
-    "Betreibe einen Node im Neurion-Netzwerk mit deinen heruntergeladenen Modellen und verdiene NRN. Melde dich mit deinem neurionproject.org-Konto an.",
-  "models.nodeRunning": "Wird geteilt – NRN wird verdient",
+    "Betreibe einen Node im Neurion-Netzwerk mit deinen heruntergeladenen Modellen, damit andere sie nutzen können. Melde dich mit deinem neurionproject.org-Konto an.",
+  "models.nodeRunning": "Du teilst deinen Rechner",
   "models.nodeStop": "Stoppen",
   "models.nodeStart": "Teilen starten",
   "models.nodeEmail": "neurionproject.org-E-Mail",
@@ -665,7 +665,7 @@ const dict: Record<string, string> = {
   "network.headerHint": "Netzwerkstatus — klicken zum Verbinden oder Trennen",
   "network.connectTitle": "Diesen PC mit dem Neurion-Netzwerk verbinden",
   "network.connectBody":
-    "Für lokales Arbeiten nicht nötig. Melde dich nur an, um die Leistung dieses Rechners zu teilen und NRN zu verdienen — oder die Leistung anderer zu nutzen.",
+    "Für lokales Arbeiten nicht nötig. Melde dich nur an, um diesen Rechner mit anderen zu teilen — oder zu nutzen, was andere teilen.",
   "models.sharingCount": "du teilst {n} Modelle mit diesem Netzwerk",
   "models.peersFound": "{n} Gegenstellen in der Nähe, {m} Modelle im Angebot",
   "models.noPeers": "noch kein weiteres Neurion in diesem Netzwerk",

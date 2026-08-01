@@ -7,9 +7,9 @@
 <link rel="apple-touch-icon" href="/favicon.png" />
 <meta name="theme-color" content="#04070a" />
 <title>Neurion — The distributed AI compute network</title>
-<meta name="description" content="Neurion is a permissionless AI compute network: run AI privately, share your power and run verified compute to earn NRN. Download the client." />
+<meta name="description" content="Neurion runs AI on your own computer: chat, a coding agent and images, offline and free. Models are shared between people, so no company can switch them off. Download the client." />
 <meta property="og:title" content="Neurion — The distributed AI compute network" />
-<meta property="og:description" content="Run AI privately. Share power. Earn NRN. Only verified work gets paid." />
+<meta property="og:description" content="Run AI privately on your own machine. Share models with other people. No account, no company in the middle." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
 <style>
@@ -100,7 +100,7 @@
 </style>
 </head>
 <body>
-<h2 class="sr-only">Neurion: the distributed AI compute network — run AI privately, share power, earn NRN, download the client.</h2>
+<h2 class="sr-only">Neurion: AI that runs on your own computer — chat, coding agent and images, with models shared between people.</h2>
 <canvas id="rain"></canvas>
 
 <nav>
@@ -119,9 +119,9 @@
 </nav>
 
 <header class="hero wrap">
-  <span class="badge" data-i18n="hero_badge">AI compute network · permissionless · NRN payments on Base</span>
+  <span class="badge" data-i18n="hero_badge">AI on your own machine · no account · nothing to pay</span>
   <h1 class="glow" data-i18n-html="hero_h1">The world's AI power, <span class="accent">shared.</span></h1>
-  <p class="sub" data-i18n="hero_sub">Chat, a Code agent that works in your folders, AI images and even short videos with soundtrack — all running privately on YOUR machine, offline and free. Or share your idle power, run verified compute and earn NRN.</p>
+  <p class="sub" data-i18n="hero_sub">Chat, a Code agent that works in your folders, AI images and even short videos with soundtrack — all running privately on YOUR machine, offline and free. And the models pass from one machine to the next, so nobody can take them away.</p>
   <div class="cta-row">
     <a class="btn" href="#download" data-i18n="hero_cta1">⬇ Download for Windows</a>
     <a class="btn ghost" href="#node" data-i18n="hero_cta2">⚡ Become a node</a>
@@ -141,7 +141,7 @@
     <div class="card">
       <div class="ic">⚡</div>
       <h3 data-i18n="p2_t">Share &amp; earn</h3>
-      <p data-i18n="p2_b">Your idle machine becomes a compute node. It runs jobs in an isolated sandbox, passes verification and earns NRN. More honest work, more reputation.</p>
+      <p data-i18n="p2_b">Your machine passes the models it already has to whoever needs them, and can run work for other people. No payment, no account — the same idea that made file sharing work.</p>
     </div>
     <div class="card">
       <div class="ic">🔒</div>
@@ -166,7 +166,7 @@
       </div>
       <div class="step">
         <h3 data-i18n="s3_t">Pay / earn the verified</h3>
-        <p data-i18n="s3_b">You only pay for verified work; as a node you earn convertible NRN. Network state settles on-chain on Base.</p>
+        <p data-i18n="s3_b">Every model is checked against the publisher's own hash, so a file from a stranger either is the real thing or is thrown away.</p>
       </div>
     </div>
     <div class="row">
@@ -206,7 +206,7 @@
     <div class="card" id="node">
       <div class="ic">⚡</div>
       <h3 data-i18n="d2_t">Node agent</h3>
-      <p data-i18n="d2_b">Serve compute and earn NRN. Lightweight, command-line.</p>
+      <p data-i18n="d2_b">Share your machine with other people. Lightweight, command-line.</p>
       <div class="meta" data-i18n="d2_m">Windows · Linux · macOS</div>
       <div class="node-os">
         <a class="btn ghost" href="/download/NeurionNodeSetup.exe">Windows</a>
@@ -239,51 +239,51 @@
 const I18N = {
   en: {
     nav_what:"What is it",nav_how:"How it works",nav_dl:"Download",nav_node:"Run a node",nav_forum:"Forum",nav_network:"Network",nav_open:"Account",
-    hero_badge:"AI compute network · permissionless · NRN payments on Base",
+    hero_badge:"AI on your own machine · no account · nothing to pay",
     hero_h1:"The world's AI power, <span class=\"accent\">shared.</span>",
-    hero_sub:"Chat, a Code agent that works in your folders, AI images and even short videos with soundtrack — all running privately on YOUR machine, offline and free. Or share your idle power, run verified compute and earn NRN.",
+    hero_sub:"Chat, a Code agent that works in your folders, AI images and even short videos with soundtrack — all running privately on YOUR machine, offline and free. And the models pass from one machine to the next, so nobody can take them away.",
     hero_cta1:"⬇ Download for Windows",hero_cta2:"⚡ Become a node",
     hero_os:"Windows · macOS · Linux · no cloud account needed",
     what_eyebrow:"What is Neurion",what_title:"Three things, one network.",
     p1_t:"Create with AI",p1_b:"Chat, a Claude-style Code workspace on your folders, image generation and short AI videos with music or voice-over — locally, offline, free. The network steps in when you want more power.",
-    p2_t:"Share & earn",p2_b:"Your idle machine becomes a compute node. It runs jobs in an isolated sandbox, passes verification and earns NRN. More honest work, more reputation.",
+    p2_t:"Share",p2_b:"Your machine passes the models it already has to whoever needs them, and can run work for other people. No payment, no account — the same idea that made file sharing work.",
     p3_t:"Verified & private",p3_b:"Every sampled computation is re-executed and compared: cheaters are slashed, not paid. Classified privacy and trust-level routing.",
     how_eyebrow:"How it works",how_title:"From download to earning.",
     s1_t:"Download the client",s1_b:"A standalone app: database, local AI and UI included. No Docker, no cloud setup. Double-click and go.",
     s2_t:"Use it or run a node",s2_b:"Use the AI from the app, or switch on node mode to serve compute to the network from your GPU/CPU.",
-    s3_t:"Pay / earn the verified",s3_b:"You only pay for verified work; as a node you earn convertible NRN. Network state settles on-chain on Base.",
+    s3_t:"Verified, not trusted",s3_b:"Every model is checked against the publisher's own hash, so a file from a stranger either is the real thing or is thrown away.",
     chip1:"<b>Only verified work is paid</b> · re-exec + consensus",chip2:"<b>Anti-cheat</b> · stake + on-chain slashing",
     chip3:"<b>Privacy by design</b> · G2 classifier",chip4:"<b>Horizontal scale</b> · multi-instance",
     dl_eyebrow:"Download",dl_title:"Get Neurion.",
     d_win_t:"Windows",d_win_b:"The full client: chat, agent, wallet. All included, runs offline.",d_win_m:"Windows 10/11 · v1.8.22",d_win_btn:"⬇ Windows (.exe)",
     d_mac_t:"macOS",d_mac_b:"Apple Silicon build. Same client, runs offline. First open: right-click → Open.",d_mac_m:"macOS (arm64) · v1.8.22",d_mac_btn:"macOS — coming soon",
     d_lin_t:"Linux",d_lin_b:"Portable AppImage — runs anywhere. Chat, agent, wallet included.",d_lin_m:"Linux x64 · v1.8.22",d_lin_btn:"Linux — coming soon",
-    d2_t:"Node agent",d2_b:"Serve compute and earn NRN. Lightweight, command-line.",d2_m:"Windows · Linux · macOS",
+    d2_t:"Node agent",d2_b:"Share your machine with other people. Lightweight, command-line.",d2_m:"Windows · Linux · macOS",
     foot_ethos:"Built first and foremost to improve the community's life: accessible AI, shared compute, value distributed to those who create it.",
     foot_project:"Project"
   },
   it: {
     nav_what:"Cos'è",nav_how:"Come funziona",nav_dl:"Scarica",nav_node:"Diventa nodo",nav_forum:"Forum",nav_network:"Rete",nav_open:"Account",
-    hero_badge:"Rete di calcolo AI · permissionless · pagamenti NRN su Base",
+    hero_badge:"AI sul tuo computer · nessun account · niente da pagare",
     hero_h1:"La potenza AI del mondo, <span class=\"accent\">condivisa.</span>",
-    hero_sub:"Chat, un agente Code che lavora nelle tue cartelle, immagini AI e perfino brevi video con colonna sonora — tutto in privato sul TUO computer, offline e gratis. Oppure condividi la potenza inutilizzata, esegui calcolo verificato e guadagna NRN.",
+    hero_sub:"Chat, un agente Code che lavora nelle tue cartelle, immagini AI e perfino brevi video con colonna sonora — tutto in privato sul TUO computer, offline e gratis. E i modelli passano da una macchina all'altra, così nessuno può portarteli via.",
     hero_cta1:"⬇ Scarica per Windows",hero_cta2:"⚡ Diventa un nodo",
     hero_os:"Windows · macOS · Linux · nessun account cloud richiesto",
     what_eyebrow:"Cos'è Neurion",what_title:"Tre cose in una rete.",
     p1_t:"Crea con l’AI",p1_b:"Chat, un workspace Code stile Claude sulle tue cartelle, generazione di immagini e brevi video AI con musica o voce narrante — in locale, offline, gratis. La rete entra in gioco quando vuoi più potenza.",
-    p2_t:"Condividi & guadagna",p2_b:"La tua macchina inattiva diventa un nodo di calcolo. Esegue job in sandbox isolata, supera la verifica e guadagna NRN. Più lavori onesti, più reputazione.",
+    p2_t:"Condividi",p2_b:"La tua macchina passa i modelli che ha già a chi ne ha bisogno, e può eseguire lavoro per altri. Nessun pagamento, nessun account — la stessa idea che ha fatto funzionare la condivisione di file.",
     p3_t:"Verificato & privato",p3_b:"Ogni calcolo campionato è ri-eseguito e confrontato: chi bara viene slashato, non pagato. Privacy classificata e routing per livello di fiducia.",
     how_eyebrow:"Come funziona",how_title:"Dal download al guadagno.",
     s1_t:"Scarica il client",s1_b:"Un'app standalone: database, AI locale e interfaccia inclusi. Nessun Docker, nessun setup cloud. Doppio click e parte.",
     s2_t:"Usa o metti un nodo",s2_b:"Usa l'AI dall'app, oppure attiva la modalità nodo per servire calcolo alla rete dalla tua GPU/CPU.",
-    s3_t:"Paga / guadagna il verificato",s3_b:"Paghi solo il lavoro verificato; come nodo guadagni NRN convertibili. Lo stato della rete è on-chain su Base.",
+    s3_t:"Verificato, non creduto",s3_b:"Ogni modello è confrontato con l'impronta del suo autore: un file che arriva da uno sconosciuto o è quello vero, o viene buttato.",
     chip1:"<b>Pagato solo il verificato</b> · re-exec + consenso",chip2:"<b>Anti-baro</b> · stake + slashing on-chain",
     chip3:"<b>Privacy by design</b> · classificatore G2",chip4:"<b>Scala orizzontale</b> · multi-istanza",
     dl_eyebrow:"Scarica",dl_title:"Prendi Neurion.",
     d_win_t:"Windows",d_win_b:"Il client completo: chat, agente, wallet. Tutto incluso, gira offline.",d_win_m:"Windows 10/11 · v1.8.22",d_win_btn:"⬇ Windows (.exe)",
     d_mac_t:"macOS",d_mac_b:"Build Apple Silicon. Stesso client, gira offline. Primo avvio: tasto destro → Apri.",d_mac_m:"macOS (arm64) · v1.8.22",d_mac_btn:"macOS — coming soon",
     d_lin_t:"Linux",d_lin_b:"AppImage portabile — gira ovunque. Chat, agente, wallet inclusi.",d_lin_m:"Linux x64 · v1.8.22",d_lin_btn:"Linux — coming soon",
-    d2_t:"Node agent",d2_b:"Servi calcolo e guadagna NRN. Leggero, da riga di comando.",d2_m:"Windows · Linux · macOS",
+    d2_t:"Node agent",d2_b:"Condividi la tua macchina con altre persone. Leggero, da riga di comando.",d2_m:"Windows · Linux · macOS",
     foot_ethos:"Costruito prima di tutto per migliorare la vita della comunità: AI accessibile, calcolo condiviso, valore distribuito a chi lo crea.",
     foot_project:"Progetto"
   },
@@ -294,9 +294,9 @@ const I18N = {
     nav_node:"Lancer un nœud",
     nav_forum:"Forum",nav_network:"Réseau",
     nav_open:"Compte",
-    hero_badge:"Réseau de calcul IA · permissionless · paiements NRN sur Base",
+    hero_badge:"L'IA sur votre machine · sans compte · rien à payer",
     hero_h1:"La puissance IA du monde, <span class=\"accent\">partagée.</span>",
-    hero_sub:"Chat, un agent Code qui travaille dans vos dossiers, des images IA et même de courtes vidéos avec bande-son — le tout en privé sur VOTRE machine, hors ligne et gratuit. Ou partagez votre puissance inutilisée, exécutez du calcul vérifié et gagnez des NRN.",
+    hero_sub:"Chat, un agent Code qui travaille dans vos dossiers, des images IA et même de courtes vidéos avec bande-son — le tout en privé sur VOTRE machine, hors ligne et gratuit. Et les modèles passent d'une machine à l'autre : personne ne peut vous les retirer.",
     hero_cta1:"⬇ Télécharger pour Windows",
     hero_cta2:"⚡ Devenir un nœud",
     hero_os:"Windows · macOS · Linux · aucun compte cloud requis",
@@ -305,7 +305,7 @@ const I18N = {
     p1_t:"Créez avec l’IA",
     p1_b:"Chat, un espace Code façon Claude sur vos dossiers, génération d’images et courtes vidéos IA avec musique ou voix off — en local, hors ligne, gratuit. Le réseau prend le relais quand il vous faut plus de puissance.",
     p2_t:"Partager & gagner",
-    p2_b:"Votre machine inactive devient un nœud de calcul. Elle exécute des jobs dans un sandbox isolé, passe la vérification et gagne des NRN. Plus de travail honnête, plus de réputation.",
+    p2_b:"Votre machine transmet les modèles qu'elle possède déjà à qui en a besoin, et peut exécuter du travail pour d'autres. Sans paiement, sans compte — l'idée qui a fait marcher le partage de fichiers.",
     p3_t:"Vérifié & privé",
     p3_b:"Chaque calcul échantillonné est ré-exécuté et comparé : les tricheurs sont slashés, pas payés. Confidentialité classifiée et routage par niveau de confiance.",
     how_eyebrow:"Comment ça marche",
@@ -315,7 +315,7 @@ const I18N = {
     s2_t:"Utilisez-la ou lancez un nœud",
     s2_b:"Utilisez l'IA depuis l'app, ou activez le mode nœud pour fournir du calcul au réseau depuis votre GPU/CPU.",
     s3_t:"Payez / gagnez le vérifié",
-    s3_b:"Vous ne payez que le travail vérifié ; en tant que nœud, vous gagnez des NRN convertibles. L'état du réseau se règle on-chain sur Base.",
+    s3_b:"Chaque modèle est comparé à l'empreinte de son auteur : un fichier venu d'un inconnu est soit le bon, soit jeté.",
     chip1:"<b>Seul le travail vérifié est payé</b> · ré-exécution + consensus",
     chip2:"<b>Anti-triche</b> · stake + slashing on-chain",
     chip3:"<b>Privacy by design</b> · classificateur G2",
@@ -335,7 +335,7 @@ const I18N = {
     d_lin_m:"Linux x64 · v1.8.22",
     d_lin_btn:"Linux — coming soon",
     d2_t:"Node agent",
-    d2_b:"Fournissez du calcul et gagnez des NRN. Léger, en ligne de commande.",
+    d2_b:"Partagez votre machine avec d'autres personnes. Léger, en ligne de commande.",
     d2_m:"Windows · Linux · macOS",
     foot_ethos:"Construit avant tout pour améliorer la vie de la communauté : une IA accessible, du calcul partagé, de la valeur distribuée à ceux qui la créent.",
     foot_project:"Projet"
@@ -347,9 +347,9 @@ const I18N = {
     nav_node:"Node betreiben",
     nav_forum:"Forum",nav_network:"Netzwerk",
     nav_open:"Konto",
-    hero_badge:"KI-Compute-Netzwerk · permissionless · NRN-Zahlungen auf Base",
+    hero_badge:"KI auf deinem Rechner · kein Konto · nichts zu zahlen",
     hero_h1:"Die KI-Power der Welt, <span class=\"accent\">geteilt.</span>",
-    hero_sub:"Chat, ein Code-Agent für deine Ordner, KI-Bilder und sogar kurze Videos mit Soundtrack — alles privat auf DEINEM Rechner, offline und kostenlos. Oder teile ungenutzte Leistung, führe verifiziertes Rechnen aus und verdiene NRN.",
+    hero_sub:"Chat, ein Code-Agent für deine Ordner, KI-Bilder und sogar kurze Videos mit Soundtrack — alles privat auf DEINEM Rechner, offline und kostenlos. Und die Modelle wandern von einem Rechner zum nächsten — niemand kann sie dir wegnehmen.",
     hero_cta1:"⬇ Für Windows herunterladen",
     hero_cta2:"⚡ Node werden",
     hero_os:"Windows · macOS · Linux · kein Cloud-Konto nötig",
@@ -358,7 +358,7 @@ const I18N = {
     p1_t:"Erschaffe mit KI",
     p1_b:"Chat, ein Code-Workspace im Claude-Stil auf deinen Ordnern, Bilderzeugung und kurze KI-Videos mit Musik oder Sprecherstimme — lokal, offline, kostenlos. Das Netzwerk springt ein, wenn du mehr Leistung willst.",
     p2_t:"Teilen & verdienen",
-    p2_b:"Dein ungenutzter Rechner wird zum Compute-Node. Er führt Jobs in einer isolierten Sandbox aus, besteht die Verifizierung und verdient NRN. Mehr ehrliche Arbeit, mehr Reputation.",
+    p2_b:"Dein Rechner gibt die Modelle, die er schon hat, an alle weiter, die sie brauchen, und kann Arbeit für andere übernehmen. Ohne Bezahlung, ohne Konto — genau das Prinzip, das Filesharing zum Funktionieren brachte.",
     p3_t:"Verifiziert & privat",
     p3_b:"Jede stichprobenartig geprüfte Berechnung wird erneut ausgeführt und verglichen: Betrüger werden geslasht, nicht bezahlt. Klassifizierte Privatsphäre und Routing nach Vertrauensstufe.",
     how_eyebrow:"So funktioniert es",
@@ -368,7 +368,7 @@ const I18N = {
     s2_t:"Nutzen oder Node betreiben",
     s2_b:"Nutze die KI aus der App oder aktiviere den Node-Modus, um dem Netzwerk Compute über deine GPU/CPU bereitzustellen.",
     s3_t:"Verifiziertes bezahlen / verdienen",
-    s3_b:"Du zahlst nur für verifizierte Arbeit; als Node verdienst du konvertierbare NRN. Der Netzwerkzustand wird On-Chain auf Base abgewickelt.",
+    s3_b:"Jedes Modell wird gegen die Prüfsumme seines Herausgebers geprüft: Eine Datei von einem Fremden ist entweder echt oder sie fliegt weg.",
     chip1:"<b>Nur verifizierte Arbeit wird bezahlt</b> · Re-Exec + Konsens",
     chip2:"<b>Anti-Cheat</b> · Stake + On-Chain-Slashing",
     chip3:"<b>Privacy by Design</b> · G2-Klassifizierer",
@@ -388,7 +388,7 @@ const I18N = {
     d_lin_m:"Linux x64 · v1.8.22",
     d_lin_btn:"Linux — coming soon",
     d2_t:"Node Agent",
-    d2_b:"Stelle Compute bereit und verdiene NRN. Leichtgewichtig, über die Kommandozeile.",
+    d2_b:"Teile deinen Rechner mit anderen. Leichtgewichtig, über die Kommandozeile.",
     d2_m:"Windows · Linux · macOS",
     foot_ethos:"In erster Linie gebaut, um das Leben der Community zu verbessern: zugängliche KI, geteiltes Compute, Wert verteilt an die, die ihn schaffen.",
     foot_project:"Projekt"
@@ -400,9 +400,9 @@ const I18N = {
     nav_node:"Monta un nodo",
     nav_forum:"Foro",nav_network:"Red",
     nav_open:"Cuenta",
-    hero_badge:"Red de cómputo de IA · permissionless · pagos NRN en Base",
+    hero_badge:"IA en tu propio equipo · sin cuenta · nada que pagar",
     hero_h1:"La potencia de IA del mundo, <span class=\"accent\">compartida.</span>",
-    hero_sub:"Chat, un agente Code que trabaja en tus carpetas, imágenes IA e incluso vídeos cortos con banda sonora — todo en privado en TU equipo, sin conexión y gratis. O comparte tu potencia inactiva, ejecuta cómputo verificado y gana NRN.",
+    hero_sub:"Chat, un agente Code que trabaja en tus carpetas, imágenes IA e incluso vídeos cortos con banda sonora — todo en privado en TU equipo, sin conexión y gratis. Y los modelos pasan de una máquina a otra: nadie puede quitártelos.",
     hero_cta1:"⬇ Descargar para Windows",
     hero_cta2:"⚡ Conviértete en nodo",
     hero_os:"Windows · macOS · Linux · no necesitas cuenta en la nube",
@@ -411,7 +411,7 @@ const I18N = {
     p1_t:"Crea con IA",
     p1_b:"Chat, un espacio Code estilo Claude sobre tus carpetas, generación de imágenes y vídeos cortos de IA con música o voz en off — en local, sin conexión, gratis. La red entra cuando quieres más potencia.",
     p2_t:"Comparte y gana",
-    p2_b:"Tu máquina inactiva se convierte en un nodo de cómputo. Ejecuta trabajos en un sandbox aislado, supera la verificación y gana NRN. Más trabajo honesto, más reputación.",
+    p2_b:"Tu equipo pasa los modelos que ya tiene a quien los necesite, y puede ejecutar trabajo para otras personas. Sin pagos y sin cuenta: la misma idea que hizo funcionar el intercambio de archivos.",
     p3_t:"Verificado y privado",
     p3_b:"Cada cómputo muestreado se vuelve a ejecutar y se compara: a los tramposos se les hace slashing, no se les paga. Privacidad clasificada y routing por nivel de confianza.",
     how_eyebrow:"Cómo funciona",
@@ -421,7 +421,7 @@ const I18N = {
     s2_t:"Úsalo o monta un nodo",
     s2_b:"Usa la IA desde la app, o activa el modo nodo para servir cómputo a la red desde tu GPU/CPU.",
     s3_t:"Paga / gana lo verificado",
-    s3_b:"Solo pagas el trabajo verificado; como nodo ganas NRN convertibles. El estado de la red se liquida on-chain en Base.",
+    s3_b:"Cada modelo se comprueba contra la huella de su autor: un archivo que llega de un desconocido o es el auténtico, o se descarta.",
     chip1:"<b>Solo se paga el trabajo verificado</b> · re-exec + consenso",
     chip2:"<b>Anti-trampas</b> · stake + slashing on-chain",
     chip3:"<b>Privacy by design</b> · clasificador G2",
@@ -441,7 +441,7 @@ const I18N = {
     d_lin_m:"Linux x64 · v1.8.22",
     d_lin_btn:"Linux — coming soon",
     d2_t:"Node agent",
-    d2_b:"Sirve cómputo y gana NRN. Ligero, por línea de comandos.",
+    d2_b:"Comparte tu equipo con otras personas. Ligero, por línea de comandos.",
     d2_m:"Windows · Linux · macOS",
     foot_ethos:"Construido ante todo para mejorar la vida de la comunidad: IA accesible, cómputo compartido, valor distribuido a quienes lo crean.",
     foot_project:"Proyecto"
@@ -453,9 +453,9 @@ const I18N = {
     nav_node:"Запустить узел",
     nav_forum:"Форум",nav_network:"Сеть",
     nav_open:"Аккаунт",
-    hero_badge:"Сеть ИИ-вычислений · permissionless · платежи NRN на Base",
+    hero_badge:"ИИ на вашем компьютере · без аккаунта · платить не нужно",
     hero_h1:"Мощность ИИ всего мира, <span class=\"accent\">общая.</span>",
-    hero_sub:"Чат, Code-агент в ваших папках, ИИ-изображения и даже короткие видео со звуком — всё приватно на ВАШЕМ компьютере, офлайн и бесплатно. Или делитесь свободной мощностью, выполняйте проверенные вычисления и зарабатывайте NRN.",
+    hero_sub:"Чат, Code-агент в ваших папках, ИИ-изображения и даже короткие видео со звуком — всё приватно на ВАШЕМ компьютере, офлайн и бесплатно. А модели переходят с одной машины на другую — их у вас никто не отберёт.",
     hero_cta1:"⬇ Скачать для Windows",
     hero_cta2:"⚡ Стать узлом",
     hero_os:"Windows · macOS · Linux · аккаунт в облаке не нужен",
@@ -464,7 +464,7 @@ const I18N = {
     p1_t:"Творите с ИИ",
     p1_b:"Чат, Code-рабочее пространство в стиле Claude на ваших папках, генерация изображений и короткие ИИ-видео с музыкой или голосом — локально, офлайн, бесплатно. Сеть подключается, когда нужно больше мощности.",
     p2_t:"Делитесь и зарабатывайте",
-    p2_b:"Ваша простаивающая машина становится вычислительным узлом. Она выполняет задачи в изолированной песочнице, проходит проверку и зарабатывает NRN. Больше честной работы — больше репутации.",
+    p2_b:"Ваш компьютер передаёт уже скачанные модели тем, кому они нужны, и может выполнять работу для других. Без оплаты и без аккаунта — тот же принцип, на котором держался файлообмен.",
     p3_t:"Проверяемо и приватно",
     p3_b:"Каждое выборочное вычисление повторно выполняется и сравнивается: мошенников штрафуют, а не оплачивают. Классифицированная приватность и маршрутизация по уровню доверия.",
     how_eyebrow:"Как это работает",
@@ -474,7 +474,7 @@ const I18N = {
     s2_t:"Используйте или запустите узел",
     s2_b:"Используйте ИИ из приложения или включите режим узла, чтобы отдавать вычисления сети со своего GPU/CPU.",
     s3_t:"Платите / зарабатывайте за проверенное",
-    s3_b:"Вы платите только за проверенную работу; как узел вы зарабатываете конвертируемые NRN. Состояние сети фиксируется on-chain на Base.",
+    s3_b:"Каждая модель сверяется с контрольной суммой автора: файл от незнакомца либо настоящий, либо отбрасывается.",
     chip1:"<b>Оплачивается только проверенная работа</b> · повторное выполнение + консенсус",
     chip2:"<b>Защита от мошенничества</b> · стейк + on-chain штрафы",
     chip3:"<b>Приватность по умолчанию</b> · классификатор G2",
@@ -494,7 +494,7 @@ const I18N = {
     d_lin_m:"Linux x64 · v1.8.22",
     d_lin_btn:"Linux — coming soon",
     d2_t:"Node agent",
-    d2_b:"Отдавайте вычисления и зарабатывайте NRN. Лёгкий, из командной строки.",
+    d2_b:"Делитесь своим компьютером с другими. Лёгкий, из командной строки.",
     d2_m:"Windows · Linux · macOS",
     foot_ethos:"Создан в первую очередь для улучшения жизни сообщества: доступный ИИ, общие вычисления, ценность распределяется тем, кто её создаёт.",
     foot_project:"Проект"
@@ -506,9 +506,9 @@ const I18N = {
     nav_node:"运行节点",
     nav_forum:"论坛",nav_network:"网络",
     nav_open:"账户",
-    hero_badge:"AI 算力网络 · 无需许可 · 在 Base 上用 NRN 支付",
+    hero_badge:"在你自己的电脑上运行 AI · 无需账号 · 无需付费",
     hero_h1:"全世界的 AI 算力，<span class=\"accent\">共享。</span>",
-    hero_sub:"聊天、在你文件夹中工作的 Code 智能体、AI 图像，甚至带配乐的短视频 —— 全部私密地在你自己的电脑上运行，离线且免费。或共享闲置算力，运行可验证计算并赚取 NRN。",
+    hero_sub:"聊天、在你文件夹中工作的 Code 智能体、AI 图像，甚至带配乐的短视频 —— 全部私密地在你自己的电脑上运行，离线且免费。模型还会在一台台电脑之间传递，没有人能把它们收回去。",
     hero_cta1:"⬇ 下载 Windows 版",
     hero_cta2:"⚡ 成为节点",
     hero_os:"Windows · macOS · Linux · 无需云账户",
@@ -517,7 +517,7 @@ const I18N = {
     p1_t:"用 AI 创作",
     p1_b:"聊天、Claude 风格的 Code 工作区、图像生成以及带音乐或旁白的 AI 短视频 —— 本地、离线、免费。需要更强算力时，网络随时接手。",
     p2_t:"共享与赚取",
-    p2_b:"你闲置的机器变成一个算力节点。它在隔离的沙箱中运行任务、通过验证并赚取 NRN。诚实工作越多，声誉越高。",
+    p2_b:"你的电脑把已有的模型传给需要的人，也可以为别人跑任务。不付费、不注册——正是当年让文件共享成立的那个道理。",
     p3_t:"已验证且私密",
     p3_b:"每次抽样的计算都会被重新执行并比对：作弊者会被罚没，而非获得报酬。分级隐私和按信任等级的路由。",
     how_eyebrow:"工作原理",
@@ -527,7 +527,7 @@ const I18N = {
     s2_t:"使用它或运行节点",
     s2_b:"从应用中使用 AI，或开启节点模式，用你的 GPU/CPU 为网络提供算力。",
     s3_t:"为已验证的工作付费 / 赚取",
-    s3_b:"你只为经过验证的工作付费；作为节点，你赚取可兑换的 NRN。网络状态在 Base 上链结算。",
+    s3_b:"每个模型都会与发布者的哈希比对：来自陌生人的文件要么是真的，要么被丢弃。",
     chip1:"<b>只有经过验证的工作才有报酬</b> · 重新执行 + 共识",
     chip2:"<b>反作弊</b> · 质押 + 链上罚没",
     chip3:"<b>隐私即设计</b> · G2 分类器",
@@ -547,7 +547,7 @@ const I18N = {
     d_lin_m:"Linux x64 · v1.8.22",
     d_lin_btn:"Linux — coming soon",
     d2_t:"节点代理",
-    d2_b:"提供算力并赚取 NRN。轻量、命令行。",
+    d2_b:"把你的电脑分享给其他人。轻量、命令行。",
     d2_m:"Windows · Linux · macOS",
     foot_ethos:"首要目标是改善社区的生活：可获取的 AI、共享的算力、把价值分配给创造它的人。",
     foot_project:"项目"

@@ -133,7 +133,7 @@ async function refresh(): Promise<boolean> {
  *
  * Nothing local needs protecting from the person already sitting at the
  * computer, and an account only starts to mean something once other people are
- * involved — sharing the node, earning NRN, being paid. Those still go through
+ * involved — sharing this machine with other people. Those still go through
  * prodLogin() against the production network, which is a separate identity.
  *
  * Returns false on a hosted deployment, where the API refuses this outright.

@@ -76,7 +76,7 @@ export class AuthController {
    * computer — and asking for an account before the app has shown it works is
    * the single largest drop-off in a first run. An account starts to mean
    * something only when other people are involved: sharing the node, earning
-   * NRN, getting paid.
+   * the network, sharing this machine with other people.
    *
    * Three independent conditions, all required:
    *  - the desktop shell set NEURION_LOCAL_OWNER (a server deployment never does)

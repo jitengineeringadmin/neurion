@@ -1,10 +1,9 @@
 // AUTO-GENERATED locale. Edit translations here.
 const dict: Record<string, string> = {
   "home.brandName": "NEURION",
-  "home.tagline":
-    "Share idle power. Access AI. Earn credits and the NRN token.",
+  "home.tagline": "AI on your own computer. Models shared between people.",
   "home.description":
-    "A distributed AI compute network: fast chat over a community grid, with a Fast / Grid / Fallback router, internal credits and an on-chain NRN utility token.",
+    "Chat, a coding agent that works in your folders, and images — all running on your own machine. Models pass from one computer to the next, so nobody can switch them off.",
   "home.downloadCta": "Download for Windows",
   "home.downloadMeta": "Latest desktop app: Neurion 1.8.10 for Windows.",
   "home.enterCta": "ENTER",
@@ -287,12 +286,12 @@ const dict: Record<string, string> = {
   "admin.dashboardHeading": "Admin dashboard",
   "rootmeta.pageTitle": "Neurion AI",
   "rootmeta.pageDescription":
-    "Distributed AI compute network — share idle power, access AI, earn NRN.",
+    "AI that runs on your own computer — chat, a coding agent and images, with models shared between people.",
   "splash.bootInitializingRuntime": "> initializing neurion runtime…",
   "splash.bootConnectingGrid": "> connecting compute grid…",
   "splash.bootWarmingPool": "> warming realtime pool…",
   "splash.bootVerifyingNodes": "> verifying nodes [OK]",
-  "splash.bootLedgerOnline": "> NRN ledger online [OK]",
+  "splash.bootLedgerOnline": "> local store ready [OK]",
   "splash.bootAccessGranted": "> access granted.",
   "splash.productName": "NEURION",
   "sessions.newChatTitle": "New chat",
@@ -452,8 +451,8 @@ const dict: Record<string, string> = {
 
   "models.nodeHeading": "Share your models (run a node)",
   "models.nodeDesc":
-    "Run a node on the Neurion network with your downloaded models and earn NRN. Sign in with your neurionproject.org account.",
-  "models.nodeRunning": "Sharing — earning NRN",
+    "Run a node on the Neurion network with the models you have downloaded, so other people can use them. Sign in with your neurionproject.org account.",
+  "models.nodeRunning": "Sharing your machine",
   "models.nodeStop": "Stop",
   "models.nodeStart": "Start sharing",
   "models.nodeEmail": "neurionproject.org email",
@@ -630,7 +629,7 @@ const dict: Record<string, string> = {
   "network.headerHint": "Network status — click to connect or disconnect",
   "network.connectTitle": "Connect this PC to the Neurion network",
   "network.connectBody":
-    "Not needed to work locally. Sign in only to share this computer's power with others and earn NRN, or to use the power others share.",
+    "Not needed to work locally. Sign in only to share this computer with other people, or to use what they share.",
   "models.sharingCount": "you are sharing {n} models with this network",
   "models.peersFound": "{n} peers nearby, offering {m} models",
   "models.noPeers": "no other Neurion on this network yet",

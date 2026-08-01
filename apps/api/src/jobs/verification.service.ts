@@ -71,7 +71,7 @@ export class VerificationService {
       case "image.v1": {
         // Non-deterministic: can't re-execute. Sanity = a real PNG came back.
         // (deepCompare has no reference -> handleCompleted's ref===null path marks
-        // it provisional: paid optimistically, never NRN-eligible.)
+        // it provisional: credited optimistically, never deep-verified.)
         const img = result.image as string | undefined;
         if (typeof img !== "string" || img.length < 100)
           return { ok: false, reason: "no image" };
@@ -422,14 +422,14 @@ export class VerificationService {
           lastVerifiedAt: new Date(),
         },
       });
-      await this.finalize(jobId, reward, 1, /*nrnEligible*/ false); // NRN is always strict — never optimistic
+      await this.finalize(jobId, reward, 1, /*deepVerified*/ false); // deep verification is always strict — never optimistic
       return;
     }
 
     // Sampled: deep-verify against the trusted reference, reward WITHHELD until PASS.
     const ref = await this.executor.reference(job.type, job.inputJson);
     if (ref === null) {
-      // can't deep-verify in this deployment (e.g. embedding disabled) -> provisional, no NRN
+      // can't deep-verify in this deployment (e.g. embedding disabled) -> provisional
       await this.record(
         jobId,
         job.type,
@@ -477,7 +477,7 @@ export class VerificationService {
       return;
     }
 
-    // Deep PASS: pay (strict, NRN-eligible), raise reputation, graduate probation.
+    // Deep PASS: credit (strict, deep-verified), raise reputation, graduate probation.
     const newRep = ewma(node.reputation, 1);
     const graduate =
       node.lifecycleState === "PROBATION" &&

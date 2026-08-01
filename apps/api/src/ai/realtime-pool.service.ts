@@ -67,7 +67,7 @@ export class RealtimePoolService {
   }
 
   /**
-   * Grant the node owner NRN credits for serving a realtime chat. Token-metered
+   * Credit the node owner for serving a realtime chat. Token-metered
    * (approx chars/4), capped, min 1 per served reply. Idempotent via `ref`
    * (the assistant message id), so a retry never double-pays.
    */

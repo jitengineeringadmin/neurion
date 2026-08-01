@@ -834,7 +834,7 @@ export class ChatController {
         finalCost = actual;
       }
 
-      // Reward the serving node owner (earn NRN) only when the realtime node
+      // Credit the serving node owner only when the realtime node
       // actually produced the reply — never on the mock fallback.
       let nodeReward = 0;
       if (servedByNode) {

@@ -48,7 +48,7 @@ func main() {
 func usage() {
 	fmt.Println("neurion-node", version)
 	fmt.Println("usage: neurion-node <register|start|status|benchmark|warmup|test-job|test-chat>")
-	fmt.Println("  register --realtime --realtime-base-url <url> [--realtime-models a,b]  # serve chat, earn NRN")
+	fmt.Println("  register --realtime --realtime-base-url <url> [--realtime-models a,b]  # serve chat to other people")
 }
 
 func orAuto(s string) string {
@@ -92,7 +92,7 @@ func cmdRegister(args []string) {
 	password := fs.String("password", os.Getenv("NODE_PASSWORD"), "owner password")
 	token := fs.String("token", os.Getenv("NODE_TOKEN"), "access token (use instead of email/password when already signed in)")
 	out := fs.String("config", "neurion-node.yaml", "config output path")
-	realtime := fs.Bool("realtime", false, "serve realtime chat (FAST lane) and earn NRN")
+	realtime := fs.Bool("realtime", false, "serve realtime chat (FAST lane) for other people")
 	rtProvider := fs.String("realtime-provider", "ds4", "realtime backend label (ds4 | openai_compatible)")
 	rtBaseURL := fs.String("realtime-base-url", "http://localhost:11434/v1", "OpenAI-compatible backend: ds4-server (e.g. http://localhost:8080/v1) or ollama")
 	rtModels := fs.String("realtime-models", "", "comma-separated model ids; empty = auto-discover from the backend's /models")

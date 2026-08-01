@@ -1,6 +1,6 @@
 // Neurion Node — system tray app. Start/stop the node, see status, open the
 // dashboard. Connects to the PRODUCTION network and serves the local ollama
-// models over the realtime lane to earn NRN. On first start it reads the owner's
+// models over the realtime lane for other people. On first start it reads the owner's
 // neurionproject.org credentials from credentials.txt (it writes a template and
 // opens it if missing), registers once, then deletes the password file.
 //
@@ -150,7 +150,7 @@ func onReady() {
 	setRunning := func(on bool) {
 		running = on
 		if on {
-			mStatus.SetTitle("● sharing — earning NRN")
+			mStatus.SetTitle("● sharing your machine")
 			mStart.Disable()
 			mStop.Enable()
 		} else {

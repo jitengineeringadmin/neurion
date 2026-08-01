@@ -270,7 +270,7 @@ async function main(): Promise<void> {
     assert.equal(await new CreditsService(P, cfg()).getBalance(owner.id), 0); // no reward
   });
 
-  await test("unsampled PASS → optimistic reward, NEVER NRN-eligible (C1)", async () => {
+  await test("unsampled PASS → optimistic reward, NEVER deep-verified (C1)", async () => {
     const requester = await mkUser(0);
     const owner = await mkUser(0);
     const node = await mkNode(owner.id, {
@@ -293,7 +293,7 @@ async function main(): Promise<void> {
       where: { id: node.id },
     });
     assert.equal(j.status, "REWARDED");
-    assert.equal(j.nrnPayoutEligible, false); // optimistic never earns NRN
+    assert.equal(j.nrnPayoutEligible, false); // optimistic is never deep-verified
     assert.equal(j.grantedOptimistically, true);
     assert.equal(n.outstandingOptimisticCredits, JOB_REWARD["echo.v1"]);
     assert.equal(n.unverifiedJobCount, 1);
@@ -304,7 +304,7 @@ async function main(): Promise<void> {
     );
   });
 
-  await test("sampled deep PASS → strict reward, NRN-eligible, reputation up", async () => {
+  await test("sampled deep PASS → strict reward, deep-verified, reputation up", async () => {
     const requester = await mkUser(0);
     const owner = await mkUser(0);
     const node = await mkNode(owner.id, {
@@ -397,7 +397,7 @@ async function main(): Promise<void> {
     assert.equal(rewards, 1);
   });
 
-  await test("image.v1: real PNG → provisional (score 0.5, paid, NOT NRN-eligible)", async () => {
+  await test("image.v1: real PNG → provisional (score 0.5, credited, NOT deep-verified)", async () => {
     const requester = await mkUser(0);
     const owner = await mkUser(0);
     const node = await mkNode(owner.id, {
@@ -419,7 +419,7 @@ async function main(): Promise<void> {
     const j = await prisma.job.findUniqueOrThrow({ where: { id: job.id } });
     assert.equal(j.status, "REWARDED");
     assert.equal(j.verificationScore, 0.5);
-    assert.equal(j.nrnPayoutEligible, false); // non-deterministic can't earn NRN
+    assert.equal(j.nrnPayoutEligible, false); // non-deterministic is never deep-verified
     assert.equal(
       await new CreditsService(P, cfg()).getBalance(owner.id),
       JOB_REWARD["image.v1"],

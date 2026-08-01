@@ -68,7 +68,7 @@ export function welcomeEmail(appUrl: string, verifyUrl: string | null): Mail {
       appUrl,
       title: "Welcome to Neurion",
       intro:
-        "Your account is ready. Run AI privately, or share your compute and earn NRN — a network where only verified work gets paid.",
+        "Your account is ready. Run AI privately on your own machine, and share models and power with other people.",
       bodyHtml: verifyBlock,
     }),
   };

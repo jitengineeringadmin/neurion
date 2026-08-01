@@ -1,9 +1,9 @@
 // AUTO-GENERATED locale. Edit translations here.
 const dict: Record<string, string> = {
   "home.brandName": "NEURION",
-  "home.tagline": "共享闲置算力。使用 AI。赚取积分和 NRN 代币。",
+  "home.tagline": "在你自己的电脑上运行 AI。模型在人与人之间传递。",
   "home.description":
-    "一个分布式 AI 算力网络：在社区网格上进行快速对话，配备 Fast / Grid / Fallback 路由、内部积分以及链上 NRN 实用代币。",
+    "对话、在你文件夹中工作的编程智能体，以及图像生成——全部运行在你自己的电脑上。模型在一台台电脑之间传递，没有人能把它们关掉。",
   "home.enterCta": "进入",
   "login.brandSuffix": "AI",
   "login.tabLogin": "登录",
@@ -115,12 +115,12 @@ const dict: Record<string, string> = {
   "admin.dashboardHeading": "管理仪表盘",
   "rootmeta.pageTitle": "Neurion AI",
   "rootmeta.pageDescription":
-    "分布式 AI 算力网络——共享闲置算力、使用 AI、赚取 NRN。",
+    "在你自己的电脑上运行的 AI——对话、编程智能体与图像，模型在人与人之间共享。",
   "splash.bootInitializingRuntime": "> 正在初始化 neurion 运行时…",
   "splash.bootConnectingGrid": "> 正在连接算力网格…",
   "splash.bootWarmingPool": "> 正在预热实时池…",
   "splash.bootVerifyingNodes": "> 正在验证节点 [OK]",
-  "splash.bootLedgerOnline": "> NRN 账本已上线 [OK]",
+  "splash.bootLedgerOnline": "> 本地存储就绪 [OK]",
   "splash.bootAccessGranted": "> 访问已授权。",
   "splash.productName": "NEURION",
   "sessions.newChatTitle": "新对话",
@@ -282,8 +282,8 @@ const dict: Record<string, string> = {
 
   "models.nodeHeading": "共享你的模型（运行节点）",
   "models.nodeDesc":
-    "使用已下载的模型在 Neurion 网络上运行节点，赚取 NRN。使用你的 neurionproject.org 账户登录。",
-  "models.nodeRunning": "正在共享 — 赚取 NRN 中",
+    "用你已下载的模型在 Neurion 网络上运行节点，让其他人也能使用。使用你的 neurionproject.org 账户登录。",
+  "models.nodeRunning": "正在共享你的电脑",
   "models.nodeStop": "停止",
   "models.nodeStart": "开始共享",
   "models.nodeEmail": "neurionproject.org 邮箱",
@@ -625,7 +625,7 @@ const dict: Record<string, string> = {
   "network.headerHint": "网络状态 — 点击连接或断开",
   "network.connectTitle": "将这台电脑接入 Neurion 网络",
   "network.connectBody":
-    "本地使用无需登录。只有当你想共享这台电脑的算力赚取 NRN，或使用他人共享的算力时才需要登录。",
+    "本地使用无需登录。只有当你想把这台电脑分享给别人，或使用别人分享的资源时，才需要登录。",
   "models.sharingCount": "你正在向该网络共享 {n} 个模型",
   "models.peersFound": "附近有 {n} 个节点，提供 {m} 个模型",
   "models.noPeers": "该网络上暂时没有其他 Neurion",

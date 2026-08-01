@@ -33,7 +33,8 @@ const API_HEALTH = 'http://localhost:8091/api/health';
 
 // In-app node: the bundled node-agent binary connects to the PRODUCTION network
 // (registers under the user's neurionproject.org account, serves the local ollama
-// models over the realtime lane) so a desktop user can earn NRN with one click.
+// models over the realtime lane) so a desktop user can share their machine with
+// one click.
 const NODE_BIN = PACKAGED
   ? path.join(STACK, '_node', process.platform === 'win32' ? 'neurion-node.exe' : 'neurion-node')
   : path.join(ROOT, 'apps', 'node-agent', 'bin', process.platform === 'win32' ? 'neurion-node.exe' : 'neurion-node');

@@ -138,7 +138,7 @@ export class AiRouterService {
   }
 
   /**
-   * Reward the owner of a node that served a FAST-lane chat (earn NRN for serving,
+   * Credit the owner of a node that served a FAST-lane chat (recognition for
    * e.g. a ds4/DeepSeek-V4 node). No-op unless the plan was actually served by a
    * realtime node. Idempotent per message via `ref`.
    */

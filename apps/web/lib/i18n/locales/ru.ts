@@ -2,9 +2,9 @@
 const dict: Record<string, string> = {
   "home.brandName": "NEURION",
   "home.tagline":
-    "Делитесь незанятой мощностью. Получайте доступ к ИИ. Зарабатывайте кредиты и токен NRN.",
+    "ИИ на вашем собственном компьютере. Модели, которыми люди делятся друг с другом.",
   "home.description":
-    "Распределённая сеть ИИ-вычислений: быстрый чат на коммьюнити-гриде с маршрутизатором Fast / Grid / Fallback, внутренними кредитами и on-chain служебным токеном NRN.",
+    "Чат, агент, работающий в ваших папках, и изображения — всё на вашей машине. Модели переходят с одного компьютера на другой, и выключить их никто не может.",
   "home.enterCta": "ВОЙТИ",
   "login.brandSuffix": "AI",
   "login.tabLogin": "вход",
@@ -119,12 +119,12 @@ const dict: Record<string, string> = {
   "admin.dashboardHeading": "Админ-панель",
   "rootmeta.pageTitle": "Neurion AI",
   "rootmeta.pageDescription":
-    "Распределённая сеть ИИ-вычислений — делитесь незанятой мощностью, получайте доступ к ИИ, зарабатывайте NRN.",
+    "ИИ, работающий на вашем компьютере: чат, агент для кода и изображения, с моделями, которыми делятся люди.",
   "splash.bootInitializingRuntime": "> инициализация среды neurion…",
   "splash.bootConnectingGrid": "> подключение к вычислительному гриду…",
   "splash.bootWarmingPool": "> прогрев realtime-пула…",
   "splash.bootVerifyingNodes": "> проверка узлов [OK]",
-  "splash.bootLedgerOnline": "> реестр NRN онлайн [OK]",
+  "splash.bootLedgerOnline": "> локальное хранилище готово [OK]",
   "splash.bootAccessGranted": "> доступ предоставлен.",
   "splash.productName": "NEURION",
   "sessions.newChatTitle": "Новый чат",
@@ -292,8 +292,8 @@ const dict: Record<string, string> = {
 
   "models.nodeHeading": "Поделитесь моделями (запустите узел)",
   "models.nodeDesc":
-    "Запустите узел в сети Neurion со своими загруженными моделями и зарабатывайте NRN. Войдите с помощью аккаунта neurionproject.org.",
-  "models.nodeRunning": "Делитесь — зарабатываете NRN",
+    "Запустите узел в сети Neurion со своими загруженными моделями, чтобы ими могли пользоваться другие. Войдите с аккаунтом neurionproject.org.",
+  "models.nodeRunning": "Вы делитесь своим компьютером",
   "models.nodeStop": "Остановить",
   "models.nodeStart": "Начать делиться",
   "models.nodeEmail": "Эл. почта neurionproject.org",
@@ -665,7 +665,7 @@ const dict: Record<string, string> = {
     "Состояние сети — нажмите, чтобы подключиться или отключиться",
   "network.connectTitle": "Подключить этот ПК к сети Neurion",
   "network.connectBody":
-    "Для локальной работы не нужно. Вход нужен только чтобы делиться мощностью этого компьютера и зарабатывать NRN — или использовать чужую.",
+    "Для локальной работы не нужно. Вход нужен только чтобы делиться этим компьютером с другими или пользоваться тем, чем делятся они.",
   "models.sharingCount": "вы делитесь {n} моделями с этой сетью",
   "models.peersFound": "рядом {n} узлов, предлагают {m} моделей",
   "models.noPeers": "в этой сети пока нет других Neurion",
