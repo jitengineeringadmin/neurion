@@ -1,13 +1,10 @@
-// Neurion full local E2E. Assumes API (+ Postgres/Redis) running, optionally a
-// local chain with NRN deployed (env NRN_TOKEN_ADDRESS/RPC_URL). Self-contains a
-// WS node so it exercises the whole grid + verification + reward + payout path.
+// Neurion full local E2E. Assumes API (+ Postgres/Redis) running. Self-contains a
+// WS node so it exercises the whole grid + verification + reward path.
 import WebSocket from "ws";
-import { ethers } from "ethers";
 import { createHash } from "node:crypto";
 
 const API = process.env.API ?? "http://localhost:8091";
 const BASE = `${API}/api`;
-const TOKEN_ADDRESS = process.env.NRN_TOKEN_ADDRESS ?? "";
 let pass = 0;
 let fail = 0;
 const check = (name: string, ok: boolean, extra = "") => {
@@ -171,48 +168,6 @@ async function main(): Promise<void> {
     `(${jobFinal.status})`,
   );
 
-  // 6) crypto (only if a chain is configured)
-  if (TOKEN_ADDRESS) {
-    const wallet = ethers.Wallet.createRandom();
-    const nonce = await req(
-      "/wallet/nonce",
-      "POST",
-      { address: wallet.address },
-      user.accessToken,
-    );
-    const signature = await wallet.signMessage(nonce.message);
-    await req(
-      "/wallet/verify",
-      "POST",
-      { address: wallet.address, nonce: nonce.nonce, signature },
-      user.accessToken,
-    );
-    const payout = await req(
-      "/token/request-payout",
-      "POST",
-      { credits: 3 },
-      user.accessToken,
-    );
-    await req("/token/admin/process-payouts", "POST", {}, admin.accessToken);
-    let pf: any;
-    for (let i = 0; i < 40; i++) {
-      pf = await req(
-        `/token/payouts/${payout.id}`,
-        "GET",
-        undefined,
-        user.accessToken,
-      );
-      if (["CONFIRMED", "FAILED"].includes(pf.status)) break;
-      await sleep(300);
-    }
-    check(
-      "NRN payout CONFIRMED",
-      pf.status === "CONFIRMED",
-      `tx=${pf.txHash?.slice(0, 12)}…`,
-    );
-  } else {
-    console.log("SKIP  crypto (no NRN_TOKEN_ADDRESS)");
-  }
 
   ws.close();
   console.log(`\n${pass} passed, ${fail} failed`);

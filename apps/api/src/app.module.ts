@@ -14,7 +14,6 @@ import { CreditsModule } from "./credits/credits.module";
 import { ChatModule } from "./chat/chat.module";
 import { NodesModule } from "./nodes/nodes.module";
 import { JobsModule } from "./jobs/jobs.module";
-import { CryptoModule } from "./crypto/crypto.module";
 import { ComplianceModule } from "./compliance/compliance.module";
 import { AgentModule } from "./agent/agent.module";
 import { ProjectsModule } from "./projects/projects.module";
@@ -47,7 +46,6 @@ import { RolesGuard } from "./common/guards/roles.guard";
     ChatModule,
     NodesModule,
     JobsModule,
-    CryptoModule,
     ComplianceModule,
     AgentModule,
     ProjectsModule,

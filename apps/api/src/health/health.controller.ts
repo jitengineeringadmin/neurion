@@ -88,31 +88,6 @@ export class HealthController {
     }
   }
 
-  @Get("contracts")
-  async contracts() {
-    try {
-      const rpc = this.config.get<string>("RPC_URL") ?? "http://127.0.0.1:8545";
-      const res = await withTimeout(
-        fetch(rpc, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            jsonrpc: "2.0",
-            method: "eth_chainId",
-            id: 1,
-          }),
-        }),
-        1500,
-      );
-      const json = (await res.json()) as { result?: string };
-      return {
-        status: json.result ? "ok" : "down",
-        chainId: json.result ?? null,
-      };
-    } catch {
-      return { status: "down" };
-    }
-  }
 
   @Get("ai-router")
   async aiRouter() {
