@@ -449,6 +449,9 @@ export class LlamaEngineService
       (p) => onProgress(p),
       {
         expectedBytes: m.sizeBytes,
+        // Present for every catalogue model; absent for a file the user pointed
+        // us at themselves, which is not downloaded at all.
+        sha256: m.sha256,
       },
     );
   }

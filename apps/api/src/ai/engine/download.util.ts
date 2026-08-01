@@ -5,6 +5,7 @@ import {
   existsSync,
   statSync,
 } from "node:fs";
+import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
@@ -32,7 +33,19 @@ export async function downloadFile(
     receivedBytes: number,
     totalBytes: number | null,
   ) => void,
-  opts: { expectedBytes?: number; toleranceRatio?: number } = {},
+  opts: {
+    expectedBytes?: number;
+    toleranceRatio?: number;
+    /**
+     * Expected SHA-256 of the finished file. When given, the bytes are hashed as
+     * they arrive and a mismatch throws instead of renaming into place.
+     *
+     * This is what makes it safe to accept weights from someone you do not
+     * trust: the file either hashes to the model you asked for, or it is thrown
+     * away. Size and filename prove nothing — they are trivial to forge.
+     */
+    sha256?: string;
+  } = {},
 ): Promise<number> {
   const tmp = `${out}.part`;
   const res = await fetch(url, { redirect: "follow" });
@@ -45,9 +58,13 @@ export async function downloadFile(
   let received = 0;
   let lastPercent = -1;
 
+  // Hashed while it streams, so a multi-gigabyte file is never read twice.
+  const digest = opts.sha256 ? createHash("sha256") : null;
+
   const stream = Readable.fromWeb(res.body as never);
   stream.on("data", (chunk: Buffer) => {
     received += chunk.length;
+    digest?.update(chunk);
     if (!onProgress) return;
     const percent = total ? Math.floor((received / total) * 100) : -1;
     // One event per whole percent — a 4 GB model is ~30k chunks otherwise.
@@ -69,6 +86,17 @@ export async function downloadFile(
       if (received < expected * tolerance) {
         throw new Error(
           `download too small: ${received} bytes, expected about ${expected}`,
+        );
+      }
+    }
+
+    if (digest && opts.sha256) {
+      const got = digest.digest("hex");
+      if (got !== opts.sha256.toLowerCase()) {
+        // Deliberately before the rename: a file that fails this never appears
+        // installed, so a poisoned copy cannot be loaded on the next start.
+        throw new Error(
+          `checksum mismatch for ${out}: expected ${opts.sha256}, got ${got}`,
         );
       }
     }

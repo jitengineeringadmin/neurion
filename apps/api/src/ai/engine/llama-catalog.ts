@@ -92,6 +92,16 @@ export interface CatalogModel {
    * several gigabytes to satisfy our layout would be rude.
    */
   absolutePath?: string;
+  /**
+   * SHA-256 of the weights, taken from the publisher's own record (HuggingFace
+   * stores it as the LFS oid) and checked against the real bytes on disk.
+   *
+   * This is what lets a model be accepted from a STRANGER. Name and size can be
+   * forged; the hash cannot. Without it, peer-to-peer sharing would mean
+   * trusting whoever answers first — with it, the file either is the model or it
+   * is discarded, and it no longer matters who handed it over.
+   */
+  sha256?: string;
   sizeBytes: number;
   /** Context the server is started with. Never 0: that means "read from the
    *  model", and some models declare 262144, which reserves a working set
@@ -138,6 +148,7 @@ export const CATALOG: CatalogModel[] = [
       "Il più piccolo: per PC datati, meno di 1 GB di RAM libera; risponde subito ma resta basilare.",
     url: "https://huggingface.co/bartowski/Qwen2.5-0.5B-Instruct-GGUF/resolve/41ba88dbac95fed2528c92514c131d73eb5a174b/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf",
     file: "Qwen2.5-0.5B-Instruct-Q4_K_M.gguf",
+    sha256: "6eb923e7d26e9cea28811e1a8e852009b21242fb157b26149d3b188f3a8c8653",
     sizeBytes: 397_808_192,
     contextTokens: 4096,
     recommended: false,
@@ -149,6 +160,7 @@ export const CATALOG: CatalogModel[] = [
       "Per macchine modeste: circa 1,5 GB di RAM libera, già molto più preciso dello 0.5B.",
     url: "https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/9eadc66189c7641e1ddd226b8267a9119b2ce2d4/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
     file: "Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+    sha256: "1adf0b11065d8ad2e8123ea110d1ec956dab4ab038eab665614adba04b6c3370",
     sizeBytes: 986_048_768,
     contextTokens: 4096,
     recommended: false,
@@ -160,6 +172,7 @@ export const CATALOG: CatalogModel[] = [
       "Per l'agente su progetti piccoli: gira su qualsiasi portatile, circa 1,5 GB di RAM libera.",
     url: "https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/1af47f78b1f9b0c242fabe43f7a365d5a67f3207/Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf",
     file: "Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf",
+    sha256: "f530705d447660a4336c329981af164b471b60b974b1d808d57e8ec9fe23b239",
     sizeBytes: 986_048_800,
     contextTokens: 4096,
     recommended: false,
@@ -171,6 +184,7 @@ export const CATALOG: CatalogModel[] = [
       "Ragiona passo passo prima di rispondere: il più leggero della categoria, circa 2 GB di RAM libera.",
     url: "https://huggingface.co/bartowski/Qwen_Qwen3-1.7B-GGUF/resolve/dcb19155b962dbb6389f4691a982043a8e651022/Qwen_Qwen3-1.7B-Q4_K_M.gguf",
     file: "Qwen_Qwen3-1.7B-Q4_K_M.gguf",
+    sha256: "72c5c3cb38fa32d5256e2fe30d03e7a64c6c79e668ad84057e3bd66e250b24fb",
     sizeBytes: 1_282_439_584,
     // Reasoning models spend tokens thinking before they answer, so a 4096
     // window can be eaten by the scratchpad and truncate the reply.
@@ -184,6 +198,7 @@ export const CATALOG: CatalogModel[] = [
       "Predefinito: il più accurato tra i modelli leggeri, gira su qualsiasi PC.",
     url: "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/855f67caed130e1befc571b52bd181be2e858883/gemma-2-2b-it-Q4_K_M.gguf",
     file: "gemma-2-2b-it-Q4_K_M.gguf",
+    sha256: "e0aee85060f168f0f2d8473d7ea41ce2f3230c1bc1374847505ea599288a7787",
     sizeBytes: 1_708_582_752,
     contextTokens: 4096,
     recommended: true,
@@ -195,6 +210,7 @@ export const CATALOG: CatalogModel[] = [
       "Il più capace tra i leggeri: circa 3 GB di RAM libera, per un portatile ragionevolmente recente.",
     url: "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/5ab33fa94d1d04e903623ae72c95d1696f09f9e8/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
     file: "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+    sha256: "6c1a2b41161032677be168d354123594c0e6e67d2b9227c84f296ad037c728ff",
     sizeBytes: 2_019_377_696,
     contextTokens: 4096,
     recommended: false,
@@ -206,6 +222,7 @@ export const CATALOG: CatalogModel[] = [
       "Ragionamento passo passo con buon equilibrio tra qualità e velocità; circa 3,5 GB di RAM libera.",
     url: "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf",
     file: "Qwen3-4B-Q4_K_M.gguf",
+    sha256: "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
     sizeBytes: 2_497_280_256,
     contextTokens: 8192,
     recommended: false,
@@ -217,6 +234,7 @@ export const CATALOG: CatalogModel[] = [
       "Modello a esperti: veloce come un modello piccolo ma più capace, servono circa 6 GB di RAM libera.",
     url: "https://huggingface.co/ibm-granite/granite-4.0-h-tiny-GGUF/resolve/08d5a8a9741dd5c1a95d2d39e25253226aa1464e/granite-4.0-h-tiny-Q4_K_M.gguf",
     file: "granite-4.0-h-tiny-Q4_K_M.gguf",
+    sha256: "5a38b08c441ae1adbafb1d2b8a7167e0d48734d83af68b268cefea1eec553dcd",
     sizeBytes: 4_230_976_352,
     contextTokens: 4096,
     recommended: false,
@@ -228,6 +246,7 @@ export const CATALOG: CatalogModel[] = [
       "Il più forte su matematica e problemi logici; circa 6 GB di RAM libera ed è lento a rispondere.",
     url: "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/361004151d4f4f6b446dc5e6d46fbf4422a80d5f/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
     file: "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+    sha256: "731ece8d06dc7eda6f6572997feb9ee1258db0784827e642909d9b565641937b",
     sizeBytes: 4_683_073_504,
     contextTokens: 8192,
     recommended: false,
@@ -239,6 +258,7 @@ export const CATALOG: CatalogModel[] = [
       "Più capace sui compiti difficili; richiede circa 6 GB di RAM libera ed è più lento.",
     url: "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/8911e8a47f92bac19d6f5c64a2e2095bd2f7d031/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
     file: "Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+    sha256: "65b8fcd92af6b4fefa935c625d1ac27ea29dcb6ee14589c55a8f115ceaaa1423",
     sizeBytes: 4_683_074_240,
     contextTokens: 4096,
     recommended: false,
@@ -250,6 +270,7 @@ export const CATALOG: CatalogModel[] = [
       "Per l'agente sul codice di tutti i giorni: buone modifiche e velocità decente, circa 6 GB di RAM libera.",
     url: "https://huggingface.co/bartowski/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/1f629da0c8bed16b9e50cee91c70693650e66c35/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
     file: "Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
+    sha256: "1664fccab734674a50763490a8c6931b70e3f2f8ec10031b54806d30e5f956b6",
     sizeBytes: 4_683_074_336,
     contextTokens: 4096,
     recommended: false,
@@ -261,6 +282,7 @@ export const CATALOG: CatalogModel[] = [
       "Per chi ha almeno 6 GB di RAM libera: risposte più articolate e buon supporto multilingua.",
     url: "https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/bf5b95e96dac0462e2a09145ec66cae9a3f12067/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
     file: "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    sha256: "7b064f5842bf9532c91456deda288a1b672397a54fa729aa665952863033557c",
     sizeBytes: 4_920_739_232,
     contextTokens: 4096,
     recommended: false,
@@ -272,6 +294,7 @@ export const CATALOG: CatalogModel[] = [
       "Il più preparato del catalogo generale: servono almeno 9 GB di RAM libera e le risposte sono più lente.",
     url: "https://huggingface.co/bartowski/google_gemma-3-12b-it-GGUF/resolve/648e3a36a77c8a9f12d86e741f9dcb9089c769c4/google_gemma-3-12b-it-Q4_K_M.gguf",
     file: "google_gemma-3-12b-it-Q4_K_M.gguf",
+    sha256: "fc57f67efa46d711c346e587cbef7d049e95f3df8db2eb2271153343ef0acc7b",
     sizeBytes: 7_300_575_264,
     contextTokens: 4096,
     recommended: false,
@@ -283,6 +306,7 @@ export const CATALOG: CatalogModel[] = [
       "Per refactoring su più file: il più capace sul codice, ma servono circa 12 GB di RAM libera ed è lento su CPU.",
     url: "https://huggingface.co/bartowski/Qwen2.5-Coder-14B-Instruct-GGUF/resolve/5b379ec4bf71bafecb5f9081ad28b19939128988/Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf",
     file: "Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf",
+    sha256: "2946d28c9e1bb2bcae6d42e8678863a31775df6f740315c7d7e6d6b6411f5937",
     sizeBytes: 8_988_111_072,
     contextTokens: 4096,
     recommended: false,

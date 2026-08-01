@@ -8,7 +8,7 @@
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\" --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "tsx scripts/unit-test.ts && tsx scripts/context-test.ts && tsx scripts/confine-test.ts && tsx scripts/agent-upgrade-test.ts && tsx scripts/money-test.ts && tsx scripts/payout-test.ts && tsx scripts/knowledge-test.ts",
+    "test": "tsx scripts/unit-test.ts && tsx scripts/context-test.ts && tsx scripts/confine-test.ts && tsx scripts/agent-upgrade-test.ts && tsx scripts/download-hash-test.ts && tsx scripts/money-test.ts && tsx scripts/payout-test.ts && tsx scripts/knowledge-test.ts",
     "test:unit": "tsx scripts/unit-test.ts",
     "test:context": "tsx scripts/context-test.ts",
     "db:validate": "dotenv -e ../../.env -- prisma validate",
@@ -23,7 +23,8 @@
     "test:e2e": "tsx scripts/e2e.ts",
     "eval": "tsx scripts/eval-harness.ts",
     "test:payout": "tsx scripts/payout-test.ts",
-    "bundle": "node scripts/bundle.mjs"
+    "bundle": "node scripts/bundle.mjs",
+    "test:hash": "tsx scripts/download-hash-test.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
