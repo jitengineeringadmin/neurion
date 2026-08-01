@@ -617,7 +617,15 @@ async function startStack() {
     const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV }, `api#${attempt + 1}`);
     apiProc = api;
     children.push(api);
-    apiUp = await waitHttp(API_HEALTH, 45000);
+    // Stop waiting the moment the child dies. Polling the health URL for the
+    // full 45s after the process has already exited added most of a minute of
+    // "the app is up but nothing works" — the window is open, the web server is
+    // serving, and every API call fails.
+    const exited = new Promise((resolve) => api.once('exit', () => resolve(false)));
+    apiUp = await Promise.race([waitHttp(API_HEALTH, 45000), exited]);
+    if (!apiUp && api.exitCode !== null) {
+      bootLog('api', `attempt ${attempt + 1} exited early (code ${api.exitCode}) — retrying now`);
+    }
     if (!apiUp) {
       try {
         if (process.platform === 'win32') sh('taskkill', ['/pid', String(api.pid), '/f', '/t']);

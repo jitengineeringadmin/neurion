@@ -48,4 +48,12 @@ async function bootstrap(): Promise<void> {
   );
 }
 
-void bootstrap();
+// A rejection here used to be unhandled: Node killed the process with exit code
+// 1 and the reason went out through a pipe that closed with it, so the desktop
+// supervisor logged "exited code=1" and nothing else — a failed API boot with no
+// recoverable cause. Print it first, and set exitCode instead of calling
+// process.exit() so the write actually flushes before the process ends.
+bootstrap().catch((err: unknown) => {
+  console.error("[bootstrap] the API failed to start:", err);
+  process.exitCode = 1;
+});
