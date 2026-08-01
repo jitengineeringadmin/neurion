@@ -515,7 +515,13 @@ export class ModelsController {
   @Get("models/installed")
   async installed() {
     try {
-      const res = await fetch(`${this.ollamaBase()}/api/tags`);
+      // Bounded on purpose. This was the only probe in the file without a
+      // deadline, so a host that accepts the connection and then goes quiet
+      // (a suspended VM, a firewall that drops instead of refusing) left the
+      // Models page spinning with no engine and no explanation.
+      const res = await fetch(`${this.ollamaBase()}/api/tags`, {
+        signal: AbortSignal.timeout(3000),
+      });
       if (!res.ok) return { engine: "down", installed: [] };
       const json = (await res.json()) as {
         models?: Array<{ name: string; size?: number }>;
