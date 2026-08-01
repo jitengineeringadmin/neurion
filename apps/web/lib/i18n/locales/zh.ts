@@ -111,7 +111,6 @@ const dict: Record<string, string> = {
   "nodes.jobsLabel": "任务",
   "nodes.statusOnline": "在线",
   "nodes.emptyState": "还没有节点。",
-    "链 {chainId} · 支付 {payoutsStatus} · 1 积分 = {nrnAmount} NRN",
   "admin.loading": "加载中…",
   "admin.dashboardHeading": "管理仪表盘",
   "rootmeta.pageTitle": "Neurion AI",

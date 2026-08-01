@@ -115,8 +115,6 @@ const dict: Record<string, string> = {
   "nodes.jobsLabel": "trabajos",
   "nodes.statusOnline": "ONLINE",
   "nodes.emptyState": "Aún no hay nodos.",
-    "chain {chainId} · pagos {payoutsStatus} · 1 crédito = {nrnAmount} NRN",
-    "No se encontró ninguna wallet EVM (instala MetaMask).",
   "admin.loading": "Cargando…",
   "admin.dashboardHeading": "Panel de admin",
   "rootmeta.pageTitle": "Neurion AI",

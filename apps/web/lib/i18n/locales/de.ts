@@ -115,7 +115,6 @@ const dict: Record<string, string> = {
   "nodes.jobsLabel": "Jobs",
   "nodes.statusOnline": "ONLINE",
   "nodes.emptyState": "Noch keine Nodes.",
-    "Chain {chainId} · Auszahlungen {payoutsStatus} · 1 Credit = {nrnAmount} NRN",
   "admin.loading": "Wird geladen…",
   "admin.dashboardHeading": "Admin-Dashboard",
   "rootmeta.pageTitle": "Neurion AI",
