@@ -1,18 +1,16 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
-import { IsOptional, IsString } from "class-validator";
+import { Controller, Get } from "@nestjs/common";
 import { ComplianceService } from "./compliance.service";
 import { Roles } from "../common/decorators/roles.decorator";
-import {
-  CurrentUser,
-  AuthUser,
-} from "../common/decorators/current-user.decorator";
 
-class BlockDto {
-  @IsOptional()
-  @IsString()
-  reason?: string;
-}
-
+/**
+ * What is left of compliance once there are no payouts to hold.
+ *
+ * block-payouts and unblock-payouts went with the money layer rather than being
+ * left in place. The only reader of the flag they wrote lived in the payout
+ * service, so kept, they would have answered 200 and written an audit record
+ * while changing nothing — a moderation tool that quietly does not moderate,
+ * which is worse than not having one at all.
+ */
 @Controller("admin/compliance")
 @Roles("SUPER_ADMIN", "ADMIN", "COMPLIANCE")
 export class ComplianceController {
@@ -21,19 +19,5 @@ export class ComplianceController {
   @Get()
   list() {
     return this.compliance.listRecords();
-  }
-
-  @Post(":userId/block-payouts")
-  block(
-    @CurrentUser() admin: AuthUser,
-    @Param("userId") userId: string,
-    @Body() dto: BlockDto,
-  ) {
-    return this.compliance.blockPayouts(admin.sub, userId, dto.reason);
-  }
-
-  @Post(":userId/unblock-payouts")
-  unblock(@CurrentUser() admin: AuthUser, @Param("userId") userId: string) {
-    return this.compliance.unblockPayouts(admin.sub, userId);
   }
 }

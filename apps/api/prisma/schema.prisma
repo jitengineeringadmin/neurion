@@ -43,9 +43,6 @@ model User {
   avatarUrl       String?
   role            UserRole   @default(USER)
   status          UserStatus @default(ACTIVE)
-  walletAddress   String?
-  kycStatus       KycStatus  @default(KYC_NOT_REQUIRED)
-  payoutHold      Boolean    @default(false) // G5: compliance soft-hold
   creditBalance   Int        @default(0) // denormalized = SUM(creditLedger.amount); kept in sync atomically
   emailVerified   Boolean    @default(false)
   emailVerifiedAt DateTime?
@@ -57,7 +54,6 @@ model User {
   jobs                   Job[]
   chats                  ChatConversation[]
   creditLedger           CreditLedger[]
-  tokenPayouts           TokenPayout[]
   ownerReputation        OwnerReputation?        @relation("OwnerRepUser") // G5
   refreshTokens          RefreshToken[] // G6
   authTokens             AuthToken[] // email verify + password reset
@@ -157,14 +153,6 @@ enum UserStatus {
   PENDING
 }
 
-enum KycStatus {
-  KYC_NOT_REQUIRED
-  KYC_REQUIRED
-  KYC_PENDING
-  KYC_APPROVED
-  KYC_REJECTED
-  PAYOUT_BLOCKED
-}
 
 // ============================================================================
 // Compute Node
@@ -753,54 +741,8 @@ model CreditLedger {
   @@index([userId, createdAt])
 }
 
-model TokenPayout {
-  id            String       @id @default(cuid())
-  userId        String
-  jobId         String?
-  walletAddress String
-  tokenSymbol   String       @default("NRN")
-  amountWei     String
-  chainId       Int
-  txHash        String?
-  status        PayoutStatus @default(PENDING)
-  errorMessage  String?
-  // What the user actually paid, so a failed payout can be made whole. Only the
-  // NET reached amountWei, so refunding from that silently kept the fee on a
-  // payout that never happened.
-  grossCredits  Int          @default(0)
-  feeCredits    Int          @default(0)
-  // Set once the transaction is handed to the chain. After that a refund is no
-  // longer safe: the send may still confirm, and paying the credits back too
-  // would hand out both.
-  submittedAt   DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
 
-  @@index([userId, status])
-}
-
-enum PayoutStatus {
-  PENDING
-  PROCESSING
-  SUBMITTED
-  CONFIRMED
-  FAILED
-  CANCELLED
-  BLOCKED
-}
-
-model WalletNonce {
-  id        String   @id @default(cuid())
-  address   String
-  nonce     String
-  used      Boolean  @default(false)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([address, used])
-}
 
 model AuditLog {
   id          String   @id @default(cuid())
@@ -842,9 +784,7 @@ model OwnerReputation {
   effectiveReputation               Float     @default(0)
   ownerOutstandingOptimisticCredits Int       @default(0)
   lifetimeUnverifiedCredits         Int       @default(0)
-  lifetimePayoutCredits             Int       @default(0)
   deepFailCount                     Int       @default(0)
-  payoutHold                        Boolean   @default(false)
   lastRegistrationAt                DateTime?
   registrationsToday                Int       @default(0)
   registrationsDayKey               String?
@@ -1151,15 +1091,3 @@ model AgentMemory {
   @@index([userId, createdAt])
 }
 
-model EmissionSchedule {
-  id                  String   @id @default(cuid())
-  epochKey            String   @unique // e.g. UTC yyyy-mm-dd
-  epochBudgetWei      String
-  emittedThisEpochWei String   @default("0")
-  emittedLifetimeWei  String   @default("0")
-  poolCapWei          String
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  @@index([epochKey])
-}
