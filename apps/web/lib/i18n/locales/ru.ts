@@ -667,5 +667,7 @@ const dict: Record<string, string> = {
   "models.localFileActive": "Neurion использует ваш файл модели.",
   "models.localPathPlaceholder": "C:\\models\\my-model.gguf",
   "models.useLocalConfirm": "Использовать этот файл",
+  "models.startOllama": "Запустить ollama",
+  "models.startingOllama": "Запуск…",
 };
 export default dict;

@@ -121,6 +121,10 @@ export default function ModelsPage() {
   // "Take the model from this folder" — always reachable, never buried inside
   // an error state. askPath is the no-native-dialog fallback.
   const [askPath, setAskPath] = useState(false);
+  // Only offered when the desktop shell can actually do it. In a browser there
+  // is no way to start a local program, so the control must not appear.
+  const [canStartOllama, setCanStartOllama] = useState(false);
+  const [startingOllama, setStartingOllama] = useState(false);
   const [localPath, setLocalPath] = useState("");
 
   // Either engine counts. Reporting only ollama told a user with Neurion's own
@@ -154,6 +158,25 @@ export default function ModelsPage() {
       );
     }
   };
+
+  /** Start a local ollama the user already installed, then let the poll notice. */
+  async function startOllama() {
+    const shell = (
+      window as unknown as {
+        neurion?: { startOllama?: () => Promise<{ ok: boolean }> };
+      }
+    ).neurion;
+    if (!shell?.startOllama) return;
+    setStartingOllama(true);
+    try {
+      await shell.startOllama();
+      await load();
+    } catch {
+      /* the banner keeps saying what is wrong */
+    } finally {
+      setStartingOllama(false);
+    }
+  }
 
   /**
    * Run a GGUF the user already has. The desktop shell opens the file picker,
@@ -225,6 +248,33 @@ export default function ModelsPage() {
       setBundledBusy(null);
     }
   }
+  // The engine state was read once, at mount, and never again. Start ollama a
+  // minute later — or let the API restart — and this page went on insisting no
+  // engine was running, with a Download button that could not work and no way to
+  // ask again. Re-check while it looks down, and whenever the window is focused,
+  // which is exactly the moment someone comes back from starting it.
+  useEffect(() => {
+    if (engine !== "down") return;
+    const again = () => void load();
+    const id = setInterval(again, 5000);
+    window.addEventListener("focus", again);
+    document.addEventListener("visibilitychange", again);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", again);
+      document.removeEventListener("visibilitychange", again);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine]);
+
+  useEffect(() => {
+    setCanStartOllama(
+      typeof window !== "undefined" &&
+        (window as unknown as { neurion?: { startOllama?: unknown } }).neurion
+          ?.startOllama != null,
+    );
+  }, []);
+
   useEffect(() => {
     void load();
     void api<{ recommended: Reco[]; quants?: Quant[] }>(
@@ -870,7 +920,18 @@ export default function ModelsPage() {
                         style={{
                           ...button,
                           padding: "6px 14px",
-                          opacity: pulling || engine !== "up" ? 0.5 : 1,
+                          // A dimmed-but-still-green button reads as "click me".
+                          // When it cannot work it must look inert, not merely
+                          // faded: this is the control the user kept pressing.
+                          ...(pulling || engine !== "up"
+                            ? {
+                                background: "transparent",
+                                color: theme.muted,
+                                border: `1px solid ${theme.border}`,
+                                cursor: "not-allowed",
+                                opacity: 1,
+                              }
+                            : null),
                         }}
                       >
                         ⬇ {t("models.downloadButton")}
@@ -878,7 +939,8 @@ export default function ModelsPage() {
                       </button>
                     )}
                     {/* A disabled button with no explanation reads as a broken
-                        app. Say why it cannot work here. */}
+                        app. Say why it cannot work — and, when we can do
+                        something about it, offer the action instead of a note. */}
                     {engine !== "up" && !pulling && (
                       <div
                         style={{
@@ -889,6 +951,19 @@ export default function ModelsPage() {
                         }}
                       >
                         {t("models.needsOllama")}
+                        {canStartOllama && (
+                          <div style={{ marginTop: 8 }}>
+                            <button
+                              style={{ ...ghostButton, padding: "7px 14px" }}
+                              disabled={startingOllama}
+                              onClick={() => void startOllama()}
+                            >
+                              {startingOllama
+                                ? t("models.startingOllama")
+                                : t("models.startOllama")}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

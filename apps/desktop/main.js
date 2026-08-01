@@ -948,6 +948,68 @@ ipcMain.handle('pick-model', async () => {
   return { path: p, name: p.split('/').pop() };
 });
 
+// --- start a local ollama the user already has -----------------------------
+// Neurion ships its own engine and never requires ollama. But the model
+// catalogue on the Models page is ollama's, so with ollama installed-but-stopped
+// the Download button cannot work, and the user is left pressing a dead control
+// next to models they already downloaded. Starting it turns that dead end into
+// one click. Nothing is installed and nothing is downloaded here.
+function ollamaBinary() {
+  const candidates = process.platform === 'win32'
+    ? [
+        path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Ollama', 'ollama.exe'),
+        path.join(process.env.ProgramFiles || '', 'Ollama', 'ollama.exe'),
+      ]
+    : ['/usr/local/bin/ollama', '/usr/bin/ollama', '/opt/homebrew/bin/ollama'];
+  return candidates.find((p) => p && fs.existsSync(p)) || null;
+}
+
+ipcMain.handle('ollama:start', async () => {
+  // Already answering? Nothing to do — say so rather than starting a second one.
+  if (await probeUrl('http://127.0.0.1:11434/api/version', 1500)) {
+    return { ok: true, alreadyRunning: true };
+  }
+  const bin = ollamaBinary();
+  if (!bin) return { ok: false, reason: 'not-installed' };
+  try {
+    const child = spawn(bin, ['serve'], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    // Deliberately unref'd: ollama outlives Neurion, exactly as it would if the
+    // user had started it themselves. Killing it on quit would stop a service
+    // other programs may be using.
+    child.unref();
+    bootLog('ollama', `started ${bin}`);
+  } catch (e) {
+    bootLog('ollama', `could not start: ${e && e.message}`);
+    return { ok: false, reason: 'spawn-failed' };
+  }
+  // Give it a moment to bind before answering, so the page's next poll finds it.
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    if (await probeUrl('http://127.0.0.1:11434/api/version', 1500)) return { ok: true };
+    await new Promise((r) => setTimeout(r, 700));
+  }
+  return { ok: false, reason: 'did-not-answer' };
+});
+
+/** True when the URL answers with any HTTP status inside the timeout. */
+function probeUrl(url, timeoutMs) {
+  return new Promise((resolve) => {
+    const req = http.get(url, (res) => {
+      res.resume();
+      resolve(true);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(timeoutMs, () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+
 // --- in-app node: register once on the production network, then run/stop it ---
 ipcMain.handle('node:status', () => ({
   running: !!nodeProc,

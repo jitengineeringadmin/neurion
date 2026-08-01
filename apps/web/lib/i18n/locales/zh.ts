@@ -628,5 +628,7 @@ const dict: Record<string, string> = {
   "models.localFileActive": "Neurion 正在使用你的模型文件。",
   "models.localPathPlaceholder": "C:\\models\\my-model.gguf",
   "models.useLocalConfirm": "使用此文件",
+  "models.startOllama": "立即启动 ollama",
+  "models.startingOllama": "正在启动…",
 };
 export default dict;
