@@ -674,5 +674,11 @@ const dict: Record<string, string> = {
   "models.noModelsInFolders":
     "Nessun file .gguf trovato in queste cartelle per ora.",
   "models.splitModel": "file spezzato, non utilizzabile",
+  "network.offline": "offline",
+  "network.headerHint":
+    "Stato della rete — clicca per connetterti o disconnetterti",
+  "network.connectTitle": "Collega questo PC alla rete Neurion",
+  "network.connectBody":
+    "Per lavorare in locale non serve. Accedi solo se vuoi condividere la potenza di questo computer e guadagnare NRN, o usare quella condivisa dagli altri.",
 };
 export default dict;

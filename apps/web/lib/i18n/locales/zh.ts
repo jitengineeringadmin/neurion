@@ -643,5 +643,10 @@ const dict: Record<string, string> = {
   "models.removeFolder": "移除",
   "models.noModelsInFolders": "这些文件夹中暂未找到 .gguf 文件。",
   "models.splitModel": "分卷文件，无法使用",
+  "network.offline": "离线",
+  "network.headerHint": "网络状态 — 点击连接或断开",
+  "network.connectTitle": "将这台电脑接入 Neurion 网络",
+  "network.connectBody":
+    "本地使用无需登录。只有当你想共享这台电脑的算力赚取 NRN，或使用他人共享的算力时才需要登录。",
 };
 export default dict;

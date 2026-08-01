@@ -35,9 +35,29 @@ export function getProdToken(): string | null {
     prodToken = localStorage.getItem("neurion_prod_token");
   return prodToken;
 }
-export function setProdToken(token: string | null): void {
+/**
+ * Who you are ON THE NETWORK, kept next to the token. Local work has no identity
+ * and needs none; this exists only so the app can say whose account is sharing
+ * this machine.
+ */
+let prodEmail: string | null = null;
+export function getProdEmail(): string | null {
+  if (prodEmail) return prodEmail;
+  if (typeof window !== "undefined")
+    prodEmail = localStorage.getItem("neurion_prod_email");
+  return prodEmail;
+}
+
+export function setProdToken(
+  token: string | null,
+  email?: string | null,
+): void {
   prodToken = token;
+  if (email !== undefined) prodEmail = email;
+  if (!token) prodEmail = null;
   if (typeof window !== "undefined") {
+    if (prodEmail) localStorage.setItem("neurion_prod_email", prodEmail);
+    else localStorage.removeItem("neurion_prod_email");
     if (token) localStorage.setItem("neurion_prod_token", token);
     else localStorage.removeItem("neurion_prod_token");
   }
@@ -56,7 +76,7 @@ export async function prodLogin(
     if (!res.ok) return false;
     const data = (await res.json()) as { accessToken?: string };
     if (!data.accessToken) return false;
-    setProdToken(data.accessToken);
+    setProdToken(data.accessToken, email);
     return true;
   } catch {
     return false;

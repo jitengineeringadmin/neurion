@@ -682,5 +682,11 @@ const dict: Record<string, string> = {
   "models.removeFolder": "убрать",
   "models.noModelsInFolders": "В этих папках пока нет файлов .gguf.",
   "models.splitModel": "файл разбит на части, непригоден",
+  "network.offline": "не подключено",
+  "network.headerHint":
+    "Состояние сети — нажмите, чтобы подключиться или отключиться",
+  "network.connectTitle": "Подключить этот ПК к сети Neurion",
+  "network.connectBody":
+    "Для локальной работы не нужно. Вход нужен только чтобы делиться мощностью этого компьютера и зарабатывать NRN — или использовать чужую.",
 };
 export default dict;

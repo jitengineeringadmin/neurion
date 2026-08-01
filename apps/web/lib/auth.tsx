@@ -1,6 +1,19 @@
-'use client';
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { api, setToken, isDesktop, prodLogin, setProdToken, localOwnerSession } from './api';
+"use client";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import {
+  api,
+  setToken,
+  isDesktop,
+  prodLogin,
+  setProdToken,
+  localOwnerSession,
+} from "./api";
 
 export interface User {
   id: string;
@@ -14,8 +27,14 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName?: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    displayName?: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
+  /** Re-establish the session without a login form (desktop owner session). */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -24,11 +43,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Establish who we are. On the desktop that means claiming this machine's
+   * owner session; there is no login form to fall back to, so this is also what
+   * recovers from the API not being up yet.
+   */
+  async function resolveSession(): Promise<void> {
+    try {
+      setUser(await api<User>("/auth/me"));
+      return;
+    } catch {
+      const claimed = await localOwnerSession();
+      if (!claimed) {
+        setUser(null);
+        return;
+      }
+      try {
+        setUser(await api<User>("/auth/me"));
+      } catch {
+        setUser(null);
+      }
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const me = await api<User>('/auth/me');
+        const me = await api<User>("/auth/me");
         if (!cancelled) setUser(me);
       } catch {
         // Desktop: claim this machine's owner session rather than sending the
@@ -40,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (claimed) {
           try {
-            setUser(await api<User>('/auth/me'));
+            setUser(await api<User>("/auth/me"));
           } catch {
             setUser(null);
           }
@@ -57,8 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function login(email: string, password: string): Promise<void> {
-    const res = await api<{ accessToken: string; user: User }>('/auth/login', {
-      method: 'POST',
+    const res = await api<{ accessToken: string; user: User }>("/auth/login", {
+      method: "POST",
       body: JSON.stringify({ email, password }),
     });
     setToken(res.accessToken);
@@ -69,29 +111,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isDesktop()) void prodLogin(email, password).catch(() => undefined);
   }
 
-  async function register(email: string, password: string, displayName?: string): Promise<void> {
-    const res = await api<{ accessToken: string; user: User }>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, displayName }),
-    });
+  async function register(
+    email: string,
+    password: string,
+    displayName?: string,
+  ): Promise<void> {
+    const res = await api<{ accessToken: string; user: User }>(
+      "/auth/register",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password, displayName }),
+      },
+    );
     setToken(res.accessToken);
     setUser(res.user);
   }
 
   async function logout(): Promise<void> {
-    await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
+    await api("/auth/logout", { method: "POST" }).catch(() => undefined);
     setToken(null);
     setProdToken(null);
     setUser(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        refresh: resolveSession,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
 }
 
 export function useAuth(): AuthState {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth outside AuthProvider');
+  if (!ctx) throw new Error("useAuth outside AuthProvider");
   return ctx;
 }

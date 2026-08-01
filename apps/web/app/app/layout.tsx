@@ -3,7 +3,7 @@ import { ReactNode, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../../lib/auth";
-import { publicApi } from "../../lib/api";
+import { publicApi, isDesktop, getProdEmail } from "../../lib/api";
 import { theme } from "../../lib/ui";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { LangToggle } from "../../components/LangToggle";
@@ -31,9 +31,26 @@ const NETWORK: [string, string][] = [
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const t = useT();
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, refresh } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  // Computed on the client: both read window/localStorage, and deciding this
+  // during server rendering would produce markup the browser then disagrees with.
+  const [desktop, setDesktop] = useState(false);
+  const [netEmail, setNetEmail] = useState<string | null>(null);
+  useEffect(() => {
+    setDesktop(isDesktop());
+    const sync = () => setNetEmail(getProdEmail());
+    sync();
+    // Connecting to the network happens on another page, so pick the change up
+    // on the way back rather than leaving a stale "offline" in the header.
+    window.addEventListener("focus", sync);
+    const id = setInterval(sync, 4000);
+    return () => {
+      window.removeEventListener("focus", sync);
+      clearInterval(id);
+    };
+  }, [pathname]);
   const [restricted, setRestricted] = useState(false);
 
   useEffect(() => {
@@ -43,8 +60,17 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-  }, [loading, user, router]);
+    if (loading || user) return;
+    // Never send a desktop user to a login form: there is no account behind it
+    // to log back in with, so the redirect was a one-way door out of their own
+    // program. The local session is claimed automatically; if it is momentarily
+    // unavailable (the API still starting), keep asking rather than evicting.
+    if (desktop) {
+      const retry = setTimeout(() => void refresh(), 1500);
+      return () => clearTimeout(retry);
+    }
+    router.replace("/login");
+  }, [loading, user, router, desktop, refresh]);
 
   // Online build (no local AI engine): only account + forum are usable; send
   // chat/agent/compute routes back to the account page.
@@ -148,22 +174,59 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             gap: 8,
           }}
         >
-          <Link
-            className="app-account-email"
-            href="/app/account"
-            title="Account"
-            style={{
-              fontSize: 11,
-              color: theme.muted,
-              maxWidth: 160,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              textDecoration: "none",
-            }}
-          >
-            {user.email}
-          </Link>
+          {/* On the desktop there is no account to show. The app belongs to
+              whoever is sitting at the computer, and local work needs no
+              identity at all — surfacing the internal owner account here only
+              invited people to sign out of a session that has no way back in.
+              What matters is whether this machine is connected to the network,
+              which is the only thing an identity is actually for. */}
+          {desktop ? (
+            <Link
+              className="app-account-email"
+              href="/app/dashboard"
+              title={t("network.headerHint")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                color: theme.muted,
+                maxWidth: 220,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                textDecoration: "none",
+              }}
+            >
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 7,
+                  background: netEmail ? theme.accent : theme.muted,
+                  flex: "0 0 auto",
+                }}
+              />
+              {netEmail ?? t("network.offline")}
+            </Link>
+          ) : (
+            <Link
+              className="app-account-email"
+              href="/app/account"
+              title="Account"
+              style={{
+                fontSize: 11,
+                color: theme.muted,
+                maxWidth: 160,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                textDecoration: "none",
+              }}
+            >
+              {user.email}
+            </Link>
+          )}
           <Link
             href="/app/settings"
             title={t("settings.title")}
@@ -180,20 +243,25 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </Link>
           <ThemeToggle />
           <LangToggle />
-          <button
-            onClick={() => void logout().then(() => router.replace("/login"))}
-            style={{
-              background: "transparent",
-              border: `1px solid ${theme.border}`,
-              borderRadius: 8,
-              color: theme.text,
-              padding: "6px 8px",
-              cursor: "pointer",
-              fontSize: 11,
-            }}
-          >
-            {t("nav.logout")}
-          </button>
+          {/* No sign-out on the desktop: there is no sign-in to come back
+              through. Disconnecting from the NETWORK lives on the network page,
+              where connecting to it does. */}
+          {!desktop && (
+            <button
+              onClick={() => void logout().then(() => router.replace("/login"))}
+              style={{
+                background: "transparent",
+                border: `1px solid ${theme.border}`,
+                borderRadius: 8,
+                color: theme.text,
+                padding: "6px 8px",
+                cursor: "pointer",
+                fontSize: 11,
+              }}
+            >
+              {t("nav.logout")}
+            </button>
+          )}
         </div>
       </header>
 

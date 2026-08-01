@@ -648,5 +648,10 @@ const dict: Record<string, string> = {
   "models.removeFolder": "remove",
   "models.noModelsInFolders": "No .gguf files found in these folders yet.",
   "models.splitModel": "split file, not usable",
+  "network.offline": "offline",
+  "network.headerHint": "Network status — click to connect or disconnect",
+  "network.connectTitle": "Connect this PC to the Neurion network",
+  "network.connectBody":
+    "Not needed to work locally. Sign in only to share this computer's power with others and earn NRN, or to use the power others share.",
 };
 export default dict;
