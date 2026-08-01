@@ -77,6 +77,11 @@ function parseEnv() {
 }
 const ENV = parseEnv();
 
+// How long the API is allowed to take before we conclude it is not coming up.
+// Measured on a deliberately slow test machine: a cold start reached its first
+// answer at 86 seconds. Anything near the old 45s kills a healthy process.
+const API_BOOT_MS = Number(ENV.NEURION_API_BOOT_TIMEOUT_MS || 180000);
+
 // Startup strings follow the OS language (app.getLocale → en/it; anything else
 // falls back to English). Resolved at app-ready time (getLocale needs ready).
 const STRINGS = {
@@ -315,15 +320,26 @@ async function restartApi() {
     }
     await waitPortFree('localhost', 8091, 8000);
     if (isQuitting) return;
-    const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV });
+    // Tagged, so a restart is visible in the boot log. It used to be spawned
+    // untagged: the watchdog could cycle the API repeatedly and leave no trace.
+    bootLog('api', 'watchdog restart — the API stopped answering');
+    const startedAt = Date.now();
+    const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV }, 'api#restart');
     apiProc = api;
     children.push(api);
     let healthy = false;
-    const deadline = Date.now() + 45000;
+    // Same budget as the first boot. With the old 45s this gave up while the
+    // API was still starting, so the window was never reloaded and the user was
+    // left looking at a live UI whose every request failed — engine "not
+    // running", no models, a dead Download button.
+    const deadline = Date.now() + API_BOOT_MS;
     while (Date.now() < deadline && !isQuitting) {
       if (await probeApi(5000)) { healthy = true; break; }
       await new Promise((r) => setTimeout(r, 1500));
     }
+    bootLog('api', healthy
+      ? `watchdog restart answered after ${Math.round((Date.now() - startedAt) / 1000)}s`
+      : `watchdog restart gave up after ${Math.round((Date.now() - startedAt) / 1000)}s`);
     // Once the API answers again, reload the window so every page refetches its data.
     if (healthy && !isQuitting && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.reload();
   } finally {
@@ -617,7 +633,6 @@ async function startStack() {
   //    A process that is still alive is still starting: keep waiting for it.
   setStatus(T.api);
   let apiUp = false;
-  const API_BOOT_MS = Number(ENV.NEURION_API_BOOT_TIMEOUT_MS || 180000);
   for (let attempt = 0; attempt < 2 && !apiUp; attempt++) {
     bootLog('api', `starting attempt ${attempt + 1} (up to ${Math.round(API_BOOT_MS / 1000)}s)`);
     const startedAt = Date.now();
