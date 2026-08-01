@@ -14,6 +14,7 @@ import { InferController } from "./infer.controller";
 import { ModelMemoryService } from "./model-memory.service";
 import { AgentContextService } from "../agent/agent-context.service";
 import { LlamaEngineService } from "./engine/llama-engine.service";
+import { PeerService } from "./engine/peer.service";
 import { EngineController } from "./engine/engine.controller";
 
 @Module({
@@ -29,6 +30,7 @@ import { EngineController } from "./engine/engine.controller";
   providers: [
     AudioService,
     LlamaEngineService,
+    PeerService,
     ModelMemoryService,
     AgentContextService,
     ProviderResolverService,

@@ -29,6 +29,7 @@ import {
 } from "./llama-catalog";
 import { downloadFile, fileReady } from "./download.util";
 import { ProviderResolverService } from "../provider-resolver.service";
+import { PeerService } from "./peer.service";
 
 export type EngineStage = "engine" | "model" | "starting";
 
@@ -100,6 +101,7 @@ export class LlamaEngineService
   constructor(
     private readonly config: ConfigService,
     private readonly resolver: ProviderResolverService,
+    private readonly peers: PeerService,
   ) {
     // Register with the resolver so a ready engine becomes a routable source.
     this.resolver.registerBundledEngine(this);
@@ -443,6 +445,33 @@ export class LlamaEngineService
   ): Promise<void> {
     if (this.modelInstalled(dir, m)) return;
     mkdirSync(join(dir, "models"), { recursive: true });
+
+    // Someone on this network first, the internet second. Not for speed —
+    // though a local link usually is faster — but because this is the path that
+    // still works when the internet does not, and it only becomes real if it is
+    // the one normally taken.
+    //
+    // Safe precisely because the hash is checked on arrival: a peer that lies
+    // costs a retry, nothing more. If the transfer fails for any reason we fall
+    // through to the publisher rather than leaving the user stuck.
+    const fromPeer = m.sha256 ? this.peers.sourceFor(m.sha256) : null;
+    if (fromPeer) {
+      try {
+        this.logger.log(`fetching ${m.file} from a peer on this network`);
+        await downloadFile(
+          fromPeer,
+          this.modelPath(dir, m.file),
+          (p) => onProgress(p),
+          { expectedBytes: m.sizeBytes, sha256: m.sha256 },
+        );
+        return;
+      } catch (e) {
+        this.logger.warn(
+          `peer copy of ${m.file} rejected (${(e as Error).message}) — falling back to the publisher`,
+        );
+      }
+    }
+
     await downloadFile(
       m.url,
       this.modelPath(dir, m.file),
@@ -551,6 +580,14 @@ export class LlamaEngineService
   // --- lifecycle ---------------------------------------------------------
 
   async onApplicationBootstrap(): Promise<void> {
+    // Begin offering what this machine already has. Independent of whether an
+    // engine is running: sharing weights is useful even to someone who never
+    // starts a model.
+    try {
+      this.peers.start();
+    } catch (e) {
+      this.logger.warn(`peer sharing did not start: ${(e as Error).message}`);
+    }
     const dir = this.dir();
     if (!dir) return;
     // Clean up part-files from a download interrupted by a crash; nothing else
