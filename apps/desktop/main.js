@@ -608,23 +608,33 @@ async function startStack() {
     if (fp) { try { fs.writeFileSync(markerFile, fp); } catch { /* best effort */ } }
   }
 
-  // 4) API — retry once. A just-freed port or a cold/recovering DB can miss the first
-  //    boot; a fresh spawn on the second attempt clears the "engine didn't respond"
-  //    race instead of failing the whole launch.
+  // 4) API — retry once, but only when the process actually died.
+  //    The old 45s deadline was not a timeout on a hung API, it was a timeout on
+  //    a SLOW one: on a cold cache this API needs well over a minute to reach
+  //    its first log line, so the supervisor was killing a perfectly healthy
+  //    child mid-boot (taskkill /f is what produced the mysterious "exited
+  //    code=1" with no output) and starting over — paying the cold start twice.
+  //    A process that is still alive is still starting: keep waiting for it.
   setStatus(T.api);
   let apiUp = false;
+  const API_BOOT_MS = Number(ENV.NEURION_API_BOOT_TIMEOUT_MS || 180000);
   for (let attempt = 0; attempt < 2 && !apiUp; attempt++) {
+    bootLog('api', `starting attempt ${attempt + 1} (up to ${Math.round(API_BOOT_MS / 1000)}s)`);
+    const startedAt = Date.now();
     const api = nodeSpawn([path.join(API_DIR, 'dist', 'main.js')], { cwd: API_DIR, env: ENV }, `api#${attempt + 1}`);
     apiProc = api;
     children.push(api);
-    // Stop waiting the moment the child dies. Polling the health URL for the
-    // full 45s after the process has already exited added most of a minute of
-    // "the app is up but nothing works" — the window is open, the web server is
-    // serving, and every API call fails.
+    // Retry the instant the child dies, instead of polling a URL that nothing
+    // is listening on until the deadline expires.
     const exited = new Promise((resolve) => api.once('exit', () => resolve(false)));
-    apiUp = await Promise.race([waitHttp(API_HEALTH, 45000), exited]);
-    if (!apiUp && api.exitCode !== null) {
-      bootLog('api', `attempt ${attempt + 1} exited early (code ${api.exitCode}) — retrying now`);
+    apiUp = await Promise.race([waitHttp(API_HEALTH, API_BOOT_MS), exited]);
+    const took = Math.round((Date.now() - startedAt) / 1000);
+    if (apiUp) {
+      bootLog('api', `attempt ${attempt + 1} answered after ${took}s`);
+    } else if (api.exitCode !== null) {
+      bootLog('api', `attempt ${attempt + 1} exited on its own (code ${api.exitCode}) after ${took}s — retrying`);
+    } else {
+      bootLog('api', `attempt ${attempt + 1} still had not answered after ${took}s — giving up on it`);
     }
     if (!apiUp) {
       try {
