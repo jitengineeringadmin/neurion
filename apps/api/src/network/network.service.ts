@@ -27,7 +27,6 @@ export interface NetworkStats {
     jobsInFlight: number;
     jobsCompletedToday: number;
     jobsCompletedTotal: number;
-    payoutsPending: number;
   };
   composition: {
     byStatus: Record<string, number>;
@@ -49,14 +48,6 @@ export interface NetworkStats {
     verifiedJobs: number;
     optimisticJobs: number;
   };
-  economy: {
-    emittedThisEpochNrn: number;
-    epochBudgetNrn: number;
-    epochPct: number;
-    emittedLifetimeNrn: number;
-    poolCapNrn: number;
-    lifetimePct: number;
-  };
   // Phase-2 data: stays null/0 until the node-agent reports it.
   performance: {
     avgTokensPerSecond: number | null;
@@ -64,28 +55,6 @@ export interface NetworkStats {
     nodesReporting: number;
     gpuModels: ModelCount[];
   };
-}
-
-function weiToNrn(wei: string | null | undefined): number {
-  if (!wei) return 0;
-  try {
-    return Number(BigInt(wei)) / 1e18;
-  } catch {
-    return 0;
-  }
-}
-
-function weiPct(
-  part: string | null | undefined,
-  whole: string | null | undefined,
-): number {
-  try {
-    const w = BigInt(whole ?? "0");
-    if (w === 0n) return 0;
-    return Number((BigInt(part ?? "0") * 10000n) / w) / 100;
-  } catch {
-    return 0;
-  }
 }
 
 function toRecord(
@@ -164,7 +133,6 @@ export class NetworkService implements OnModuleInit {
       jobsCompletedToday,
       jobsSuccess,
       jobsFailed,
-      payoutsPending,
       gpuNodes,
       dockerNodes,
       realtimeNodes,
@@ -180,7 +148,6 @@ export class NetworkService implements OnModuleInit {
       verifiedJobs,
       optimisticJobs,
       nodeRows,
-      emission,
     ] = await Promise.all([
       p.computeNode.count(),
       p.computeNode.count({ where: { status: "ONLINE" } }),
@@ -195,7 +162,6 @@ export class NetworkService implements OnModuleInit {
       }),
       p.job.count({ where: { status: { in: [...successStatuses] } } }),
       p.job.count({ where: { status: "FAILED" } }),
-      p.tokenPayout.count({ where: { status: "PENDING" } }),
       p.computeNode.count({ where: { nvidiaAvailable: true } }),
       p.computeNode.count({ where: { dockerAvailable: true } }),
       p.computeNode.count({ where: { supportedModes: { has: "realtime" } } }),
@@ -220,7 +186,6 @@ export class NetworkService implements OnModuleInit {
           avgFirstTokenMs: true,
         },
       }),
-      p.emissionSchedule.findFirst({ orderBy: { updatedAt: "desc" } }),
     ]);
 
     // Array-column aggregation (Prisma can't groupBy array elements) — fleet is
@@ -262,7 +227,6 @@ export class NetworkService implements OnModuleInit {
         jobsInFlight: jobsPending + jobsRunning,
         jobsCompletedToday,
         jobsCompletedTotal: jobsSuccess,
-        payoutsPending,
       },
       composition: {
         byStatus: toRecord(byStatusRaw as never, "status"),
@@ -287,17 +251,6 @@ export class NetworkService implements OnModuleInit {
           .sort((a, b) => b.count - a.count),
         verifiedJobs,
         optimisticJobs,
-      },
-      economy: {
-        emittedThisEpochNrn: weiToNrn(emission?.emittedThisEpochWei),
-        epochBudgetNrn: weiToNrn(emission?.epochBudgetWei),
-        epochPct: weiPct(
-          emission?.emittedThisEpochWei,
-          emission?.epochBudgetWei,
-        ),
-        emittedLifetimeNrn: weiToNrn(emission?.emittedLifetimeWei),
-        poolCapNrn: weiToNrn(emission?.poolCapWei),
-        lifetimePct: weiPct(emission?.emittedLifetimeWei, emission?.poolCapWei),
       },
       performance: {
         avgTokensPerSecond: tpsCount > 0 ? tpsSum / tpsCount : null,

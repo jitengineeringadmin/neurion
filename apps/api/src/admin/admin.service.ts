@@ -27,7 +27,6 @@ export class AdminService {
       jobsCompletedToday,
       chatMessagesToday,
       failedJobs,
-      payoutsPending,
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { status: "ACTIVE" } }),
@@ -42,7 +41,6 @@ export class AdminService {
         where: { createdAt: { gte: startOfDay } },
       }),
       this.prisma.job.count({ where: { status: "FAILED" } }),
-      this.prisma.tokenPayout.count({ where: { status: "PENDING" } }),
     ]);
 
     const creditAgg = await this.prisma.creditLedger.aggregate({
@@ -61,7 +59,6 @@ export class AdminService {
       },
       chat: { messagesToday: chatMessagesToday },
       credits: { netInLedger: creditsNet },
-      payouts: { pending: payoutsPending },
       generatedAt: new Date().toISOString(),
     };
   }

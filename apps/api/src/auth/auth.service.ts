@@ -267,7 +267,6 @@ export class AuthService {
     const tables = [
       "refreshToken",
       "creditLedger",
-      "tokenPayout",
       "complianceRecord",
       "ownerReputation",
       "registrationChallenge",
