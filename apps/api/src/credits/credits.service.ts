@@ -3,66 +3,30 @@ import { ConfigService } from "@nestjs/config";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
-import { protocolFee } from "../jobs/verification/helpers";
 import { PaymentRequiredException } from "./payment-required.exception";
 
 @Injectable()
 export class CreditsService {
-  private treasuryId: string | null | undefined; // undefined = not yet resolved
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {}
 
-  private async treasuryUserId(): Promise<string | null> {
-    if (this.treasuryId !== undefined) return this.treasuryId;
-    const cfg = this.config.get<string>("PROTOCOL_TREASURY_USER_ID");
-    if (cfg) return (this.treasuryId = cfg);
-    const u = await this.prisma.user.findUnique({
-      where: { email: "treasury@neurion.local" },
-      select: { id: true },
-    });
-    return (this.treasuryId = u?.id ?? null);
-  }
-
   /**
-   * Pay a node owner a gross reward minus an optional per-reward take-rate
-   * (PROTOCOL_REWARD_FEE_BPS, default 0 — off, since at small reward sizes a %
-   * floors to 0). The primary take-rate is collected at payout (collectFee).
-   * Returns the NET credited to the node owner.
+   * Credit a node owner for work they did. Once a take-rate minus a treasury;
+   * now simply the whole amount, because there is no longer anything to take a
+   * cut for. Kept as a named method rather than inlined: it is the one place
+   * that says "this is what someone earned by helping", and phase 3 of the
+   * peer-to-peer plan turns it into reciprocity rather than deleting it.
    */
-  async rewardWithFee(
+  async reward(
     ownerUserId: string,
-    gross: number,
+    amount: number,
     reason: string,
     ref: string,
   ): Promise<number> {
-    const bps =
-      Number(this.config.get<string>("PROTOCOL_REWARD_FEE_BPS") ?? "0") || 0;
-    let fee = protocolFee(gross, bps);
-    const treasury = fee > 0 ? await this.treasuryUserId() : null;
-    if (!treasury || treasury === ownerUserId) fee = 0;
-    const net = gross - fee;
-    if (net > 0) await this.grant(ownerUserId, net, reason, ref);
-    if (fee > 0 && treasury)
-      await this.grant(treasury, fee, "PROTOCOL_FEE", `${ref}:fee`);
-    return net;
-  }
-
-  /**
-   * Collect the protocol take-rate (PROTOCOL_FEE_BPS) on a gross credit amount
-   * being cashed out — credits the treasury, returns the fee. Used at payout
-   * where amounts are large enough for the % to bite.
-   */
-  async collectFee(grossCredits: number, ref: string): Promise<number> {
-    const bps = Number(this.config.get<string>("PROTOCOL_FEE_BPS") ?? "0") || 0;
-    const fee = protocolFee(grossCredits, bps);
-    if (fee <= 0) return 0;
-    const treasury = await this.treasuryUserId();
-    if (!treasury) return 0;
-    await this.grant(treasury, fee, "PROTOCOL_FEE", `fee:${ref}`);
-    return fee;
+    if (amount > 0) await this.grant(ownerUserId, amount, reason, ref);
+    return amount;
   }
 
   async getBalance(userId: string): Promise<number> {

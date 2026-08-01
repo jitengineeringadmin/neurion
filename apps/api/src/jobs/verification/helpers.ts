@@ -9,11 +9,6 @@ export const PROBATION_DEEP_PASSES = 30; // deep-PASSes needed to graduate PROBA
 export const EWMA_ALPHA = 0.1; // reputation move per deep-verified outcome
 export const RETRO_AUDIT_WINDOW = 50; // (next slice) prior unsampled jobs to re-audit on a deep-FAIL
 
-/** Protocol take-rate: the fee (in credits) Neurion keeps from a gross node reward. */
-export function protocolFee(gross: number, bps: number): number {
-  if (gross <= 0 || bps <= 0) return 0;
-  return Math.floor((gross * bps) / 10_000);
-}
 
 export function l2norm(v: readonly number[]): number {
   let s = 0;

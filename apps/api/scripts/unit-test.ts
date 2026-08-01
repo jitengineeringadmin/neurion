@@ -16,7 +16,6 @@ import {
   embeddingMatches,
   ewma,
   consensus,
-  protocolFee,
 } from "../src/jobs/verification/helpers";
 
 let passed = 0;
@@ -163,13 +162,6 @@ test("consensus: embedding clusters by cosine", () => {
   assert.deepEqual(r.outliers, ["c"]);
 });
 
-// ---- protocol take-rate ----
-test("protocolFee: 10% of a reward, floored; 0 when off", () => {
-  assert.equal(protocolFee(100, 1000), 10); // 10%
-  assert.equal(protocolFee(10, 1000), 1);
-  assert.equal(protocolFee(3, 1000), 0); // floor(0.3)
-  assert.equal(protocolFee(100, 0), 0); // fee disabled
-});
 
 // ---- geoip stays off the boot path ----
 // Importing geoip-lite synchronously reads 108,864,488 bytes of .dat files. That

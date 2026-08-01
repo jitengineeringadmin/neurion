@@ -221,27 +221,14 @@ async function main(): Promise<void> {
     assert.equal(sum._sum.amount, -5);
   });
 
-  await test("rewardWithFee splits gross between owner and treasury per PROTOCOL_REWARD_FEE_BPS", async () => {
+  // Nothing is skimmed any more: whoever did the work gets all of it. Kept as a
+  // test rather than deleted, because "the helper receives the whole amount" is
+  // now the rule, not a configuration.
+  await test("reward pays the node owner the whole amount", async () => {
     const owner = await mkUser(0);
-    const treasury = await mkUser(0);
-    const c = new CreditsService(
-      P,
-      cfg({
-        PROTOCOL_REWARD_FEE_BPS: "1000",
-        PROTOCOL_TREASURY_USER_ID: treasury.id,
-      }),
-    );
-    const net = await c.rewardWithFee(owner.id, 100, "NODE_REWARD", "r1");
-    assert.equal(net, 90);
-    assert.equal(await c.getBalance(owner.id), 90);
-    assert.equal(await c.getBalance(treasury.id), 10);
-  });
-
-  await test("rewardWithFee with fee disabled pays gross", async () => {
-    const owner = await mkUser(0);
-    const c = new CreditsService(P, cfg({ PROTOCOL_REWARD_FEE_BPS: "0" }));
-    const net = await c.rewardWithFee(owner.id, 100, "NODE_REWARD", "r2");
-    assert.equal(net, 100);
+    const c = new CreditsService(P, cfg());
+    const paid = await c.reward(owner.id, 100, "NODE_REWARD", "r2");
+    assert.equal(paid, 100);
     assert.equal(await c.getBalance(owner.id), 100);
   });
 

@@ -181,8 +181,10 @@ export class VerificationService {
     optimistic: boolean,
   ): Promise<void> {
     if (reward <= 0) return;
-    // node owner gets the reward minus the protocol take-rate (PROTOCOL_FEE_BPS)
-    const net = await this.credits.rewardWithFee(
+    // The whole amount now: there is no protocol taking a cut any more. The
+    // return value still matters — it feeds outstandingOptimisticCredits below,
+    // which is what a later deep-FAIL claws back.
+    const net = await this.credits.reward(
       node.ownerUserId,
       reward,
       "NODE_REWARD",

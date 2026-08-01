@@ -92,7 +92,7 @@ export class RealtimePoolService {
       cap,
       Math.max(1, Math.round((estTokens / 1000) * ratePer1k)),
     );
-    const net = await this.credits.rewardWithFee(
+    const net = await this.credits.reward(
       node.ownerUserId,
       reward,
       "NODE_REALTIME_REWARD",
