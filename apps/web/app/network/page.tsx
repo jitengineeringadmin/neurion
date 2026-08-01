@@ -25,7 +25,6 @@ interface NetworkStats {
     jobsInFlight: number;
     jobsCompletedToday: number;
     jobsCompletedTotal: number;
-    payoutsPending: number;
   };
   composition: {
     byStatus: Record<string, number>;
@@ -46,14 +45,6 @@ interface NetworkStats {
     jobsByType: { type: string; count: number }[];
     verifiedJobs: number;
     optimisticJobs: number;
-  };
-  economy: {
-    emittedThisEpochNrn: number;
-    epochBudgetNrn: number;
-    epochPct: number;
-    emittedLifetimeNrn: number;
-    poolCapNrn: number;
-    lifetimePct: number;
   };
   performance: {
     avgTokensPerSecond: number | null;
@@ -154,7 +145,6 @@ export default function NetworkPage() {
                 <Stat label={t('network.jobsToday')} value={num(stats.overview.jobsCompletedToday)} />
                 <Stat label={t('network.jobsTotal')} value={num(stats.overview.jobsCompletedTotal)} />
                 <Stat label={t('network.cpuCores')} value={num(stats.composition.totalCpuCores)} />
-                <Stat label={t('network.payoutsPending')} value={num(stats.overview.payoutsPending)} />
               </Grid>
             </Section>
 
@@ -212,12 +202,6 @@ export default function NetworkPage() {
               </Grid>
             </Section>
 
-            <Section title={t('network.secEconomy')}>
-              <Card>
-                <Progress pct={stats.economy.epochPct} label={t('network.epochEmission')} value={`${compact(stats.economy.emittedThisEpochNrn)} / ${compact(stats.economy.epochBudgetNrn)} NRN`} />
-                <Progress pct={stats.economy.lifetimePct} label={t('network.lifetimeEmission')} value={`${compact(stats.economy.emittedLifetimeNrn)} / ${compact(stats.economy.poolCapNrn)} NRN`} />
-              </Card>
-            </Section>
 
             <Section title={t('network.secPerformance')}>
               {stats.performance.avgTokensPerSecond != null ? (

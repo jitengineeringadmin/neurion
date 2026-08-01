@@ -26,7 +26,6 @@ const NETWORK: [string, string][] = [
   ["/app/dashboard", "nav.subnavDashboard"],
   ["/app/jobs", "nav.subnavJobs"],
   ["/app/nodes", "nav.subnavNodes"],
-  ["/app/wallet", "nav.subnavWallet"],
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -90,7 +89,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     "/app/dashboard",
     "/app/jobs",
     "/app/nodes",
-    "/app/wallet",
     "/app/admin",
   ].some((p) => pathname.startsWith(p));
   const activeTab = pathname.startsWith("/app/agent")

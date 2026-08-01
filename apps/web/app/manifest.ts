@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Neurion AI',
     short_name: 'Neurion',
-    description: 'Distributed AI compute — chat, agent and wallet over a community grid.',
+    description: 'AI that runs on your own computer — chat, coding agent and images, shared between people.',
     start_url: '/app/chat',
     scope: '/',
     display: 'standalone',
