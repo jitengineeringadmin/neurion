@@ -55,7 +55,7 @@ ha bisogno.
 
 ---
 
-## 3. Sulla moneta
+## 3. Sulla moneta — **FATTO (1.8.23)**
 
 Lo strato monetario va rimosso: NRN, payout, tesoreria, KYC, wallet, catena.
 
@@ -152,9 +152,30 @@ forum, e uno dei nodi di avvio. Se si spegne, la rete continua.
 
 ---
 
-## 5. Da rimuovere
+## 5. Da rimuovere — **FATTO**
 
-Da fare presto, perché è codice che orienta le decisioni finché resta lì:
+Eseguito in sei passi, ognuno verificato prima del successivo. Il piano completo,
+con le trappole che ha trovato, è in [money-removal-plan.md](money-removal-plan.md).
+
+| passo | cosa | esito |
+|---|---|---|
+| 1 | pagina Wallet, sezione Economy, 147 chiavi di traduzione | fatto |
+| 2 | modulo `crypto` (8 file, 9 rotte), script, dipendenza `ethers` | fatto |
+| 3 | commissioni e tesoreria dai crediti | fatto |
+| 4 | lettori delle tabelle monetarie in rete, admin, cancellazione account | fatto |
+| 5 | migrazione: 3 tabelle, 5 colonne, 2 enum | fatto |
+| 6 | contratti Solidity, configurazione, ogni promessa di guadagno in 7 lingue | fatto |
+
+**I crediti restano**, ed è una conclusione dell'analisi, non una scelta di
+comodo: un solo punto in tutto il codice li legava alla catena, tutti gli altri
+li usano come quota di risorse. Non erano moneta.
+
+**Tre rotture silenziose evitate**, che nessuna delle due letture superficiali
+avrebbe trovato: la pagina pubblica della rete sarebbe andata in errore a ogni
+richiesta, la cancellazione account per GDPR si sarebbe rotta di netto, e il
+contatore antifrode sarebbe diventato un no-op permanente.
+
+Elenco originale di ciò che è stato rimosso:
 
 | Cosa | Dove |
 |---|---|
