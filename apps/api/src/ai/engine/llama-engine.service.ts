@@ -47,7 +47,7 @@ export type EngineStatus =
   | { state: "unsupported"; platform: string }
   | { state: "needs_setup"; models: PublicModel[] }
   | { state: "installing"; stage: EngineStage; percent: number }
-  | { state: "starting"; modelId: string }
+  | { state: "starting"; modelId: string; models?: PublicModel[] }
   | {
       state: "ready";
       modelId: string;
@@ -492,8 +492,15 @@ export class LlamaEngineService
         baseUrl: this.baseUrl(),
       };
     }
-    if (state && this.proc)
-      return { state: "starting", modelId: state.modelId };
+    if (state && this.proc) {
+      // The catalogue travels with this state too: a model takes seconds to
+      // load, and the list must not vanish from under the user while it does.
+      return {
+        state: "starting",
+        modelId: state.modelId,
+        models: this.publicCatalog(dir),
+      };
+    }
 
     return { state: "needs_setup", models: this.publicCatalog(dir) };
   }

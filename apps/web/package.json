@@ -1,6 +1,6 @@
 {
   "name": "@neurion/web",
-  "version": "1.8.17",
+  "version": "1.8.18",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3091",
