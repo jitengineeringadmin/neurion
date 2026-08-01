@@ -51,6 +51,8 @@ export type EngineStatus =
   | {
       state: "ready";
       modelId: string;
+      /** The full catalogue, so the UI can offer another model without a reload. */
+      models?: PublicModel[];
       /** Human name of what is loaded. For a user-supplied file, its filename. */
       label?: string;
       /** Set only when the model came from a path the user chose. */
@@ -481,6 +483,11 @@ export class LlamaEngineService
         // "local" alone does not tell anyone WHICH of their files is loaded.
         label: state.label,
         path: state.absolutePath,
+        // Always sent. Offering the catalogue only while nothing is installed
+        // meant that once a user had one model they could never be shown the
+        // others — which, on a machine with no ollama, is every other model
+        // they can get at all.
+        models: this.publicCatalog(dir),
         port: this.port(),
         baseUrl: this.baseUrl(),
       };
@@ -488,17 +495,19 @@ export class LlamaEngineService
     if (state && this.proc)
       return { state: "starting", modelId: state.modelId };
 
-    return {
-      state: "needs_setup",
-      models: CATALOG.map((m) => ({
-        id: m.id,
-        label: m.label,
-        description: m.description,
-        sizeBytes: m.sizeBytes,
-        installed: this.modelInstalled(dir, m),
-        recommended: m.recommended,
-      })),
-    };
+    return { state: "needs_setup", models: this.publicCatalog(dir) };
+  }
+
+  /** The catalogue as the UI sees it, with what is already on disk marked. */
+  private publicCatalog(dir: string): PublicModel[] {
+    return CATALOG.map((m) => ({
+      id: m.id,
+      label: m.label,
+      description: m.description,
+      sizeBytes: m.sizeBytes,
+      installed: this.modelInstalled(dir, m),
+      recommended: m.recommended,
+    }));
   }
 
   /** Install (if needed) and start a catalog model. Progress is reported per stage. */

@@ -10,6 +10,7 @@ import {
   allowedTrustLevels,
   CHAT_PRIVACY_FLOOR,
 } from "../src/ai/privacy/privacy.util";
+import { ThinkSplitter } from "../src/ai/providers/think-splitter";
 import {
   cosine,
   embeddingMatches,
@@ -194,6 +195,63 @@ test("geoip-lite is not loaded until a public IP is actually looked up", () => {
   assert.equal(countryFromIp("8.8.8.8"), "US");
   assert.equal(loaded(), true, "the dataset should be loaded once it is needed");
 });
+
+// ---- reasoning models must not think out loud in the answer ----
+// DeepSeek R1 and Qwen 3 stream <think>…</think> as ordinary content through the
+// plain OpenAI endpoint the bundled engine speaks. The tags arrive split across
+// network chunks, which is where naive stripping breaks.
+{
+  const feed = (chunks: string[]): { visible: string; reasoning: string } => {
+    let reasoning = "";
+    const s = new ThinkSplitter((d) => {
+      reasoning += d;
+    });
+    let visible = "";
+    for (const c of chunks) visible += s.push(c);
+    visible += s.end();
+    return { visible, reasoning };
+  };
+
+  test("a whole think block is removed from the answer", () => {
+    const r = feed(["<think>ragiono</think>", "Parigi"]);
+    assert.equal(r.visible, "Parigi");
+    assert.equal(r.reasoning, "ragiono");
+  });
+
+  test("tags split across chunks are still recognised", () => {
+    const r = feed(["<th", "ink>segre", "to</thi", "nk>Madrid"]);
+    assert.equal(r.visible, "Madrid");
+    assert.equal(r.reasoning, "segreto");
+  });
+
+  test("text before and after the block both survive", () => {
+    const r = feed(["ciao <think>x</think> mondo"]);
+    assert.equal(r.visible, "ciao  mondo");
+  });
+
+  test("a model that never reasons is passed through untouched", () => {
+    const r = feed(["Roma", " è", " la", " capitale"]);
+    assert.equal(r.visible, "Roma è la capitale");
+    assert.equal(r.reasoning, "");
+  });
+
+  test("a lone < is not swallowed", () => {
+    const r = feed(["2 < 3"]);
+    assert.equal(r.visible, "2 < 3");
+  });
+
+  test("an unclosed block never leaks into the answer", () => {
+    // A truncated stream must not suddenly dump the scratchpad on the user.
+    const r = feed(["<think>sto ancora pensando"]);
+    assert.equal(r.visible, "");
+    assert.equal(r.reasoning, "sto ancora pensando");
+  });
+
+  test("a dangling partial tag at the end is flushed as text", () => {
+    const r = feed(["fine <thi"]);
+    assert.equal(r.visible, "fine <thi");
+  });
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

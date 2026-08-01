@@ -630,5 +630,11 @@ const dict: Record<string, string> = {
   "models.useLocalConfirm": "使用此文件",
   "models.startOllama": "立即启动 ollama",
   "models.startingOllama": "正在启动…",
+  "models.neurionCatalogTitle": "Neurion 自带模型",
+  "models.neurionCatalogBody":
+    "由 Neurion 自行下载并运行，无需安装其他任何程序。",
+  "models.recommendedTag": "推荐",
+  "models.inUse": "使用中",
+  "models.useThisOne": "使用这个",
 };
 export default dict;

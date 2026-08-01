@@ -669,5 +669,11 @@ const dict: Record<string, string> = {
   "models.useLocalConfirm": "Diese Datei verwenden",
   "models.startOllama": "ollama jetzt starten",
   "models.startingOllama": "Wird gestartet…",
+  "models.neurionCatalogTitle": "Neurions eigene Modelle",
+  "models.neurionCatalogBody":
+    "Von Neurion selbst geladen und ausgeführt. Es muss nichts weiter installiert werden.",
+  "models.recommendedTag": "empfohlen",
+  "models.inUse": "aktiv",
+  "models.useThisOne": "Dieses verwenden",
 };
 export default dict;

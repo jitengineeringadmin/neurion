@@ -78,6 +78,7 @@ export default function ModelsPage() {
     label?: string;
     path?: string;
     models?: Array<{
+      installed?: boolean;
       id: string;
       label: string;
       sizeBytes: number;
@@ -443,6 +444,166 @@ export default function ModelsPage() {
           </b>
         </span>
       </div>
+      {/* Neurion's own models. This is the answer to "what do I do on a PC that
+          has never heard of ollama": everything here is downloaded and run by
+          Neurion itself. It is shown whenever the bundled engine can run on this
+          platform, not only while nothing is installed yet — otherwise the first
+          model a user installs hides every other model they could get. */}
+      {bundled &&
+        bundled.state !== "unsupported" &&
+        (bundled.models?.length ?? 0) > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <h3
+              style={{
+                fontSize: 14,
+                color: theme.muted,
+                textTransform: "uppercase",
+                letterSpacing: ".08em",
+                margin: "0 0 4px",
+              }}
+            >
+              {t("models.neurionCatalogTitle")}
+            </h3>
+            <p
+              style={{
+                color: theme.muted,
+                fontSize: 12,
+                margin: "0 0 10px",
+                lineHeight: 1.5,
+              }}
+            >
+              {t("models.neurionCatalogBody")}
+            </p>
+
+            {bundledBusy ? (
+              <div
+                style={{
+                  border: `1px solid ${theme.accent}`,
+                  borderRadius: 10,
+                  padding: 14,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: 12,
+                    marginBottom: 6,
+                  }}
+                >
+                  <span style={{ color: theme.muted }}>
+                    {bundledBusy.stage}
+                  </span>
+                  <span style={{ color: theme.accent }}>
+                    {bundledBusy.percent}%
+                  </span>
+                </div>
+                <div
+                  style={{
+                    height: 8,
+                    background: "var(--surface-2)",
+                    borderRadius: 6,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${Math.max(3, bundledBusy.percent)}%`,
+                      background: theme.accent,
+                      transition: "width .3s",
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {bundled.models?.map((m) => {
+                  const running =
+                    bundled.state === "ready" && bundled.modelId === m.id;
+                  return (
+                    <div
+                      key={m.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        border: `1px solid ${running ? theme.accent : theme.border}`,
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>
+                          {m.label}
+                          {m.recommended && (
+                            <span
+                              style={{
+                                color: theme.accent,
+                                fontSize: 11,
+                                marginLeft: 8,
+                              }}
+                            >
+                              ★ {t("models.recommendedTag")}
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          style={{
+                            color: theme.muted,
+                            fontSize: 12,
+                            lineHeight: 1.45,
+                          }}
+                        >
+                          {m.description}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          color: theme.muted,
+                          fontSize: 12,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {fmt(m.sizeBytes)}
+                      </div>
+                      {running ? (
+                        <span
+                          style={{
+                            color: theme.accent,
+                            fontSize: 12,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          ✓ {t("models.inUse")}
+                        </span>
+                      ) : (
+                        <button
+                          style={{
+                            ...(m.installed ? ghostButton : button),
+                            padding: "7px 14px",
+                            whiteSpace: "nowrap",
+                          }}
+                          onClick={() => void setupBundled(m.id)}
+                        >
+                          {m.installed
+                            ? t("models.useThisOne")
+                            : `⬇ ${t("models.downloadButton")}`}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {bundledErr && (
+              <div style={{ color: theme.red, fontSize: 12, marginTop: 10 }}>
+                ⚠ {bundledErr}
+              </div>
+            )}
+          </div>
+        )}
+
       {/* Pointing Neurion at a model you already have is a first-class action,
           not a consolation prize for a missing ollama. It used to appear only
           inside the "no engine" banner, so anyone with a working setup could

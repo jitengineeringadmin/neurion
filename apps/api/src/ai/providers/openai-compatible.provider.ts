@@ -4,6 +4,7 @@ import {
   ChatOptions,
   TokenUsage,
 } from "./ai-provider.interface";
+import { ThinkSplitter } from "./think-splitter";
 
 /**
  * Streams from any OpenAI-compatible /chat/completions endpoint (e.g. ollama, ds4).
@@ -70,9 +71,17 @@ export class OpenAICompatibleProvider implements AiProvider {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    // Reasoning models stream their scratchpad as ordinary content here, since
+    // plain OpenAI has no separate channel for it. Route it to onReasoning so it
+    // does not land in the answer.
+    const think = new ThinkSplitter(options?.onReasoning);
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        const tail = think.end();
+        if (tail) yield tail;
+        break;
+      }
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
       buffer = lines.pop() ?? "";
@@ -80,7 +89,11 @@ export class OpenAICompatibleProvider implements AiProvider {
         const trimmed = line.trim();
         if (!trimmed.startsWith("data:")) continue;
         const payload = trimmed.slice("data:".length).trim();
-        if (payload === "[DONE]") return;
+        if (payload === "[DONE]") {
+          const tail = think.end();
+          if (tail) yield tail;
+          return;
+        }
         try {
           const json = JSON.parse(payload) as {
             choices?: Array<{ delta?: { content?: string } }>;
@@ -98,7 +111,10 @@ export class OpenAICompatibleProvider implements AiProvider {
             };
           }
           const delta = json.choices?.[0]?.delta?.content;
-          if (delta) yield delta;
+          if (delta) {
+            const visible = think.push(delta);
+            if (visible) yield visible;
+          }
         } catch {
           // ignore keep-alive / partial lines
         }

@@ -101,8 +101,13 @@ export interface CatalogModel {
 }
 
 /**
- * Chosen by measurement, not by size intuition. On a CPU-only Ryzen 6800H,
- * 13 deterministic cases, 3 samples each, driven through /api/chat/stream:
+ * Neurion's own models. Everything here is downloaded and run by Neurion itself,
+ * with no other program involved — that is the whole point: a machine that has
+ * never heard of ollama must still be able to get a model.
+ *
+ * gemma2-2b is the default, chosen by measurement rather than by size intuition.
+ * On a CPU-only Ryzen 6800H, 13 deterministic cases, 3 samples each, driven
+ * through /api/chat/stream:
  *
  *   gemma2:2b      1.6 GB   92% correct   1229 ms median
  *   llama3.2:3b    2.0 GB   88%            842 ms
@@ -110,12 +115,68 @@ export interface CatalogModel {
  *   qwen2.5:7b     4.7 GB   90%           1680 ms
  *
  * The smallest candidate was also the most correct, so the default is 2B rather
- * than the 3-4B class that seemed obvious beforehand.
+ * than the 3-4B class that seemed obvious beforehand. Nothing else in this list
+ * has been benchmarked, only verified to download and run, so nothing else
+ * claims to be recommended.
  *
- * URLs are pinned to a HuggingFace revision, not to `main`, so the bytes behind
- * a release cannot change after it ships.
+ * Every URL is pinned to a HuggingFace commit revision, never to `main`, so the
+ * bytes behind a shipped release cannot change underneath it — verified by
+ * negative control: the same path with a bogus sha returns 404 rather than
+ * silently serving main. Every entry was fetched anonymously and its first bytes
+ * checked for the GGUF magic, so a repo that quietly requires a token cannot
+ * pass. sizeBytes is the observed Content-Length, not an estimate.
+ *
+ * No vision model ships: those need a separate mmproj projector passed to
+ * llama-server, and a single-file vision GGUF downloads happily and then ignores
+ * images — a worse failure than not offering it.
  */
 export const CATALOG: CatalogModel[] = [
+  {
+    id: "qwen2.5-0.5b",
+    label: "Qwen 2.5 · 0.5B",
+    description:
+      "Il più piccolo: per PC datati, meno di 1 GB di RAM libera; risponde subito ma resta basilare.",
+    url: "https://huggingface.co/bartowski/Qwen2.5-0.5B-Instruct-GGUF/resolve/41ba88dbac95fed2528c92514c131d73eb5a174b/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf",
+    file: "Qwen2.5-0.5B-Instruct-Q4_K_M.gguf",
+    sizeBytes: 397_808_192,
+    contextTokens: 4096,
+    recommended: false,
+  },
+  {
+    id: "qwen2.5-1.5b",
+    label: "Qwen 2.5 · 1.5B",
+    description:
+      "Per macchine modeste: circa 1,5 GB di RAM libera, già molto più preciso dello 0.5B.",
+    url: "https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/9eadc66189c7641e1ddd226b8267a9119b2ce2d4/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+    file: "Qwen2.5-1.5B-Instruct-Q4_K_M.gguf",
+    sizeBytes: 986_048_768,
+    contextTokens: 4096,
+    recommended: false,
+  },
+  {
+    id: "qwen2.5-coder-1.5b",
+    label: "Qwen 2.5 Coder · 1.5B",
+    description:
+      "Per l'agente su progetti piccoli: gira su qualsiasi portatile, circa 1,5 GB di RAM libera.",
+    url: "https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/1af47f78b1f9b0c242fabe43f7a365d5a67f3207/Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf",
+    file: "Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf",
+    sizeBytes: 986_048_800,
+    contextTokens: 4096,
+    recommended: false,
+  },
+  {
+    id: "qwen3-1.7b",
+    label: "Qwen 3 · 1.7B",
+    description:
+      "Ragiona passo passo prima di rispondere: il più leggero della categoria, circa 2 GB di RAM libera.",
+    url: "https://huggingface.co/bartowski/Qwen_Qwen3-1.7B-GGUF/resolve/dcb19155b962dbb6389f4691a982043a8e651022/Qwen_Qwen3-1.7B-Q4_K_M.gguf",
+    file: "Qwen_Qwen3-1.7B-Q4_K_M.gguf",
+    sizeBytes: 1_282_439_584,
+    // Reasoning models spend tokens thinking before they answer, so a 4096
+    // window can be eaten by the scratchpad and truncate the reply.
+    contextTokens: 8192,
+    recommended: false,
+  },
   {
     id: "gemma2-2b",
     label: "Gemma 2 · 2B",
@@ -123,9 +184,53 @@ export const CATALOG: CatalogModel[] = [
       "Predefinito: il più accurato tra i modelli leggeri, gira su qualsiasi PC.",
     url: "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/855f67caed130e1befc571b52bd181be2e858883/gemma-2-2b-it-Q4_K_M.gguf",
     file: "gemma-2-2b-it-Q4_K_M.gguf",
-    sizeBytes: 1_710_000_000,
+    sizeBytes: 1_708_582_752,
     contextTokens: 4096,
     recommended: true,
+  },
+  {
+    id: "llama3.2-3b",
+    label: "Llama 3.2 · 3B",
+    description:
+      "Il più capace tra i leggeri: circa 3 GB di RAM libera, per un portatile ragionevolmente recente.",
+    url: "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/5ab33fa94d1d04e903623ae72c95d1696f09f9e8/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+    file: "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+    sizeBytes: 2_019_377_696,
+    contextTokens: 4096,
+    recommended: false,
+  },
+  {
+    id: "qwen3-4b",
+    label: "Qwen 3 · 4B",
+    description:
+      "Ragionamento passo passo con buon equilibrio tra qualità e velocità; circa 3,5 GB di RAM libera.",
+    url: "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf",
+    file: "Qwen3-4B-Q4_K_M.gguf",
+    sizeBytes: 2_497_280_256,
+    contextTokens: 8192,
+    recommended: false,
+  },
+  {
+    id: "granite4-tiny",
+    label: "Granite 4.0 · Tiny (MoE)",
+    description:
+      "Modello a esperti: veloce come un modello piccolo ma più capace, servono circa 6 GB di RAM libera.",
+    url: "https://huggingface.co/ibm-granite/granite-4.0-h-tiny-GGUF/resolve/08d5a8a9741dd5c1a95d2d39e25253226aa1464e/granite-4.0-h-tiny-Q4_K_M.gguf",
+    file: "granite-4.0-h-tiny-Q4_K_M.gguf",
+    sizeBytes: 4_230_976_352,
+    contextTokens: 4096,
+    recommended: false,
+  },
+  {
+    id: "deepseek-r1-7b",
+    label: "DeepSeek R1 · 7B",
+    description:
+      "Il più forte su matematica e problemi logici; circa 6 GB di RAM libera ed è lento a rispondere.",
+    url: "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/361004151d4f4f6b446dc5e6d46fbf4422a80d5f/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+    file: "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+    sizeBytes: 4_683_073_504,
+    contextTokens: 8192,
+    recommended: false,
   },
   {
     id: "qwen2.5-7b",
@@ -134,7 +239,51 @@ export const CATALOG: CatalogModel[] = [
       "Più capace sui compiti difficili; richiede circa 6 GB di RAM libera ed è più lento.",
     url: "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/8911e8a47f92bac19d6f5c64a2e2095bd2f7d031/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
     file: "Qwen2.5-7B-Instruct-Q4_K_M.gguf",
-    sizeBytes: 4_680_000_000,
+    sizeBytes: 4_683_074_240,
+    contextTokens: 4096,
+    recommended: false,
+  },
+  {
+    id: "qwen2.5-coder-7b",
+    label: "Qwen 2.5 Coder · 7B",
+    description:
+      "Per l'agente sul codice di tutti i giorni: buone modifiche e velocità decente, circa 6 GB di RAM libera.",
+    url: "https://huggingface.co/bartowski/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/1f629da0c8bed16b9e50cee91c70693650e66c35/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
+    file: "Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
+    sizeBytes: 4_683_074_336,
+    contextTokens: 4096,
+    recommended: false,
+  },
+  {
+    id: "llama3.1-8b",
+    label: "Llama 3.1 · 8B",
+    description:
+      "Per chi ha almeno 6 GB di RAM libera: risposte più articolate e buon supporto multilingua.",
+    url: "https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/bf5b95e96dac0462e2a09145ec66cae9a3f12067/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    file: "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    sizeBytes: 4_920_739_232,
+    contextTokens: 4096,
+    recommended: false,
+  },
+  {
+    id: "gemma3-12b",
+    label: "Gemma 3 · 12B",
+    description:
+      "Il più preparato del catalogo generale: servono almeno 9 GB di RAM libera e le risposte sono più lente.",
+    url: "https://huggingface.co/bartowski/google_gemma-3-12b-it-GGUF/resolve/648e3a36a77c8a9f12d86e741f9dcb9089c769c4/google_gemma-3-12b-it-Q4_K_M.gguf",
+    file: "google_gemma-3-12b-it-Q4_K_M.gguf",
+    sizeBytes: 7_300_575_264,
+    contextTokens: 4096,
+    recommended: false,
+  },
+  {
+    id: "qwen2.5-coder-14b",
+    label: "Qwen 2.5 Coder · 14B",
+    description:
+      "Per refactoring su più file: il più capace sul codice, ma servono circa 12 GB di RAM libera ed è lento su CPU.",
+    url: "https://huggingface.co/bartowski/Qwen2.5-Coder-14B-Instruct-GGUF/resolve/5b379ec4bf71bafecb5f9081ad28b19939128988/Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf",
+    file: "Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf",
+    sizeBytes: 8_988_111_072,
     contextTokens: 4096,
     recommended: false,
   },
