@@ -79,7 +79,7 @@ distruggere.
 Ordinata per **cosa regge da sola**, non per difficoltà crescente. Ogni fase è
 utile anche se le successive non arrivassero mai.
 
-### Fase 1 — I pesi fra pari *(il Napster dei modelli)*
+### Fase 1 — I pesi fra pari *(il Napster dei modelli)* — **FATTA (1.8.22)**
 
 Chi ha un modello lo serve a chi non ce l'ha. Un GGUF è un file identificato dal
 suo hash: o corrisponde o no.
@@ -93,11 +93,32 @@ in vita l'intero progetto, e non dipende da nulla di ciò che viene dopo. Chiude
 anche un buco reale di oggi: il catalogo introdotto in 1.8.17 punta a
 HuggingFace, che nello scenario di disastro non c'è.
 
-Da fare:
-- annuncio dei modelli posseduti per hash (`sha256` del file, dimensione, nome);
-- scambio a blocchi fra pari, con verifica del blocco e ripresa del trasferimento;
-- il catalogo esistente (`llama-catalog.ts`) resta come sorgente di primo avvio,
-  ma non è più l'unica strada.
+**Cosa è atterrato in 1.8.22:**
+
+- ogni voce di catalogo porta lo **SHA-256 del pubblicatore** (l'oid LFS di
+  HuggingFace per la revisione fissata). Non preso sulla fiducia: dimensioni
+  confermate per tutti e 14, e due file realmente presenti su disco ricalcolati
+  e combacianti alla cifra;
+- `downloadFile` calcola l'hash mentre scarica e **rifiuta prima di rinominare**,
+  così una copia avvelenata non resta dove verrebbe caricata al riavvio;
+- `PeerService` (`apps/api/src/ai/engine/peer.service.ts`) annuncia in multicast
+  sul segmento locale e serve i blob per hash su una porta propria;
+- chi scarica prova **prima i pari, poi il pubblicatore**, e in caso di
+  fallimento ricade su HuggingFace senza bloccare l'utente;
+- la pagina Modelli mostra quanti modelli offri e quanti pari ci sono.
+
+**Limiti deliberati, da superare nella fase 2:**
+
+- **solo i modelli del catalogo** vengono annunciati e serviti. Quelli che
+  l'utente indica dal proprio disco non escono mai: potrebbero essere
+  addestramenti privati;
+- **solo il segmento locale** (TTL multicast 1). Nessuna DHT, nessun nodo di
+  avvio, nessuna esposizione su internet;
+- il server dei blob è **separato dall'API**, perché l'API sta su loopback: ha
+  dentro un agente che esegue comandi e non deve essere raggiungibile dalla rete.
+
+**Ancora aperto:** trasferimento a blocchi con ripresa. Oggi un trasferimento
+interrotto riparte da zero — accettabile in LAN, non lo sarà su internet.
 
 ### Fase 2 — Identità e scoperta senza registro
 
@@ -170,7 +191,8 @@ Una sola domanda, da rifarsi a ogni fase:
 > **Se domani neurionproject.org si spegne per sempre, cosa continua a
 > funzionare?**
 
-- Oggi: l'app locale sì, la rete no.
+- Oggi: l'app locale sì, e **dalla 1.8.22 i modelli passano da una macchina
+  all'altra sulla stessa rete anche a server spenti**. Il resto della rete no.
 - Dopo la fase 1: i modelli continuano a circolare fra le persone.
 - Dopo la fase 2: i pari continuano a trovarsi.
 - Dopo la fase 3: il lavoro continua a essere condiviso.
