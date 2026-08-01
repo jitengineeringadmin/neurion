@@ -36,3 +36,4 @@ apps/desktop/dist-installer-*/
 *.log
 Thumbs.db
 .DS_Store
+dist-bundle

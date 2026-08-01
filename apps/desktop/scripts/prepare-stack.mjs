@@ -50,12 +50,31 @@ sh(pnpm, ['--filter', '@neurion/web', 'build'], {
   env: { ...process.env, NEXT_PUBLIC_API_URL: 'http://localhost:8091' },
 });
 
-// 2) stage api: dist + prisma + compiled seed + prod node_modules + generated client
+step('bundle api into a single file');
+// Rebuilt here rather than trusted from a previous run: staging a stale bundle
+// would ship yesterday's API with today's version number.
+sh(pnpm, ['--filter', '@neurion/api', 'run', 'bundle']);
+
+// 2) stage api: single-file bundle + prisma + compiled seed + prod node_modules + generated client
 step('stage api');
 const apiStage = path.join(STAGE, 'api');
 mkdirSync(apiStage, { recursive: true });
 copyFileSync(path.join(API_SRC, 'package.json'), path.join(apiStage, 'package.json'));
-copy(path.join(API_SRC, 'dist'), path.join(apiStage, 'dist'));
+// Ship the single-file bundle as dist/main.js when it exists, so the desktop
+// spawns it without knowing the difference. Starting from the 333-file dist
+// opened 2,007 files and compiled 1,660 modules before Nest logged anything; the
+// bundle opens 21 and compiles 9. On a cold cache with real-time antivirus that
+// was the whole difference between a minute and a half and a few seconds.
+// node_modules is still installed below: the bundle keeps native addons and the
+// packages that read their own data files (Prisma, geoip, pdf.js) external.
+const bundled = path.join(API_SRC, 'dist-bundle', 'main.js');
+if (existsSync(bundled)) {
+  mkdirSync(path.join(apiStage, 'dist'), { recursive: true });
+  copyFileSync(bundled, path.join(apiStage, 'dist', 'main.js'));
+} else {
+  console.warn('  ! no dist-bundle/main.js — falling back to the unbundled dist (slow start)');
+  copy(path.join(API_SRC, 'dist'), path.join(apiStage, 'dist'));
+}
 copy(path.join(API_SRC, 'prisma'), path.join(apiStage, 'prisma'));
 
 step('compile prisma/seed.ts -> seed.js (no tsx at runtime)');

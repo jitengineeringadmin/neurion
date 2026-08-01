@@ -1,6 +1,6 @@
 {
   "name": "@neurion/api",
-  "version": "1.8.14",
+  "version": "1.8.15",
   "private": true,
   "scripts": {
     "build": "nest build",
@@ -22,7 +22,8 @@
     "test:knowledge": "tsx scripts/knowledge-test.ts",
     "test:e2e": "tsx scripts/e2e.ts",
     "eval": "tsx scripts/eval-harness.ts",
-    "test:payout": "tsx scripts/payout-test.ts"
+    "test:payout": "tsx scripts/payout-test.ts",
+    "bundle": "node scripts/bundle.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
@@ -62,6 +63,7 @@
     "@types/nodemailer": "^6.4.15",
     "@types/ws": "^8.5.10",
     "dotenv-cli": "^7.4.1",
+    "esbuild": "^0.24.0",
     "tsx": "^4.7.0"
   }
 }

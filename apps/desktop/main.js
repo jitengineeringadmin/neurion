@@ -544,6 +544,10 @@ async function startStack() {
   // the models and the files. The API refuses to honour this unless it is also
   // bound to loopback, so the two settings cannot drift apart.
   ENV.NEURION_LOCAL_OWNER = 'true';
+  // Told, not guessed. /api/health otherwise infers its version from a relative
+  // require of package.json, which is exactly the kind of thing that stops
+  // resolving once the API ships as a single bundled file.
+  ENV.NEURION_VERSION = app.getVersion();
   ensureSecrets();
 
   // Local image engine (stable-diffusion.cpp) lives under userData; the API downloads

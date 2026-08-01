@@ -12,7 +12,6 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { IsBoolean, IsOptional, IsString } from "class-validator";
 import { Response } from "express";
-import { PDFParse } from "pdf-parse";
 import { ChatService } from "./chat.service";
 import { AiRouterService, RoutePlan } from "../ai/ai-router.service";
 import { CreditsService } from "../credits/credits.service";
@@ -165,6 +164,11 @@ export class ChatController {
     const base64 = dto.file.data.includes(",")
       ? dto.file.data.slice(dto.file.data.indexOf(",") + 1)
       : dto.file.data;
+    // Loaded here, not at module scope. pdf-parse drags in pdf.js and a 26 MB
+    // Skia native binary, and every API start paid for that whether or not
+    // anyone ever attached a PDF. Already inside an async method, so deferring
+    // it costs nothing at the call site.
+    const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: Buffer.from(base64, "base64") });
     try {
       const result = await parser.getText();

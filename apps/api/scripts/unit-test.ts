@@ -170,5 +170,30 @@ test("protocolFee: 10% of a reward, floored; 0 when off", () => {
   assert.equal(protocolFee(100, 0), 0); // fee disabled
 });
 
+// ---- geoip stays off the boot path ----
+// Importing geoip-lite synchronously reads 108,864,488 bytes of .dat files. That
+// used to happen at API import time, on every start, for a lookup that only runs
+// when a node registers. If someone reinstates the top-level import, this fails.
+test("geoip-lite is not loaded until a public IP is actually looked up", () => {
+  const loaded = (): boolean =>
+    Object.keys(require.cache).some((p) => /[\\/]geoip-lite[\\/]/.test(p));
+  assert.equal(loaded(), false, "geoip-lite was already loaded before the test");
+
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { countryFromIp } = require("../src/common/geoip") as {
+    countryFromIp: (ip: string | null | undefined) => string | null;
+  };
+  assert.equal(loaded(), false, "importing the module must not pull the dataset in");
+
+  // Private and empty addresses short-circuit, so they must not load it either.
+  assert.equal(countryFromIp("127.0.0.1"), null);
+  assert.equal(countryFromIp(""), null);
+  assert.equal(loaded(), false, "a private address must not pull the dataset in");
+
+  // A public address does, and still resolves correctly.
+  assert.equal(countryFromIp("8.8.8.8"), "US");
+  assert.equal(loaded(), true, "the dataset should be loaded once it is needed");
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
