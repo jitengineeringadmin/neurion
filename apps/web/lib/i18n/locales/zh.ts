@@ -648,5 +648,8 @@ const dict: Record<string, string> = {
   "network.connectTitle": "将这台电脑接入 Neurion 网络",
   "network.connectBody":
     "本地使用无需登录。只有当你想共享这台电脑的算力赚取 NRN，或使用他人共享的算力时才需要登录。",
+  "models.sharingCount": "你正在向该网络共享 {n} 个模型",
+  "models.peersFound": "附近有 {n} 个节点，提供 {m} 个模型",
+  "models.noPeers": "该网络上暂时没有其他 Neurion",
 };
 export default dict;

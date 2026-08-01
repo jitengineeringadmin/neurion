@@ -688,5 +688,8 @@ const dict: Record<string, string> = {
   "network.connectTitle": "Подключить этот ПК к сети Neurion",
   "network.connectBody":
     "Для локальной работы не нужно. Вход нужен только чтобы делиться мощностью этого компьютера и зарабатывать NRN — или использовать чужую.",
+  "models.sharingCount": "вы делитесь {n} моделями с этой сетью",
+  "models.peersFound": "рядом {n} узлов, предлагают {m} моделей",
+  "models.noPeers": "в этой сети пока нет других Neurion",
 };
 export default dict;

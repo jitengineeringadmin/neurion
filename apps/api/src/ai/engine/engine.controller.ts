@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Post, Res } from "@nestjs/common";
 import { IsString, MaxLength } from "class-validator";
 import { Response } from "express";
 import { LlamaEngineService } from "./llama-engine.service";
+import { PeerService } from "./peer.service";
 
 class SelectModelDto {
   @IsString()
@@ -30,7 +31,10 @@ class UseLocalModelDto {
  */
 @Controller("ai/engine")
 export class EngineController {
-  constructor(private readonly engine: LlamaEngineService) {}
+  constructor(
+    private readonly engine: LlamaEngineService,
+    private readonly peers: PeerService,
+  ) {}
 
   @Get("status")
   async status() {
@@ -72,6 +76,27 @@ export class EngineController {
   removeFolder(@Body() dto: FolderDto) {
     const folders = this.engine.removeModelFolder(dto.path);
     return { folders, models: this.engine.scanModelFolders() };
+  }
+
+  /**
+   * What this machine is giving and getting on the local network. Visible on
+   * purpose: sharing that nobody can see is sharing nobody believes in.
+   */
+  @Get("peers")
+  peerStatus() {
+    const s = this.peers.status();
+    return {
+      enabled: s.enabled,
+      /** How many models this machine is offering to others. */
+      sharing: s.sharing,
+      /** Distinct models the neighbours are offering, ours excluded. */
+      offeredByPeers: s.offeredByPeers,
+      peers: this.peers.known().map((p) => ({
+        address: p.address,
+        models: p.has.length,
+        lastSeen: p.lastSeen,
+      })),
+    };
   }
 
   /** Download the engine and a model, then start it, reporting progress live. */

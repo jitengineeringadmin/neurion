@@ -127,6 +127,12 @@ export default function ModelsPage() {
   const [canStartOllama, setCanStartOllama] = useState(false);
   const [canOpenFolder, setCanOpenFolder] = useState(false);
   const [localFolders, setLocalFolders] = useState<string[]>([]);
+  const [peerInfo, setPeerInfo] = useState<{
+    enabled: boolean;
+    sharing: number;
+    offeredByPeers: number;
+    peers: Array<{ address: string; models: number }>;
+  } | null>(null);
   const [localFound, setLocalFound] = useState<
     Array<{
       path: string;
@@ -186,6 +192,18 @@ export default function ModelsPage() {
     setLocalFolders(r.folders ?? []);
     setLocalFound(r.models ?? []);
   };
+
+  /** Who else on this network is sharing, and what we are giving back. */
+  async function loadPeers() {
+    setPeerInfo(
+      await api<{
+        enabled: boolean;
+        sharing: number;
+        offeredByPeers: number;
+        peers: Array<{ address: string; models: number }>;
+      }>("/ai/engine/peers").catch(() => null),
+    );
+  }
 
   /** Everything Neurion can see across its own folder and the user's. */
   async function loadLocalModels() {
@@ -368,6 +386,10 @@ export default function ModelsPage() {
           .neurion?.openModelsFolder != null,
     );
     void loadLocalModels();
+    void loadPeers();
+    // Peers come and go — a laptop closing mid-transfer is the normal case.
+    const id = setInterval(() => void loadPeers(), 15000);
+    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -689,6 +711,48 @@ export default function ModelsPage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+            {/* Sharing nobody can see is sharing nobody believes in. This is
+                also the honest answer to "what happens if the servers go
+                dark": these models came from, or can go to, the machine next
+                door. */}
+            {peerInfo?.enabled && (
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 12,
+                  color: theme.muted,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: 7,
+                    background:
+                      peerInfo.peers.length > 0 ? theme.accent : theme.muted,
+                    flex: "0 0 auto",
+                  }}
+                />
+                <span>
+                  {t("models.sharingCount").replace(
+                    "{n}",
+                    String(peerInfo.sharing),
+                  )}
+                </span>
+                <span>·</span>
+                <span>
+                  {peerInfo.peers.length > 0
+                    ? t("models.peersFound")
+                        .replace("{n}", String(peerInfo.peers.length))
+                        .replace("{m}", String(peerInfo.offeredByPeers))
+                    : t("models.noPeers")}
+                </span>
               </div>
             )}
             {bundledErr && (
