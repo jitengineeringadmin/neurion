@@ -110,6 +110,7 @@ const dict: Record<string, string> = {
   "models.useAsDefault": "usa come default",
   "models.downloadButton": "Scarica",
   "models.installedHeading": "Installati",
+  "models.installedOllamaHeading": "Installati in ollama",
   "models.emptyInstalled": "Nessun modello ancora. Scaricane uno qui sopra.",
   "models.defaultBadge": "default",
   "models.makeDefaultButton": "default",

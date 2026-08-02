@@ -31,15 +31,10 @@ const WEB_URL = 'http://localhost:3091';
 const APP_URL = `${WEB_URL}/app/chat`;
 const API_HEALTH = 'http://localhost:8091/api/health';
 
-// In-app node: the bundled node-agent binary connects to the PRODUCTION network
-// (registers under the user's neurionproject.org account, serves the local ollama
-// models over the realtime lane) so a desktop user can share their machine with
-// one click.
-const NODE_BIN = PACKAGED
-  ? path.join(STACK, '_node', process.platform === 'win32' ? 'neurion-node.exe' : 'neurion-node')
-  : path.join(ROOT, 'apps', 'node-agent', 'bin', process.platform === 'win32' ? 'neurion-node.exe' : 'neurion-node');
-const NODE_API = process.env.NEURION_NODE_API || 'https://neurionproject.org';
-const nodeConfigPath = () => path.join(app.getPath('userData'), 'neurion-node.yaml');
+// A bundled node-agent used to live here: a Go binary that registered under the
+// user's neurionproject.org account and served ollama models through a central
+// lane. Both halves of that are gone — sharing needs no account and no ollama,
+// and it is the app itself that speaks to peers now. See peer.service.ts.
 
 // Embedded Postgres — standalone, no Docker.
 // Preferred port, not a demand. Anything else on the machine can already own
@@ -57,7 +52,6 @@ const children = [];
 let pg = null;
 let mainWindow = null;
 let splash = null;
-let nodeProc = null;
 let apiProc = null; // current API child process (the watchdog's restart target)
 let restartingApi = false; // guard so only one API restart runs at a time
 let tray = null;
@@ -98,7 +92,7 @@ const STRINGS = {
     openBrowser: 'Open in browser',
     quit: 'Quit',
     trayOpen: 'Open Neurion',
-    trayQuit: 'Quit Neurion (stops your node)',
+    trayQuit: 'Quit Neurion (stops sharing with the network)',
     trayAutostart: 'Start at login',
     edit: 'Edit',
     view: 'View',
@@ -132,7 +126,7 @@ const STRINGS = {
     openBrowser: 'Apri nel browser',
     quit: 'Esci',
     trayOpen: 'Apri Neurion',
-    trayQuit: 'Esci da Neurion (ferma il tuo node)',
+    trayQuit: 'Esci da Neurion (ferma la condivisione con la rete)',
     trayAutostart: "Avvia all'accensione",
     edit: 'Modifica',
     view: 'Vista',
@@ -1064,41 +1058,6 @@ function probeUrl(url, timeoutMs) {
   });
 }
 
-// --- in-app node: register once on the production network, then run/stop it ---
-ipcMain.handle('node:status', () => ({
-  running: !!nodeProc,
-  registered: fs.existsSync(nodeConfigPath()),
-  available: fs.existsSync(NODE_BIN),
-}));
-
-ipcMain.handle('node:start', (_e, creds) => {
-  if (nodeProc) return { ok: true, running: true };
-  if (!fs.existsSync(NODE_BIN)) return { ok: false, error: 'node binary not bundled in this build' };
-  const cfg = nodeConfigPath();
-  if (!fs.existsSync(cfg)) {
-    const token = (creds && creds.token) || '';
-    const email = (creds && creds.email) || '';
-    const password = (creds && creds.password) || '';
-    // Prefer the already-signed-in token (no need to retype the password); fall back to creds.
-    const authArgs = token ? ['--token', token] : email && password ? ['--email', email, '--password', password] : null;
-    if (!authArgs) return { ok: false, error: 'credentials required' };
-    const reg = spawnSync(
-      NODE_BIN,
-      ['register', '--api', NODE_API, ...authArgs, '--name', os.hostname() || 'neurion-node', '--realtime', '--realtime-base-url', 'http://127.0.0.1:11434/v1'],
-      { cwd: app.getPath('userData'), windowsHide: true, encoding: 'utf8' },
-    );
-    if (reg.status !== 0) return { ok: false, error: ((reg.stderr || reg.stdout || 'register failed') + '').trim().slice(-400) };
-  }
-  nodeProc = spawn(NODE_BIN, ['start', '--config', cfg], { cwd: app.getPath('userData'), windowsHide: true });
-  nodeProc.on('exit', () => { nodeProc = null; });
-  return { ok: true, running: true };
-});
-
-ipcMain.handle('node:stop', () => {
-  stopNode();
-  return { ok: true };
-});
-
 // Single instance: a second launch must not spin up a second embedded stack
 // (it would fight for ports 5433/8091/3091 and leave one window black). Focus
 // the existing window instead.
@@ -1164,26 +1123,7 @@ function killChildren() {
   }
 }
 
-function stopNode() {
-  if (!nodeProc) return;
-  try {
-    // Synchronous for the same reason as killChildren: this runs on the way out.
-    if (process.platform === 'win32') {
-      spawnSync('taskkill', ['/pid', String(nodeProc.pid), '/f', '/t'], {
-        windowsHide: true,
-        timeout: 5000,
-      });
-    } else {
-      nodeProc.kill('SIGTERM');
-    }
-  } catch {
-    /* ignore */
-  }
-  nodeProc = null;
-}
-
 function stopAll() {
-  stopNode();
   killChildren();
   // Whatever still slipped through — a child re-spawned by the API's own
   // watchdog a moment before we quit, for instance.

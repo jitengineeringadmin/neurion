@@ -10,9 +10,4 @@ contextBridge.exposeInMainWorld('neurion', {
   startOllama: () => ipcRenderer.invoke('ollama:start'),
   // Where downloads land, and where a user can drop their own .gguf files.
   openModelsFolder: () => ipcRenderer.invoke('models:open-folder'),
-  node: {
-    status: () => ipcRenderer.invoke('node:status'),
-    start: (creds) => ipcRenderer.invoke('node:start', creds),
-    stop: () => ipcRenderer.invoke('node:stop'),
-  },
 });

@@ -121,18 +121,6 @@ writeFileSync(
 );
 npmInstall(dkStage);
 
-// 4b) node-agent binary — powers the in-app "run a node" feature (needs Go)
-step('build node-agent binary');
-const nodeStage = path.join(STAGE, '_node');
-mkdirSync(nodeStage, { recursive: true });
-const nodeBin = path.join(nodeStage, isWin ? 'neurion-node.exe' : 'neurion-node');
-const goBuild = spawnSync('go', ['build', '-trimpath', '-ldflags', '-s -w', '-o', nodeBin, './cmd/neurion-node'], {
-  cwd: path.join(ROOT, 'apps', 'node-agent'),
-  stdio: 'inherit',
-  shell: false,
-});
-if (goBuild.status !== 0) console.warn('⚠ node-agent build failed (is Go installed?) — the in-app node will be unavailable in this build');
-
 // 5) runtime env. Do not copy the build machine's secrets or development ports
 // into a distributable installer; the desktop creates per-install JWT secrets.
 step('write desktop .env');
