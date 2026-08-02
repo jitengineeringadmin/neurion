@@ -670,6 +670,7 @@ const dict: Record<string, string> = {
   "models.peersFound": "{n} Gegenstellen in der Nähe, {m} Modelle im Angebot",
   "models.noPeers": "noch kein weiteres Neurion in diesem Netzwerk",
   "models.servedCount": "du hast {n} Modelle an andere weitergegeben",
+  "models.indexNodes": "über den Index erreichbar: {n} Maschinen",
   "models.addPeer": "Gegenstelle per Adresse hinzufügen",
   "models.addPeerPrompt":
     "Die Adresse einer bekannten Person (Host oder Host:Port). Sie muss von hier erreichbar sein — gleiches Netz oder eine öffentliche Adresse.",

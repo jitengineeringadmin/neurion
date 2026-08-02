@@ -136,6 +136,8 @@ export default function ModelsPage() {
     seeds?: string[];
     compute?: boolean;
     computed?: number;
+    /** This machine's place in the distributed index. */
+    index?: { nodes: number; records: number; joined: boolean };
     peers: Array<{ address: string; models: number }>;
   } | null>(null);
   const [localFound, setLocalFound] = useState<
@@ -240,6 +242,7 @@ export default function ModelsPage() {
         seeds?: string[];
         compute?: boolean;
         computed?: number;
+        index?: { nodes: number; records: number; joined: boolean };
         peers: Array<{ address: string; models: number }>;
       }>("/ai/engine/peers").catch(() => null),
     );
@@ -802,6 +805,20 @@ export default function ModelsPage() {
                       {t("models.servedCount").replace(
                         "{n}",
                         String(peerInfo.served),
+                      )}
+                    </span>
+                  </>
+                )}
+                {/* Reach beyond the neighbourhood. Worth showing separately
+                    from the peer count: these are machines this one can route
+                    to without ever having met them. */}
+                {(peerInfo.index?.nodes ?? 0) > 0 && (
+                  <>
+                    <span>·</span>
+                    <span>
+                      {t("models.indexNodes").replace(
+                        "{n}",
+                        String(peerInfo.index!.nodes),
                       )}
                     </span>
                   </>

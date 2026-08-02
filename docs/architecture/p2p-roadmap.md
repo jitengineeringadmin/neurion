@@ -252,6 +252,55 @@ avrebbe bisogno di nessuna.
 
 ---
 
+### Fase 5 — L'indice distribuito *(il Kad di Neurion)* — **FATTA (1.9.0)**
+
+Le fasi 1-4 danno un **vicinato**: si trova quello che hanno le macchine che
+già si conoscono. Un vicinato però contiene solo quello che i suoi membri hanno,
+e la domanda "chi ha questo modello" restava senza risposta appena usciva da lì.
+
+eMule ottenne Kad per ultimo e ne aveva più bisogno di tutto il resto. Prima
+aveva i server: centinaia, tenuti da volontari — molto meglio di uno, ma un
+server restava una cosa che doveva esistere, essere mantenuta e poteva essere
+messa sotto pressione. Kad li tolse di mezzo. L'indice smise di stare da
+qualche parte e cominciò a stare nello spazio fra tutti.
+
+**Cosa è atterrato:**
+
+- **si trova un modello su una macchina mai incontrata**, in una manciata di
+  salti attraverso sconosciuti, senza che l'indice esista da nessuna parte;
+- **l'ID del nodo è l'impronta della sua chiave**, non se lo sceglie: per
+  piazzarsi accanto a una chiave — la posizione da cui si potrebbe censurare una
+  ricerca — bisognerebbe macinare coppie di chiavi finché una cade dove serve;
+- **in tabella entra solo chi ha risposto di persona.** Un pari può nominare i
+  contatti che vuole: sono candidati da verificare, mai voci. Senza questa
+  regola una sola macchina potrebbe riempire le tabelle di tutti con indirizzi
+  scelti da lei, che è esattamente come si acceca una rete;
+- **l'indirizzo di chi si annuncia è quello osservato, non quello dichiarato**,
+  altrimenti l'indice si potrebbe puntare addosso a un bersaglio qualsiasi;
+- **tutto è limitato**: schede per chiave, chiavi in totale, contatti in una
+  risposta, salti in una ricerca. Ognuno di quei limiti è un punto in cui
+  "quanti ne mandano" avrebbe significato che è un altro a decidere quanta
+  memoria usiamo.
+
+Viaggia sulla porta HTTP già aperta invece che su UDP, dove Kademlia di solito
+vive. È uno scambio scelto: UDP sarebbe più leggero per salto, ma vorrebbe dire
+una seconda porta sul router, un secondo buco nel firewall da aprire a mano, e
+renderebbe inutili come via d'ingresso tutti gli indirizzi già scritti — perché
+sono tutti quella porta. Un salto un po' più pesante su una porta che funziona
+davvero batte uno elegante che mezzo mondo scarta.
+
+**Il costo, detto chiaro:** annunciare di avere un modello pubblica il proprio
+indirizzo e quel fatto a chiunque chieda quella chiave. È inerente — BitTorrent
+funziona così — ed è il motivo per cui l'annuncio è legato all'interruttore
+della condivisione e non riguarda mai i modelli che l'utente ha indicato dal
+proprio disco.
+
+**Cosa resta.** Una macchina nuova ha ancora bisogno di **un** primo contatto:
+un indirizzo qualsiasi che risponda. Anche eMule, per entrare in Kad la prima
+volta, doveva conoscere qualcuno. Da lì in poi non serve più nessuna lista.
+
+---
+
 ## 5. Da rimuovere — **FATTO**
 
 Eseguito in sei passi, ognuno verificato prima del successivo. Il piano completo,
@@ -319,4 +368,7 @@ Una sola domanda, da rifarsi a ogni fase:
 - Dopo la fase 3: **il lavoro continua a essere condiviso** — a reciprocità, verificato per ridondanza, e attraverso i router senza intermediari.
 - Dopo la fase 4: **non cambia niente per nessuno** — i punti d'ingresso sono tanti, ricordati su disco e scambiati fra le macchine.
 
-Quando la risposta è "tutto", lo scopo è raggiunto.
+- Dopo la fase 5: **si trova un modello su una macchina mai incontrata** — l'indice non sta da nessuna parte e non c'è più niente da spegnere.
+
+Quando la risposta è "tutto", lo scopo è raggiunto. **Da 1.9.0 la risposta è
+"tutto", con una riserva onesta: serve un primo contatto, uno qualsiasi.**

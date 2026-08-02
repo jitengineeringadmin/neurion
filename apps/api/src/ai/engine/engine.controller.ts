@@ -125,6 +125,12 @@ export class EngineController {
       publicAddress: this.peers.publicAddress(),
       /** Machines we have met before and will knock on again after a restart. */
       remembered: this.peers.savedNodes().length,
+      /**
+       * This machine's place in the distributed index: how much of the network
+       * it can route through, and how many "who has what" records it is keeping
+       * on everyone else's behalf.
+       */
+      index: this.peers.indexStatus(),
       /** This machine's own name on the network: its public key fingerprint. */
       me: this.peers.myPeerId(),
       seeds: this.peers.seeds(),

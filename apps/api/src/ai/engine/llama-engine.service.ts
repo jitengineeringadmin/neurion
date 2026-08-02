@@ -454,7 +454,9 @@ export class LlamaEngineService
     // Safe precisely because the hash is checked on arrival: a peer that lies
     // costs a retry, nothing more. If the transfer fails for any reason we fall
     // through to the publisher rather than leaving the user stuck.
-    const fromPeer = m.sha256 ? this.peers.sourceFor(m.sha256) : null;
+    // Neighbours first, then the distributed index — which can name a machine
+    // this one has never met, on a network it has never touched.
+    const fromPeer = m.sha256 ? await this.peers.locate(m.sha256) : null;
     if (fromPeer) {
       try {
         this.logger.log(`fetching ${m.file} from a peer on this network`);

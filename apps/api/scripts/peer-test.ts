@@ -453,6 +453,174 @@ async function main(): Promise<void> {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  // ---- the distributed index, over a real wire ---------------------------
+  //
+  // kad-test.ts proves the algorithm with sixty nodes and a fake transport.
+  // This proves the parts that a fake transport cannot: the HTTP route, the
+  // signatures in both directions, and the rule that an announcer's address is
+  // the one we observed rather than the one it claimed.
+  //
+  // The shape is deliberately a chain. C is told about B and nothing else, and
+  // never speaks to A until the index sends it there — which is exactly the
+  // claim being tested: finding a model on a machine you have never met.
+
+  const dhtDirs: string[] = [];
+  const mkNode = (port: string, withModel: boolean): PeerService => {
+    const dir = mkdtempSync(join(tmpdir(), "neurion-dht-"));
+    dhtDirs.push(dir);
+    if (withModel) {
+      mkdirSync(join(dir, "models"), { recursive: true });
+      writeFileSync(
+        join(dir, "models", model.file),
+        Buffer.alloc(model.sizeBytes, 7),
+      );
+    }
+    return new PeerService(
+      cfg({
+        NEURION_TEXT_DIR: dir,
+        NEURION_PEER_PORT: port,
+        NEURION_PEER_SWEEP: "false",
+      }),
+    );
+  };
+
+  type Innards = {
+    serve(): void;
+    kad(): { seen(c: { id: string; address: string; port: number }): void; size(): number };
+    joinNetwork(): Promise<void>;
+    signed(payload: object): string | null;
+  };
+
+  const holder = mkNode("48511", true);
+  const middle = mkNode("48512", false);
+  const newcomer = mkNode("48513", false);
+  // Only the file server, never discovery: multicast on this machine would
+  // introduce all three to each other and there would be nothing left to prove.
+  for (const n of [holder, middle, newcomer]) (n as unknown as Innards).serve();
+  await wait(400);
+
+  // The chain: the middle knows the holder, the newcomer knows the middle.
+  (middle as unknown as Innards)
+    .kad()
+    .seen({ id: holder.myPeerId(), address: "127.0.0.1", port: 48511 });
+  (newcomer as unknown as Innards)
+    .kad()
+    .seen({ id: middle.myPeerId(), address: "127.0.0.1", port: 48512 });
+
+  await check("a machine finds a model through a stranger it was routed to", async () => {
+    assert(
+      newcomer.known().length === 0,
+      "the newcomer already knows a peer, so this would prove nothing",
+    );
+    assert(
+      newcomer.sourceFor(model.sha256!) === null,
+      "the neighbour path already answers; the index is not being tested",
+    );
+    const url = await newcomer.locate(model.sha256!);
+    assert(url, "the index did not find the model");
+    assert(
+      url!.includes(":48511/"),
+      `routed to the wrong machine: ${url}`,
+    );
+    // And having been there, it is now a peer like any other.
+    assert(
+      newcomer.known().some((p) => p.peerId === holder.myPeerId()),
+      "the machine found through the index was not remembered afterwards",
+    );
+  });
+
+  await check("announcing puts a record on somebody else's machine", async () => {
+    assert(
+      middle.indexStatus().records === 0,
+      "the middle already held records before anyone announced",
+    );
+    await (holder as unknown as Innards).joinNetwork();
+    assert(
+      middle.indexStatus().records >= 1,
+      "nobody kept a record of what the holder announced",
+    );
+  });
+
+  await check("an unsigned request to the index is refused", async () => {
+    const res = await fetch("http://127.0.0.1:48512/peer/kad", {
+      method: "POST",
+      body: JSON.stringify({ req: { t: "ping" } }),
+    });
+    assert(res.status === 403, `an unsigned request got ${res.status}`);
+  });
+
+  await check("a signed request in somebody else's name is refused", async () => {
+    // Correctly signed, and the signature is valid — but the name inside does
+    // not belong to the key that signed it.
+    const wire = (newcomer as unknown as Innards).signed({
+      v: 1,
+      peerId: holder.myPeerId(),
+      port: 48513,
+      req: { t: "ping" },
+    });
+    assert(wire, "could not build the test message");
+    const res = await fetch("http://127.0.0.1:48512/peer/kad", {
+      method: "POST",
+      body: wire!,
+    });
+    assert(res.status === 403, `an impersonated request got ${res.status}`);
+  });
+
+  await check("a tampered request is refused", async () => {
+    const wire = (newcomer as unknown as Innards).signed({
+      v: 1,
+      peerId: newcomer.myPeerId(),
+      port: 48513,
+      req: { t: "ping" },
+    });
+    const outer = JSON.parse(wire!) as { body: string };
+    outer.body = outer.body.replace('"ping"', '"announce"');
+    const res = await fetch("http://127.0.0.1:48512/peer/kad", {
+      method: "POST",
+      body: JSON.stringify(outer),
+    });
+    assert(res.status === 403, `a tampered request got ${res.status}`);
+  });
+
+  await check("a properly signed request is answered, and signed back", async () => {
+    const wire = (newcomer as unknown as Innards).signed({
+      v: 1,
+      peerId: newcomer.myPeerId(),
+      port: 48513,
+      req: { t: "ping" },
+    });
+    const res = await fetch("http://127.0.0.1:48512/peer/kad", {
+      method: "POST",
+      body: wire!,
+    });
+    assert(res.status === 200, `a valid request got ${res.status}`);
+    const outer = (await res.json()) as { body?: string; sig?: string; publicKey?: string };
+    assert(outer.sig && outer.publicKey, "the answer came back unsigned");
+    const inner = JSON.parse(outer.body!) as { peerId: string; res: { t: string } };
+    assert(inner.peerId === middle.myPeerId(), "the answer was signed by the wrong machine");
+    assert(inner.res.t === "pong", `unexpected answer: ${inner.res.t}`);
+  });
+
+  await check("an oversized request cannot fill this machine's memory", async () => {
+    // Ten megabytes of nothing. The route must stop reading long before that.
+    const huge = "x".repeat(10_000_000);
+    let status = 0;
+    try {
+      const res = await fetch("http://127.0.0.1:48512/peer/kad", {
+        method: "POST",
+        body: JSON.stringify({ body: huge, sig: "x", publicKey: "x" }),
+      });
+      status = res.status;
+    } catch {
+      // The socket was torn down mid-upload, which is the intended outcome.
+      status = 400;
+    }
+    assert(status === 400 || status === 403, `an oversized body got ${status}`);
+  });
+
+  for (const n of [holder, middle, newcomer]) n.onModuleDestroy();
+  for (const d of dhtDirs) rmSync(d, { recursive: true, force: true });
+
   seeder.onModuleDestroy();
   leecher.onModuleDestroy();
   rmSync(seederDir, { recursive: true, force: true });

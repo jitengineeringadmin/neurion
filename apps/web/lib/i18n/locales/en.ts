@@ -634,6 +634,7 @@ const dict: Record<string, string> = {
   "models.peersFound": "{n} peers nearby, offering {m} models",
   "models.noPeers": "no other Neurion on this network yet",
   "models.servedCount": "you have passed {n} models to other people",
+  "models.indexNodes": "reachable through the index: {n} machines",
   "models.addPeer": "add a peer by address",
   "models.addPeerPrompt":
     "A friend's address (host or host:port). They need to be reachable from here — same network, or a public address.",

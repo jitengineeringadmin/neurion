@@ -27,6 +27,14 @@ import {
 } from "node:crypto";
 import { CATALOG } from "./llama-catalog";
 import { openPort, type Mapping } from "./port-mapping";
+import {
+  Kad,
+  isId,
+  keyFor,
+  type Contact,
+  type KadRequest,
+  type KadResponse,
+} from "./kad";
 
 /**
  * Model weights, passed directly between machines.
@@ -46,9 +54,11 @@ import { openPort, type Mapping } from "./port-mapping";
  *  - THE HASH DECIDES, NOT THE PEER. Nothing arriving here is trusted. A
  *    transfer is accepted only if it hashes to the model that was asked for, so
  *    a hostile peer can waste bandwidth and nothing else.
- *  - LOCAL NETWORK ONLY, FOR NOW. Discovery is a UDP announcement on the local
- *    segment. No DHT, no bootstrap servers, no internet exposure — that is the
- *    next phase, and it needs NAT traversal that does not exist yet.
+ *  - THE LOCAL NETWORK IS ONLY THE START. A machine is found four ways, in
+ *    order of how little each costs somebody else: a UDP announcement on the
+ *    local segment, a knock on the addresses we met before, the addresses a
+ *    user typed in, and — when none of those hold the model — a distributed
+ *    index that can name a machine on the other side of the world. See kad.ts.
  */
 
 /** What a peer says about itself, several times a minute. */
@@ -105,6 +115,10 @@ export class PeerService implements OnModuleDestroy {
   /** Set when the router agreed to let the outside in. */
   private mapping: Mapping | null = null;
   private mapTimer: NodeJS.Timeout | null = null;
+  /** The distributed index. Created once the identity exists, since it is the id. */
+  private kadNode: Kad | null = null;
+  private kadTimer: NodeJS.Timeout | null = null;
+  private kadJoined = false;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -162,6 +176,12 @@ export class PeerService implements OnModuleDestroy {
     this.serve();
     this.discover();
     void this.becomeReachable();
+    // Not immediately: there is nobody to ask until discovery has found at
+    // least one machine, and asking nobody teaches us nothing.
+    this.kadTimer = setTimeout(() => {
+      void this.joinNetwork();
+      this.kadTimer = setInterval(() => void this.joinNetwork(), 10 * 60_000);
+    }, 20_000);
   }
 
   /**
@@ -234,6 +254,10 @@ export class PeerService implements OnModuleDestroy {
       }
       if (req.url === "/peer/infer" && req.method === "POST") {
         void this.lendCompute(req, res);
+        return;
+      }
+      if (req.url === "/peer/kad" && req.method === "POST") {
+        void this.answerKad(req, res);
         return;
       }
       const m = /^\/peer\/blob\/([0-9a-f]{64})$/.exec(req.url ?? "");
@@ -476,6 +500,9 @@ export class PeerService implements OnModuleDestroy {
           : [];
         // It answered, so it is worth knocking on again after a restart.
         this.rememberNode(address, port);
+        // And it is a proven node, so the distributed index may route through
+        // it. Anything learned any other way is a candidate, never an entry.
+        this.kad()?.seen({ id: body.peerId, address, port });
         this.remember(address, port, body.peerId, has, {
           compute: body.compute === true,
           running:
@@ -689,10 +716,10 @@ export class PeerService implements OnModuleDestroy {
   //    network work across the internet today: tell a friend your address once
   //    and neither of you ever needs neurionproject.org to find the other.
   //
-  // A DHT would remove the last of the manual step, and it is the obvious next
-  // move — but it is a large dependency, and this already does the job it is
-  // for: if every server we run disappeared, two people who know each other's
-  // address still find each other.
+  // Both are about the neighbourhood you can already reach. Reaching FURTHER —
+  // a model held by somebody nobody here has ever met — is the distributed
+  // index in kad.ts, and these two are how it gets started: it needs one
+  // machine to ask, and this is how that machine is found.
 
   private seedsPath(dir: string): string {
     return join(dir, "peer-seeds.json");
@@ -1199,8 +1226,10 @@ export class PeerService implements OnModuleDestroy {
   // knock. It is a plain file, editable, and losing it costs nothing once the
   // machine has met anyone at all.
   //
-  // What this still is not: a DHT. eMule eventually got Kad and stopped needing
-  // any list at all, and that remains the end of this road.
+  // This list is now the way IN rather than the way things are found: once a
+  // machine has met anybody at all, the index in kad.ts takes over and reaches
+  // the rest of the network without it. Which is the order eMule ended up in
+  // too — a list to get started, Kad for everything after.
 
   private nodesPath(dir: string): string {
     return join(dir, "known-nodes.json");
@@ -1285,6 +1314,238 @@ export class PeerService implements OnModuleDestroy {
     }
   }
 
+  // --- the distributed index, which is where the last server goes ---------
+  //
+  // Everything above finds models on machines you already know about: the local
+  // segment, the peers you were introduced to, the addresses you kept from last
+  // time. That is a neighbourhood, and a neighbourhood only holds what its
+  // members happen to hold.
+  //
+  // The DHT is what turns a neighbourhood into a network. "Who has this model"
+  // becomes a question with an answer even when nobody you know has it, and the
+  // answer is assembled from a few hops through strangers rather than read out
+  // of anybody's database.
+  //
+  // It rides on the HTTP port that is already open rather than on UDP, which is
+  // where Kademlia normally lives. That is a deliberate trade. UDP would be
+  // lighter per hop, but it would need a second port opened on the router, a
+  // second hole in the firewall for the user to punch, and it would make every
+  // address already written down useless as a way in — because those addresses
+  // are all this port. A slightly heavier hop on a port that genuinely works
+  // beats an elegant one that half the world's routers drop.
+  //
+  // What crosses the wire is signed in both directions. A reply tells us which
+  // node answered, and we believe the signature rather than the body: without
+  // that, a machine could answer in a well-placed node's name and quietly take
+  // over the part of the index it wants to control.
+
+  private kad(): Kad | null {
+    if (this.kadNode) return this.kadNode;
+    const id = this.identity();
+    if (!id) return null;
+    this.kadNode = new Kad(
+      id.peerId,
+      { send: (to, req) => this.kadSend(to, req) },
+      // A node always answers honestly for what it actually has on disk, so a
+      // model is findable the moment it lands — without waiting for the next
+      // announcement round. Keys are the first half of a model's hash, so the
+      // match is by prefix.
+      {
+        holds: (key) =>
+          [...this.localHashes().keys()].some((h) => h.startsWith(key)),
+      },
+    );
+    return this.kadNode;
+  }
+
+  /** Strip the IPv4-in-IPv6 form Node hands back on dual-stack sockets. */
+  private static plainAddress(a: string | undefined | null): string | null {
+    if (!a) return null;
+    const clean = a.startsWith("::ffff:") ? a.slice(7) : a;
+    return clean || null;
+  }
+
+  /** One DHT request to one node. Null for anything that is not a clean answer. */
+  private async kadSend(
+    to: Contact,
+    req: KadRequest,
+  ): Promise<KadResponse | null> {
+    const wire = this.signed({
+      v: 1,
+      peerId: this.peerId,
+      port: this.sharePort(),
+      req,
+    });
+    if (!wire) return null;
+    try {
+      const res = await fetch(`http://${to.address}:${to.port}/peer/kad`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: wire,
+        // Short: a lookup is several of these in a row, and a node that is
+        // slow to answer is indistinguishable from one that is gone.
+        signal: AbortSignal.timeout(4000),
+      });
+      if (!res.ok) return null;
+      const text = await res.text();
+      if (text.length > 64_000) return null;
+      const opened = this.opened(text);
+      if (!opened) return null;
+      const answer = (opened.payload as { res?: unknown }).res as
+        | KadResponse
+        | undefined;
+      if (!answer || typeof answer.t !== "string") return null;
+      // The signature says who answered. Whatever the body claims about its own
+      // identity is not evidence of anything.
+      return { ...answer, id: opened.peerId };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Answer somebody else's DHT request. */
+  private async answerKad(
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> {
+    const finish = (code: number, body?: string): void => {
+      res.statusCode = code;
+      if (body) res.setHeader("content-type", "application/json");
+      res.end(body);
+    };
+    const kad = this.kad();
+    if (!kad) return finish(503);
+
+    // Bounded before a single byte is parsed: an unauthenticated endpoint that
+    // reads until the sender stops is a way to fill this machine's memory.
+    const chunks: Buffer[] = [];
+    let size = 0;
+    const body = await new Promise<string | null>((resolve) => {
+      req.on("data", (c: Buffer) => {
+        size += c.length;
+        if (size > 32_000) {
+          resolve(null);
+          req.destroy();
+          return;
+        }
+        chunks.push(c);
+      });
+      req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+      req.on("error", () => resolve(null));
+    });
+    if (!body) return finish(400);
+
+    const opened = this.opened(body);
+    if (!opened) return finish(403); // unsigned, forged, or in a stolen name
+    const payload = opened.payload as { req?: KadRequest; port?: unknown };
+    if (!payload.req || typeof payload.req.t !== "string") return finish(400);
+
+    const address = PeerService.plainAddress(req.socket.remoteAddress);
+    if (!address) return finish(400);
+    const port = Number.isInteger(payload.port)
+      ? (payload.port as number)
+      : this.sharePort();
+
+    // The address is the one we observed. The caller does not get to choose it,
+    // which is what stops the index from being aimed at somebody else.
+    const answer = kad.handle(payload.req, { id: opened.peerId, address, port });
+    const signedAnswer = this.signed({ v: 1, peerId: this.peerId, res: answer });
+    if (!signedAnswer) return finish(500);
+    finish(200, signedAnswer);
+  }
+
+  /**
+   * Take a place in the index and say what this machine holds.
+   *
+   * The self-lookup is the standard way in: ask the network about your own id
+   * and the answers fill your routing table with the neighbours you will need.
+   * It runs only once somebody is known — there is nothing to ask otherwise.
+   */
+  private async joinNetwork(): Promise<void> {
+    const kad = this.kad();
+    if (!kad) return;
+    // Every peer discovered by any other means is a way into the index.
+    for (const p of this.known()) {
+      if (isId(p.peerId)) kad.seen({ id: p.peerId, address: p.address, port: p.port });
+    }
+    if (kad.size() === 0) return;
+
+    const before = kad.size();
+    await kad.lookup(kad.selfId);
+    if (!this.kadJoined && kad.size() > 0) {
+      this.kadJoined = true;
+      this.logger.log(
+        `joined the distributed index — ${kad.size()} nodes reachable (from ${before})`,
+      );
+    }
+
+    // Publishing is sharing. If the user has switched sharing off, this machine
+    // stays a reader of the index and never a line in it.
+    if (!this.enabled()) return;
+    const keys = [...this.localHashes().keys()]
+      .slice(0, 20)
+      .map((h) => keyFor(h))
+      .filter((k): k is string => k !== null);
+    let placed = 0;
+    for (const key of keys) placed += (await kad.announce(key)) > 0 ? 1 : 0;
+    if (placed > 0) {
+      this.logger.log(`announced ${placed} of ${keys.length} models to the index`);
+    }
+  }
+
+  /**
+   * Find somewhere to fetch a model from, anywhere in the network.
+   *
+   * Neighbours first, because a machine on the same network is both faster and
+   * one less stranger involved. Only then the index — and whatever it names is
+   * checked by asking that machine directly before the answer is believed.
+   */
+  async locate(sha256: string): Promise<string | null> {
+    const near = this.sourceFor(sha256);
+    if (near) return near;
+    const kad = this.kad();
+    const key = keyFor(sha256);
+    if (!kad || !key) return null;
+    let providers;
+    try {
+      providers = await kad.findProviders(key, 4);
+    } catch {
+      return null;
+    }
+    for (const p of providers) {
+      try {
+        const url = `http://${p.address}:${p.port}/peer/blob/${sha256}`;
+        const r = await fetch(url, {
+          method: "HEAD",
+          signal: AbortSignal.timeout(3000),
+        });
+        if (!r.ok) continue;
+        this.logger.log(
+          `the index found ${sha256.slice(0, 12)} on ${p.address}, a machine this one had not met`,
+        );
+        // Now that it has answered for itself it is a real peer, worth
+        // remembering and worth routing through.
+        this.remember(p.address, p.port, p.id, [sha256]);
+        this.rememberNode(p.address, p.port);
+        kad.seen({ id: p.id, address: p.address, port: p.port });
+        return url;
+      } catch {
+        /* named by the index, not actually reachable — try the next one */
+      }
+    }
+    return null;
+  }
+
+  /** What this machine is doing in the index, for the interface to show. */
+  indexStatus(): { nodes: number; records: number; joined: boolean } {
+    const kad = this.kadNode;
+    return {
+      nodes: kad?.size() ?? 0,
+      records: kad?.stored() ?? 0,
+      joined: this.kadJoined,
+    };
+  }
+
   /** This machine's name on the network — the fingerprint of its public key. */
   myPeerId(): string {
     return this.peerId;
@@ -1329,6 +1590,12 @@ export class PeerService implements OnModuleDestroy {
     if (this.timer) clearInterval(this.timer);
     if (this.mapTimer) clearInterval(this.mapTimer);
     if (this.sweepTimer) clearInterval(this.sweepTimer);
+    // One handle, used first as a delay and then as the repeat; clearing it
+    // either way is correct because both are the same kind of timer.
+    if (this.kadTimer) {
+      clearTimeout(this.kadTimer);
+      clearInterval(this.kadTimer);
+    }
     try {
       this.sock?.close();
     } catch {
