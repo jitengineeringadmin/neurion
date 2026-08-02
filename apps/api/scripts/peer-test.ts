@@ -604,6 +604,55 @@ async function main(): Promise<void> {
     );
   });
 
+  await check("a stranger finds a machine willing to RUN a model", async () => {
+    // Lending is a different offer from holding, filed under a different key.
+    holder.setComputeEnabled(true);
+    holder.setRunningModel(model.sha256!);
+    await (holder as unknown as Innards).joinNetwork();
+
+    const lenders = await (
+      newcomer as unknown as {
+        findLenders(sha: string, want: number): Promise<Array<{ peerId: string }>>;
+      }
+    ).findLenders(model.sha256!, 2);
+    assert(lenders.length >= 1, "nobody was found willing to run it");
+    assert(
+      lenders.some((l) => l.peerId === holder.myPeerId()),
+      "the wrong machine came back as a lender",
+    );
+  });
+
+  await check("an offer that has stopped being true is not used", async () => {
+    // The record stays in the index for half an hour, but the offer died the
+    // moment another model was loaded. The index is a claim; the machine is
+    // the authority, and it is asked.
+    const other = createHash("sha256").update("un altro modello").digest("hex");
+    holder.setRunningModel(other);
+    const lenders = await (
+      newcomer as unknown as {
+        findLenders(sha: string, want: number): Promise<Array<{ peerId: string }>>;
+      }
+    ).findLenders(model.sha256!, 2);
+    assert(
+      lenders.length === 0,
+      "a stale offer was believed without asking the machine itself",
+    );
+
+    // Same again for the switch rather than the model.
+    holder.setRunningModel(model.sha256!);
+    holder.setComputeEnabled(false);
+    const none = await (
+      newcomer as unknown as {
+        findLenders(sha: string, want: number): Promise<Array<{ peerId: string }>>;
+      }
+    ).findLenders(model.sha256!, 2);
+    assert(
+      none.length === 0,
+      "a machine that had switched lending off was still offered up",
+    );
+    holder.setComputeEnabled(true);
+  });
+
   await check("an unsigned request to the index is refused", async () => {
     const res = await fetch("http://127.0.0.1:48512/peer/kad", {
       method: "POST",

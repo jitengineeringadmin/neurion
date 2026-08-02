@@ -186,7 +186,11 @@ export class EngineController {
   @Post("borrow")
   async borrow(@Body() dto: BorrowDto) {
     const out = await this.peers.borrow(dto.sha256, dto.prompt);
-    if (!out) return { ok: false, reason: "nobody nearby can run that model" };
+    if (!out) {
+      // "Nearby" stopped being the whole story: the index is asked too, so a
+      // no here means nobody reachable ANYWHERE would run it.
+      return { ok: false, reason: "nobody reachable will run that model" };
+    }
     return { ok: true, ...out };
   }
 

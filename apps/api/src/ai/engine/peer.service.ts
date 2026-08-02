@@ -29,6 +29,7 @@ import { CATALOG } from "./llama-catalog";
 import { openPort, type Mapping } from "./port-mapping";
 import {
   Kad,
+  computeKeyFor,
   isId,
   keyFor,
   type Contact,
@@ -1255,7 +1256,18 @@ export class PeerService implements OnModuleDestroy {
     askedPeers: string[];
     similarity?: number;
   } | null> {
-    const candidates = this.computeCandidates(sha256).slice(0, 2);
+    // Neighbours first: a machine on the same network is faster and involves
+    // one fewer stranger. Then the index, which can reach somebody this
+    // machine has never met — and two peers are wanted, not one, because a
+    // single answer cannot be cross-checked.
+    let candidates = this.computeCandidates(sha256).slice(0, 2);
+    if (candidates.length < 2) {
+      const far = await this.findLenders(sha256, 2 - candidates.length);
+      candidates = [
+        ...candidates,
+        ...far.filter((f) => !candidates.some((c) => c.peerId === f.peerId)),
+      ].slice(0, 2);
+    }
     if (candidates.length === 0) return null;
 
     const answers = (
@@ -1433,8 +1445,17 @@ export class PeerService implements OnModuleDestroy {
       // announcement round. Keys are the first half of a model's hash, so the
       // match is by prefix.
       {
-        holds: (key) =>
-          [...this.localHashes().keys()].some((h) => h.startsWith(key)),
+        holds: (key) => {
+          if ([...this.localHashes().keys()].some((h) => h.startsWith(key))) {
+            return true;
+          }
+          // And for the processor, but only while that offer is actually
+          // true right now: lending switched on, and this exact model loaded.
+          // Saying yes to anything else would send somebody a request this
+          // machine is going to refuse.
+          if (!this.computeEnabled() || !this.runningModel) return false;
+          return computeKeyFor(this.runningModel) === key;
+        },
       },
     );
     return this.kadNode;
@@ -1610,6 +1631,21 @@ export class PeerService implements OnModuleDestroy {
     // half hour a record lives, and half the traffic of announcing every time.
     // Each announcement is a lookup of its own, and somebody holding a dozen
     // models should not be a dozen walks across the network every ten minutes.
+    // Lending is announced EVERY round, unlike weights. A file on a disk is
+    // still there in ten minutes; an offer to run something is only as true as
+    // the model currently loaded and the switch currently set, so a stale
+    // record here costs somebody a refused request rather than a slow one.
+    if (this.computeEnabled() && this.runningModel) {
+      const ck = computeKeyFor(this.runningModel);
+      if (ck) {
+        const took = await kad.announce(ck);
+        if (took > 0) {
+          this.logger.log(
+            `offered this machine's processor for ${this.runningModel.slice(0, 12)} to ${took} nodes`,
+          );
+        }
+      }
+    }
     this.kadRounds += 1;
     if (this.kadRounds % 2 === 0) return;
     const keys = [...this.localHashes().keys()]
@@ -1672,6 +1708,77 @@ export class PeerService implements OnModuleDestroy {
       }
     }
     return null;
+  }
+
+  /**
+   * Find machines anywhere that will run this model, and check that they will.
+   *
+   * The index record is a CLAIM, and a stale or hostile one is cheap to make:
+   * an offer to lend a processor stops being true the moment somebody loads a
+   * different model or flips the switch off. So nothing here is taken on the
+   * index's word — each candidate is asked directly, and only a machine that
+   * says, right now, that it lends and has this exact model loaded is used.
+   *
+   * That check is also what makes the reciprocity ledger possible for
+   * strangers: it returns a verified peer id, and you cannot remember who
+   * helped you if you never established who they were.
+   */
+  private async findLenders(sha256: string, want: number): Promise<KnownPeer[]> {
+    const kad = this.kad();
+    const key = computeKeyFor(sha256);
+    if (!kad || !key || want <= 0) return [];
+    let claimed;
+    try {
+      claimed = await Promise.race([
+        kad.findProviders(key, Math.max(want * 2, 4)),
+        new Promise<[]>((resolve) => setTimeout(() => resolve([]), 12_000)),
+      ]);
+    } catch {
+      return [];
+    }
+    const out: KnownPeer[] = [];
+    for (const c of claimed) {
+      if (out.length >= want) break;
+      if (c.id === this.peerId) continue;
+      try {
+        const res = await fetch(`http://${c.address}:${c.port}/peer/have`, {
+          signal: AbortSignal.timeout(4000),
+        });
+        if (!res.ok) continue;
+        const body = (await res.json()) as {
+          v?: number;
+          peerId?: string;
+          compute?: unknown;
+          running?: unknown;
+          has?: unknown;
+        };
+        // Three things have to hold, and the index proves none of them: it is
+        // who it was said to be, it lends, and it has THIS model loaded.
+        if (body.v !== 1 || body.peerId !== c.id) continue;
+        if (body.compute !== true || body.running !== sha256) continue;
+        const has = Array.isArray(body.has)
+          ? body.has.filter(
+              (h): h is string =>
+                typeof h === "string" && /^[0-9a-f]{64}$/.test(h),
+            )
+          : [];
+        this.remember(c.address, c.port, c.id, has, {
+          compute: true,
+          running: sha256,
+        });
+        this.rememberNode(c.address, c.port);
+        const known = this.peers.get(c.id);
+        if (known) out.push(known);
+      } catch {
+        /* named by the index, not reachable — the next one, then */
+      }
+    }
+    if (out.length > 0) {
+      this.logger.log(
+        `the index found ${out.length} machine(s) willing to run ${sha256.slice(0, 12)}`,
+      );
+    }
+    return out;
   }
 
   /** What this machine is doing in the index, for the interface to show. */

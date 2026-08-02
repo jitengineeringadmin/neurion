@@ -53,6 +53,8 @@
  * what lets sixty of these run in one test process and answer each other.
  */
 
+import { createHash } from "node:crypto";
+
 /** A node in the network: who, where. */
 export interface Contact {
   id: string;
@@ -121,6 +123,28 @@ export function isId(x: unknown): x is string {
 export function keyFor(sha256: string): string | null {
   const k = sha256.trim().toLowerCase().slice(0, ID_HEX);
   return isId(k) ? k : null;
+}
+
+/**
+ * The key under which "I will RUN this model for you" is filed.
+ *
+ * Deliberately a different place in the space from the weights of the same
+ * model. Holding a file and lending a processor are different offers with
+ * different costs, and somebody looking for one must not be handed the other:
+ * a machine that will happily pass you 900 MB may have no intention of running
+ * your prompt, and answering as if it had would waste both their time.
+ *
+ * Hashed rather than perturbed by hand so the two keys land nowhere near each
+ * other, which means the two kinds of record are kept by different nodes and a
+ * busy key does not drag its twin along with it.
+ */
+export function computeKeyFor(sha256: string): string | null {
+  const base = keyFor(sha256);
+  if (!base) return null;
+  return createHash("sha256")
+    .update(`compute:${sha256.trim().toLowerCase()}`)
+    .digest("hex")
+    .slice(0, ID_HEX);
 }
 
 function bytes(id: string): Uint8Array {

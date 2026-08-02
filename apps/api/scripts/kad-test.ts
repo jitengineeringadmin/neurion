@@ -20,6 +20,8 @@ import {
   Kad,
   K,
   isId,
+  keyFor,
+  computeKeyFor,
   distance,
   type Contact,
   type KadRequest,
@@ -144,6 +146,23 @@ async function main(): Promise<void> {
     assert(!isId(idOf("x").toUpperCase()), "ids are lower-case hex");
     assert(!isId(idOf("x") + "0"), "over-long strings are not ids");
     assert(!isId(null), "null is not an id");
+  });
+
+  await check("lending and holding are filed in different places", () => {
+    const sha = createHash("sha256").update("un modello").digest("hex");
+    const weights = keyFor(sha);
+    const processor = computeKeyFor(sha);
+    assert(weights && processor, "both keys should exist for a real hash");
+    assert(isId(weights!) && isId(processor!), "both must live in the id space");
+    assert(
+      weights !== processor,
+      "holding a file and lending a processor must not share a key",
+    );
+    // Far apart, not adjacent: different nodes keep them, so a popular model's
+    // weight record does not drag its compute record along with it.
+    const d = distance(weights!, processor!);
+    assert(d[0] !== 0 || d[1] !== 0, "the two keys landed in the same corner");
+    assert(computeKeyFor("not a hash") === null, "junk should not make a key");
   });
 
   // --- the routing table, which is where trust is decided -----------------

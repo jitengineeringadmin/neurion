@@ -252,7 +252,7 @@ avrebbe bisogno di nessuna.
 
 ---
 
-### Fase 5 — L'indice distribuito *(il Kad di Neurion)* — **FATTA (1.9.0)**
+### Fase 5 — L'indice distribuito *(il Kad di Neurion)* — **FATTA (1.9.0 / 1.9.1)**
 
 Le fasi 1-4 danno un **vicinato**: si trova quello che hanno le macchine che
 già si conoscono. Un vicinato però contiene solo quello che i suoi membri hanno,
@@ -294,6 +294,28 @@ indirizzo e quel fatto a chiunque chieda quella chiave. È inerente — BitTorre
 funziona così — ed è il motivo per cui l'annuncio è legato all'interruttore
 della condivisione e non riguarda mai i modelli che l'utente ha indicato dal
 proprio disco.
+
+**Anche il processore è nell'indice (1.9.1).** Le fasi precedenti sapevano
+prestare la macchina, ma solo a chi già si conosceva: `computeCandidates`
+guardava i pari in memoria, e l'indice annunciava *chi ha i pesi*, non *chi
+presta il processore*. Ora sono due chiavi distinte — tenere un file e prestare
+una CPU sono offerte diverse, con costi diversi, e chi cerca l'una non deve
+ricevere l'altra — e chiedere potenza a uno sconosciuto è possibile.
+
+Con una regola che vale la pena scrivere: **la scheda nell'indice è una
+pretesa, non una prova.** Un'offerta di prestare il processore smette di essere
+vera nel momento in cui si carica un altro modello o si spegne l'interruttore,
+ma la scheda resta lì per mezz'ora. Quindi ogni candidato viene interrogato di
+persona, e si usa solo chi conferma *adesso* di prestare e di avere caricato
+*quel* modello. Per gli annunci dei pesi basta molto meno: un file sul disco fra
+dieci minuti è ancora lì.
+
+**Quello che resta impossibile, e non per pigrizia.** Spezzare *un* calcolo su
+più macchine — il vero "distribuire potenza" — non lo fa nessun protocollo: le
+attivazioni di ogni strato dovrebbero attraversare la rete a ogni token, e su
+una linea di casa sono secondi per parola. Quello lo risolve il cavo, non il
+codice. Qui si distribuiscono **i pesi** e **le richieste**: un prompt intero
+gira su una macchina sola, ma non deve più essere la tua né quella di un'azienda.
 
 **Cosa resta.** Una macchina nuova ha ancora bisogno di **un** primo contatto:
 un indirizzo qualsiasi che risponda. Anche eMule, per entrare in Kad la prima
