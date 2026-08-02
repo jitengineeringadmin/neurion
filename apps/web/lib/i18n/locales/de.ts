@@ -669,5 +669,6 @@ const dict: Record<string, string> = {
   "models.sharingCount": "du teilst {n} Modelle mit diesem Netzwerk",
   "models.peersFound": "{n} Gegenstellen in der Nähe, {m} Modelle im Angebot",
   "models.noPeers": "noch kein weiteres Neurion in diesem Netzwerk",
+  "models.servedCount": "du hast {n} Modelle an andere weitergegeben",
 };
 export default dict;

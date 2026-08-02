@@ -131,6 +131,7 @@ export default function ModelsPage() {
     enabled: boolean;
     sharing: number;
     offeredByPeers: number;
+    served: number;
     peers: Array<{ address: string; models: number }>;
   } | null>(null);
   const [localFound, setLocalFound] = useState<
@@ -200,6 +201,7 @@ export default function ModelsPage() {
         enabled: boolean;
         sharing: number;
         offeredByPeers: number;
+        served: number;
         peers: Array<{ address: string; models: number }>;
       }>("/ai/engine/peers").catch(() => null),
     );
@@ -753,6 +755,19 @@ export default function ModelsPage() {
                         .replace("{m}", String(peerInfo.offeredByPeers))
                     : t("models.noPeers")}
                 </span>
+                {/* The only thing a volunteer gets back, and what has to stand
+                    where a payment would have been. */}
+                {peerInfo.served > 0 && (
+                  <>
+                    <span>·</span>
+                    <span style={{ color: theme.accent }}>
+                      {t("models.servedCount").replace(
+                        "{n}",
+                        String(peerInfo.served),
+                      )}
+                    </span>
+                  </>
+                )}
               </div>
             )}
             {bundledErr && (

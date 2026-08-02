@@ -1,6 +1,6 @@
 {
   "name": "neurion",
-  "version": "1.8.23",
+  "version": "1.8.24",
   "private": true,
   "packageManager": "pnpm@8.12.1",
   "engines": {

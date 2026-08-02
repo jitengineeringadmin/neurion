@@ -91,6 +91,8 @@ export class EngineController {
       sharing: s.sharing,
       /** Distinct models the neighbours are offering, ours excluded. */
       offeredByPeers: s.offeredByPeers,
+      /** How many times this machine has handed a model to somebody else. */
+      served: s.served,
       peers: this.peers.known().map((p) => ({
         address: p.address,
         models: p.has.length,

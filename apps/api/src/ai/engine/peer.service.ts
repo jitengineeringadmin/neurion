@@ -4,6 +4,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer, Server } from "node:http";
 import { join } from "node:path";
 import { createSocket, Socket } from "node:dgram";
+import { networkInterfaces } from "node:os";
 import { randomUUID } from "node:crypto";
 import { CATALOG } from "./llama-catalog";
 
@@ -62,6 +63,10 @@ export class PeerService implements OnModuleDestroy {
   private http: Server | null = null;
   private timer: NodeJS.Timeout | null = null;
   private started = false;
+  private sweeping = false;
+  /** How many times this machine has handed a model to somebody else. */
+  private served = 0;
+  private sweepTimer: NodeJS.Timeout | null = null;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -124,6 +129,21 @@ export class PeerService implements OnModuleDestroy {
   private serve(): void {
     const port = this.sharePort();
     const server = createServer((req, res) => {
+      // What this machine has. Needed because multicast does not survive a lot
+      // of consumer Wi-Fi — measured on a real network: the file server was
+      // reachable between two machines while not a single announcement got
+      // through — so peers are also found by asking directly.
+      if (req.url === "/peer/have") {
+        res.setHeader("content-type", "application/json");
+        res.end(
+          JSON.stringify({
+            v: 1,
+            peerId: this.peerId,
+            has: [...this.localHashes().keys()],
+          }),
+        );
+        return;
+      }
       const m = /^\/peer\/blob\/([0-9a-f]{64})$/.exec(req.url ?? "");
       const wanted = m?.[1];
       if (!wanted) {
@@ -143,8 +163,24 @@ export class PeerService implements OnModuleDestroy {
         res.end();
         return;
       }
+      // Logged on purpose. Seeing that you handed a model to someone is the
+      // only thing a volunteer gets back, and it is what has to stand where a
+      // payment would have been. It is also the only way to prove, afterwards,
+      // that a transfer went machine-to-machine and never touched the internet.
+      const who = req.socket.remoteAddress ?? "somebody";
+      const name = hit.path.split(/[\\/]/).pop();
+      const startedAt = Date.now();
+      this.served += 1;
+      this.logger.log(`sending ${name} to ${who}`);
       createReadStream(hit.path)
         .on("error", () => res.destroy())
+        .on("end", () => {
+          const secs = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+          const mbps = Math.round(hit.size / secs / 125_000);
+          this.logger.log(
+            `sent ${name} to ${who} — ${Math.round(hit.size / 1e6)} MB in ${secs}s (~${mbps} Mbit/s)`,
+          );
+        })
         .pipe(res);
     });
     server.on("error", (e) => {
@@ -181,6 +217,13 @@ export class PeerService implements OnModuleDestroy {
       }
       this.announce();
       this.timer = setInterval(() => this.announce(), ANNOUNCE_EVERY_MS);
+      // Multicast may simply never arrive on this network. Look for neighbours
+      // directly too — immediately, then every half minute while nobody has
+      // answered. The sweep stops costing anything as soon as a peer is found.
+      void this.sweep();
+      this.sweepTimer = setInterval(() => {
+        if (this.known().length === 0) void this.sweep();
+      }, 30_000);
     });
     this.sock = sock;
   }
@@ -235,6 +278,132 @@ export class PeerService implements OnModuleDestroy {
     }
   }
 
+
+  /**
+   * Ask every address on the local /24 whether it is running Neurion.
+   *
+   * Multicast is the polite way to do this and it is what runs first, but it is
+   * not dependable: measured on a real home Wi-Fi, two machines could reach each
+   * other's file server perfectly while not a single announcement got through —
+   * consumer access points routinely drop or filter multicast between wireless
+   * clients. Discovery that only works on a cooperative network is discovery
+   * that fails exactly when someone first tries it.
+   *
+   * So: one cheap HTTP request per address, short timeout, all in parallel. On a
+   * /24 that is 254 requests that either connect immediately or fail
+   * immediately. Only runs while there is nobody around — once a peer answers,
+   * multicast keeps the picture fresh and this stays quiet.
+   */
+  private async sweep(): Promise<void> {
+    if (this.sweeping) return;
+    this.sweeping = true;
+    try {
+      const port = this.sharePort();
+      const bases = this.localSubnets();
+      for (const base of bases) {
+        const probes: Array<Promise<void>> = [];
+        for (let i = 1; i <= 254; i++) {
+          const address = `${base}.${i}`;
+          probes.push(this.ask(address, port));
+        }
+        await Promise.all(probes);
+      }
+    } finally {
+      this.sweeping = false;
+    }
+  }
+
+  /** IPv4 /24 prefixes this machine sits on, loopback and link-local excluded. */
+  private localSubnets(): string[] {
+    const out = new Set<string>();
+    for (const list of Object.values(networkInterfaces())) {
+      for (const ni of list ?? []) {
+        if (ni.family !== "IPv4" || ni.internal) continue;
+        // Only /24s. Sweeping a /16 would be 65k requests for no good reason,
+        // and home networks are /24 essentially always.
+        if (ni.netmask !== "255.255.255.0") continue;
+        out.add(ni.address.split(".").slice(0, 3).join("."));
+      }
+    }
+    return [...out];
+  }
+
+  /** One probe. A peer answers with what it has; anything else is ignored. */
+  private async ask(address: string, port: number): Promise<void> {
+    try {
+      const res = await fetch(`http://${address}:${port}/peer/have`, {
+        signal: AbortSignal.timeout(1200),
+      });
+      if (res.ok) {
+        const body = (await res.json()) as {
+          v?: number;
+          peerId?: string;
+          has?: unknown;
+        };
+        if (body?.v !== 1 || typeof body.peerId !== "string") return;
+        if (body.peerId === this.peerId) return; // ourselves, another interface
+        const has = Array.isArray(body.has)
+          ? body.has.filter(
+              (h): h is string =>
+                typeof h === "string" && /^[0-9a-f]{64}$/.test(h),
+            )
+          : [];
+        this.remember(address, port, body.peerId, has);
+        return;
+      }
+      // An older Neurion: it serves blobs but cannot list them. It still
+      // answered on this port, which is enough to know somebody is there, so
+      // ask about each catalogue model instead. Fourteen cheap HEAD requests,
+      // and only ever to a machine that has already replied.
+      if (res.status === 404) await this.inventoryTheHardWay(address, port);
+    } catch {
+      /* nobody there, or not us — the normal case for 253 of 254 addresses */
+    }
+  }
+
+  private remember(
+    address: string,
+    port: number,
+    peerId: string,
+    has: string[],
+  ): void {
+    const known = this.peers.get(peerId);
+    this.peers.set(peerId, { peerId, address, port, has, lastSeen: Date.now() });
+    if (!known) {
+      this.logger.log(`found a peer at ${address} offering ${has.length} models`);
+    }
+  }
+
+  /**
+   * Build a peer's inventory by asking about each model in turn.
+   *
+   * For versions that predate the inventory endpoint. Backwards compatibility
+   * matters more here than almost anywhere else in the app: a sharing network
+   * where a new release cannot see the release before it is a network that
+   * starts empty every time it improves.
+   */
+  private async inventoryTheHardWay(
+    address: string,
+    port: number,
+  ): Promise<void> {
+    const has: string[] = [];
+    for (const m of CATALOG) {
+      if (!m.sha256) continue;
+      try {
+        const r = await fetch(`http://${address}:${port}/peer/blob/${m.sha256}`, {
+          method: "HEAD",
+          signal: AbortSignal.timeout(1500),
+        });
+        if (r.ok) has.push(m.sha256);
+      } catch {
+        return; // it went away mid-scan; it will be found on the next pass
+      }
+    }
+    // No peerId to key on, so the address is the identity for these. Prefixed
+    // to make it obvious in logs that this one was found the slow way.
+    this.remember(address, port, `addr:${address}`, has);
+  }
+
   /** Peers seen recently, newest first. */
   known(): KnownPeer[] {
     this.forget();
@@ -252,6 +421,7 @@ export class PeerService implements OnModuleDestroy {
     sharing: number;
     peers: number;
     offeredByPeers: number;
+    served: number;
   } {
     const mine = this.localHashes();
     const theirs = new Set<string>();
@@ -261,11 +431,13 @@ export class PeerService implements OnModuleDestroy {
       sharing: mine.size,
       peers: this.peers.size,
       offeredByPeers: theirs.size,
+      served: this.served,
     };
   }
 
   onModuleDestroy(): void {
     if (this.timer) clearInterval(this.timer);
+    if (this.sweepTimer) clearInterval(this.sweepTimer);
     try {
       this.sock?.close();
     } catch {
