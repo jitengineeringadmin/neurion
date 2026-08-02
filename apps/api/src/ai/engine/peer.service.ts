@@ -119,6 +119,7 @@ export class PeerService implements OnModuleDestroy {
   private kadNode: Kad | null = null;
   private kadTimer: NodeJS.Timeout | null = null;
   private kadJoined = false;
+  private kadRounds = 0;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -1559,6 +1560,12 @@ export class PeerService implements OnModuleDestroy {
     // Publishing is sharing. If the user has switched sharing off, this machine
     // stays a reader of the index and never a line in it.
     if (!this.enabled()) return;
+    // Every other round, so roughly twenty minutes — comfortably inside the
+    // half hour a record lives, and half the traffic of announcing every time.
+    // Each announcement is a lookup of its own, and somebody holding a dozen
+    // models should not be a dozen walks across the network every ten minutes.
+    this.kadRounds += 1;
+    if (this.kadRounds % 2 === 0) return;
     const keys = [...this.localHashes().keys()]
       .slice(0, 20)
       .map((h) => keyFor(h))
