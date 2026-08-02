@@ -62,10 +62,20 @@ async function main(): Promise<void> {
   writeFileSync(join(seederDir, "models", model.file), body);
 
   const seeder = new PeerService(
-    cfg({ NEURION_TEXT_DIR: seederDir, NEURION_PEER_PORT: "48501" }),
+    cfg({
+      NEURION_TEXT_DIR: seederDir,
+      NEURION_PEER_PORT: "48501",
+      // Isolated from whatever is really running on this machine: without
+      // this the test discovers the live app and asserts against it.
+      NEURION_PEER_SWEEP: "false",
+    }),
   );
   const leecher = new PeerService(
-    cfg({ NEURION_TEXT_DIR: mkdtempSync(join(tmpdir(), "neurion-leecher-")), NEURION_PEER_PORT: "48502" }),
+    cfg({
+      NEURION_TEXT_DIR: mkdtempSync(join(tmpdir(), "neurion-leecher-")),
+      NEURION_PEER_PORT: "48502",
+      NEURION_PEER_SWEEP: "false",
+    }),
   );
 
   await check("sharing is on unless switched off", () => {
@@ -309,6 +319,7 @@ async function main(): Promise<void> {
       NEURION_TEXT_DIR: lenderDir,
       NEURION_PEER_PORT: "48503",
       NEURION_PEER_COMPUTE: "true",
+      NEURION_PEER_SWEEP: "false",
     }),
   );
   lender.start();

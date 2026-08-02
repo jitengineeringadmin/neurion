@@ -153,7 +153,7 @@ stata fatta perché è una dipendenza grossa e quanto sopra già assolve il comp
 per cui esiste la fase. E resta il NAT: due macchine dietro router diversi non si
 raggiungono senza attraversamento — è la fase 3.
 
-### Fase 3 — Il lavoro condiviso, a reciprocità — **AVVIATA (1.8.26)**
+### Fase 3 — Il lavoro condiviso, a reciprocità — **FATTA (1.8.27)**
 
 Qui vivono i problemi veri, ed è giusto che sia l'ultima:
 
@@ -183,9 +183,42 @@ per chi possiede la macchina:
 - **il prompt esce dalla macchina.** Non succede mai in automatico: si va da un
   pari solo perché l'utente ha scelto un modello che solo lui può eseguire.
 
-**Ancora aperto in questa fase:** l'attraversamento dei NAT (oggi funziona fra
-macchine che si raggiungono già), la verifica per ridondanza, e la reciprocità
-vera — oggi si contano i favori fatti, non si usano ancora per dare precedenza.
+**Completata in 1.8.27 con gli altri tre pezzi:**
+
+**Reciprocità.** Un registro per pari di favori fatti e ricevuti, tenuto sul nome
+stabile della fase 2 — senza un nome che non si può cambiare a piacimento, non
+avrebbe alcun valore. Chi ci ha aiutato passa avanti: quando la macchina è
+occupata riceve comunque un rifiuto, ma con l'indicazione di ritornare fra 2
+secondi invece che fra 30. E quando siamo noi a chiedere, interroghiamo per primo
+il pari verso cui siamo **meno** in debito, così il carico gira invece di pesare
+sempre sulla stessa macchina generosa. Uno sconosciuto viene servito lo stesso,
+solo dopo chi ha già dato: una rete che respinge i nuovi arrivati non ne avrà mai.
+
+**Verifica per ridondanza.** Lo stesso compito a due pari e le risposte
+confrontate, come Folding@home. Con un limite dichiarato nel codice invece che
+nascosto: i pesi si verificano in modo assoluto (l'hash o torna o no), una
+**risposta** no. Lo stesso modello su due macchine diverse non produce testo
+identico — CPU diverse, build diverse, virgola mobile — quindi il confronto è
+sulla sovrapposizione delle parole. **Coglie** un pari rotto, un modello
+sostituito di nascosto, uno che risponde con testo preconfezionato. **Non coglie**
+due pari che si mettono d'accordo, né una manipolazione sottile. Perciò la
+risposta porta con sé quanto è stata controllata: «due pari concordi» e «un solo
+pari, nessun riscontro» sono cose diverse e vengono dette diverse.
+
+**Attraversare i router.** Neurion chiede al router di aprire la porta —
+NAT-PMP/PCP, e UPnP come ripiego — implementati qui invece di aggiungere una
+dipendenza. Scelta perché è l'unica strada che **non reintroduce un centro**: il
+hole punching richiede un server di incontro di cui entrambi si fidino, e un
+relay richiede qualcuno che trasporti il traffico. Chiedere al proprio router
+non coinvolge nessuno: l'unica parte in causa è una scatola in casa tua. Quando
+il router non collabora — capita spesso, e col CGNAT non è proprio possibile —
+non è un errore: la rete continua a funzionare sul segmento locale e con i pari
+già raggiungibili.
+
+**Cosa resta fuori, dichiarato:** con il CGNAT dell'operatore non c'è apertura
+possibile dall'interno, e lì servirebbe un relay — cioè un centro. E la scansione
+della sottorete si può spegnere (`NEURION_PEER_SWEEP=false`) per chi sta su una
+rete aziendale e non vuole che la propria macchina la sondi.
 
 ### Fase 4 — Il sito diventa un pari fra i pari
 
@@ -258,7 +291,7 @@ Una sola domanda, da rifarsi a ogni fase:
   all'altra sulla stessa rete anche a server spenti**. Il resto della rete no.
 - Dopo la fase 1: i modelli continuano a circolare fra le persone.
 - Dopo la fase 2: **i pari continuano a trovarsi** — per indirizzo diretto e passandosi chi conoscono, con identità che nessuno rilascia.
-- Dopo la fase 3: il lavoro continua a essere condiviso.
+- Dopo la fase 3: **il lavoro continua a essere condiviso** — a reciprocità, verificato per ridondanza, e attraverso i router senza intermediari.
 - Dopo la fase 4: non cambia niente per nessuno.
 
 Quando la risposta è "tutto", lo scopo è raggiunto.

@@ -22,6 +22,17 @@ class ComputeDto {
   enabled!: boolean;
 }
 
+class BorrowDto {
+  /** The model to run — identified by hash, not by name. */
+  @IsString()
+  @MaxLength(64)
+  sha256!: string;
+
+  @IsString()
+  @MaxLength(20_000)
+  prompt!: string;
+}
+
 class SeedDto {
   /** A peer address: host, or host:port. */
   @IsString()
@@ -108,6 +119,10 @@ export class EngineController {
       /** Whether this machine runs prompts for others, and how many so far. */
       compute: s.compute,
       computed: s.computed,
+      /** Favours done and received, the thing that stands where money was. */
+      reciprocity: this.peers.reciprocity(),
+      /** Give this to somebody off your network and they can reach you. */
+      publicAddress: this.peers.publicAddress(),
       /** This machine's own name on the network: its public key fingerprint. */
       me: this.peers.myPeerId(),
       seeds: this.peers.seeds(),
@@ -135,6 +150,21 @@ export class EngineController {
   @Post("compute")
   setCompute(@Body() dto: ComputeDto) {
     return { compute: this.peers.setComputeEnabled(dto.enabled) };
+  }
+
+  /**
+   * Have a peer run something this machine cannot.
+   *
+   * Never automatic: the prompt leaves this computer, so it happens only
+   * because somebody asked for it. The reply carries how far it was checked —
+   * two peers that agreed is not the same as one peer nobody could corroborate,
+   * and the difference is stated rather than smoothed over.
+   */
+  @Post("borrow")
+  async borrow(@Body() dto: BorrowDto) {
+    const out = await this.peers.borrow(dto.sha256, dto.prompt);
+    if (!out) return { ok: false, reason: "nobody nearby can run that model" };
+    return { ok: true, ...out };
   }
 
   @Post("seeds")

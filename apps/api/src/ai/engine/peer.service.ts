@@ -26,6 +26,7 @@ import {
   verify,
 } from "node:crypto";
 import { CATALOG } from "./llama-catalog";
+import { openPort, type Mapping } from "./port-mapping";
 
 /**
  * Model weights, passed directly between machines.
@@ -100,6 +101,10 @@ export class PeerService implements OnModuleDestroy {
   private busy = false;
   /** How many prompts this machine has answered for other people. */
   private computed = 0;
+  private ledgerCache: Record<string, { given: number; received: number }> | null = null;
+  /** Set when the router agreed to let the outside in. */
+  private mapping: Mapping | null = null;
+  private mapTimer: NodeJS.Timeout | null = null;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -156,6 +161,48 @@ export class PeerService implements OnModuleDestroy {
     this.started = true;
     this.serve();
     this.discover();
+    void this.becomeReachable();
+  }
+
+  /**
+   * Ask the router to open our port, and keep asking before the lease expires.
+   *
+   * Without this the network stops at the front door: two people behind
+   * different routers can never reach each other, however well discovery works.
+   * With it, someone can hand out a real address and be found from anywhere —
+   * and no third party was needed to arrange it.
+   */
+  private async becomeReachable(): Promise<void> {
+    const port = this.sharePort();
+    const renew = async (): Promise<void> => {
+      const m = await openPort(port, 3600);
+      if (m) {
+        if (!this.mapping) {
+          this.logger.log(
+            `the router opened port ${m.externalPort} via ${m.how}` +
+              (m.externalAddress
+                ? ` — others can reach this machine at ${m.externalAddress}:${m.externalPort}`
+                : ""),
+          );
+        }
+        this.mapping = m;
+      } else if (!this.mapping) {
+        // Common and not a fault: plenty of routers have this switched off, and
+        // carrier-grade NAT cannot be opened from the inside at all.
+        this.logger.log(
+          "the router would not open a port — sharing still works on this network, and with peers that can already reach you",
+        );
+      }
+    };
+    await renew();
+    // Well inside the hour we asked for, so the door never closes between renewals.
+    this.mapTimer = setInterval(() => void renew(), 25 * 60_000);
+  }
+
+  /** The address to give somebody who is not on this network, if we have one. */
+  publicAddress(): string | null {
+    if (!this.mapping?.externalAddress) return null;
+    return `${this.mapping.externalAddress}:${this.mapping.externalPort}`;
   }
 
   /** Read-only file server: one route, and it only answers for known hashes. */
@@ -341,8 +388,20 @@ export class PeerService implements OnModuleDestroy {
    * immediately. Only runs while there is nobody around — once a peer answers,
    * multicast keeps the picture fresh and this stays quiet.
    */
+  /**
+   * Some people will not want their machine probing every address on the
+   * network they are attached to — a company LAN, a shared office. Off means
+   * multicast and typed-in addresses only.
+   */
+  private sweepAllowed(): boolean {
+    const v =
+      this.config.get<string>("NEURION_PEER_SWEEP") ??
+      process.env.NEURION_PEER_SWEEP;
+    return v !== "false" && v !== "0";
+  }
+
   private async sweep(): Promise<void> {
-    if (this.sweeping) return;
+    if (this.sweeping || !this.sweepAllowed()) return;
     this.sweeping = true;
     try {
       const port = this.sharePort();
@@ -780,9 +839,14 @@ export class PeerService implements OnModuleDestroy {
       res.end("compute sharing is off on this machine");
       return;
     }
+    const caller = req.socket.remoteAddress ?? "";
+    const callerId = await this.whoIs(caller);
     if (this.busy) {
-      // Refused, not queued. See the note above.
+      // Refused, not queued — a queue quietly turns a laptop into a server.
+      // The one exception is somebody we are in debt to: they helped us, so
+      // they are told to come straight back rather than simply turned away.
       res.statusCode = 429;
+      res.setHeader("retry-after", this.standing(callerId) > 0 ? "2" : "30");
       res.end("busy");
       return;
     }
@@ -853,6 +917,7 @@ export class PeerService implements OnModuleDestroy {
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify({ v: 1, text }));
       this.computed += 1;
+      if (callerId) this.note(callerId, "given");
       const secs = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
       this.logger.log(`answered ${who} in ${secs}s`);
     } catch (e) {
@@ -869,10 +934,232 @@ export class PeerService implements OnModuleDestroy {
 
   /** A peer that is running this exact model and will answer for others. */
   computeSourceFor(sha256: string): string | null {
-    const peer = this.known().find(
-      (p) => p.compute && p.running === sha256,
-    );
+    const peer = this.computeCandidates(sha256)[0];
     return peer ? `http://${peer.address}:${peer.port}/peer/infer` : null;
+  }
+
+  /** Record that a peer ran something for us. Called after a borrowed answer. */
+  noteReceived(peerId: string): void {
+    this.note(peerId, "received");
+  }
+
+
+  // --- reciprocity, which is what stands where the money was --------------
+  //
+  // eMule had credits and they were not money: uploading moved you up other
+  // people's queues. That is the whole mechanism, and it works because it
+  // answers the only real problem in a sharing network — people who take and
+  // never give — without anybody having to be paid, counted in a currency, or
+  // identified to a company.
+  //
+  // It needs exactly one thing that phase 2 provided: a name that cannot be
+  // borrowed or reset. You cannot remember who helped you if a peer arrives
+  // under a new identity every time it is inconvenient to be the old one.
+  //
+  // Deliberately generous: a stranger is served, just not before somebody you
+  // owe. A network that turns newcomers away never gets any.
+
+  private ledgerPath(dir: string): string {
+    return join(dir, "peer-ledger.json");
+  }
+
+  /** given = we did work for them. received = they did work for us. */
+  private ledger(): Record<string, { given: number; received: number }> {
+    if (this.ledgerCache) return this.ledgerCache;
+    const dir = this.dir();
+    if (!dir) return {};
+    try {
+      this.ledgerCache = JSON.parse(
+        readFileSync(this.ledgerPath(dir), "utf8"),
+      ) as Record<string, { given: number; received: number }>;
+    } catch {
+      this.ledgerCache = {};
+    }
+    return this.ledgerCache;
+  }
+
+  private writeLedger(): void {
+    const dir = this.dir();
+    if (!dir || !this.ledgerCache) return;
+    try {
+      writeFileSync(this.ledgerPath(dir), JSON.stringify(this.ledgerCache));
+    } catch {
+      /* best effort: a lost ledger costs politeness, not correctness */
+    }
+  }
+
+  private note(peerId: string, side: "given" | "received"): void {
+    const l = this.ledger();
+    const row = l[peerId] ?? { given: 0, received: 0 };
+    row[side] += 1;
+    l[peerId] = row;
+    this.writeLedger();
+  }
+
+  /**
+   * How much this peer is owed, from our point of view.
+   *
+   * Positive means they have done more for us than we have for them, so they
+   * go first. Unknown peers sit at zero — served, but after anyone we are in
+   * debt to.
+   */
+  private standing(peerId: string | null): number {
+    if (!peerId) return 0;
+    const row = this.ledger()[peerId];
+    if (!row) return 0;
+    return row.received - row.given;
+  }
+
+  /** What we owe and are owed, for the interface to show. */
+  reciprocity(): {
+    peers: number;
+    given: number;
+    received: number;
+  } {
+    const l = this.ledger();
+    let given = 0;
+    let received = 0;
+    for (const row of Object.values(l)) {
+      given += row.given;
+      received += row.received;
+    }
+    return { peers: Object.keys(l).length, given, received };
+  }
+
+  /** Identify the caller by asking who is listening at their address. */
+  private async whoIs(address: string): Promise<string | null> {
+    const known = this.known().find((p) => p.address === address);
+    return known?.peerId ?? null;
+  }
+
+  /**
+   * Peers that can run this model, best first.
+   *
+   * "Best" is whoever we owe least — spreading the asking around instead of
+   * leaning on the same generous machine until it gives up.
+   */
+  computeCandidates(sha256: string): KnownPeer[] {
+    return this.known()
+      .filter((p) => p.compute && p.running === sha256)
+      .sort((a, b) => this.standing(a.peerId) - this.standing(b.peerId));
+  }
+
+
+  // --- borrowing, and checking what comes back ----------------------------
+  //
+  // A model's weights can be trusted absolutely: the hash either matches or it
+  // does not. A model's ANSWER cannot. There is no checksum for "is this what
+  // the model would really have said", and a peer that wants to mislead you can
+  // return anything at all.
+  //
+  // What Folding@home did, and what is done here, is redundancy: give the same
+  // work to more than one volunteer and compare. Be clear about what that buys
+  // and what it does not:
+  //
+  //   IT CATCHES: a broken peer, a wrong model quietly substituted, a machine
+  //   returning canned text, one participant lying on their own.
+  //
+  //   IT DOES NOT CATCH: two peers colluding, or a subtle change that survives
+  //   a similarity comparison. And because the same model on two different
+  //   machines does not produce byte-identical text — different CPU, different
+  //   llama.cpp build, floating point — the comparison cannot be equality. It
+  //   is word overlap, so it detects gross divergence, not delicate tampering.
+  //
+  // Which is why the result carries its own confidence rather than pretending:
+  // "two peers agreed" and "only one peer could answer" are different things,
+  // and the caller is told which one it got.
+
+  /** Word-overlap similarity, 0..1. Cheap, and enough to spot a different answer. */
+  private static similarity(a: string, b: string): number {
+    const words = (t: string): Set<string> =>
+      new Set(
+        t
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}\s]/gu, " ")
+          .split(/\s+/)
+          .filter(Boolean),
+      );
+    const x = words(a);
+    const y = words(b);
+    if (x.size === 0 && y.size === 0) return 1;
+    if (x.size === 0 || y.size === 0) return 0;
+    let shared = 0;
+    for (const w of x) if (y.has(w)) shared += 1;
+    return shared / Math.max(x.size, y.size);
+  }
+
+  /** Ask one peer, and record the favour if it answers. */
+  private async askPeerToRun(
+    peer: KnownPeer,
+    sha256: string,
+    prompt: string,
+    maxTokens: number,
+  ): Promise<{ peerId: string; text: string } | null> {
+    try {
+      const res = await fetch(`http://${peer.address}:${peer.port}/peer/infer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sha256, prompt, maxTokens }),
+        signal: AbortSignal.timeout(180_000),
+      });
+      if (!res.ok) return null;
+      const body = (await res.json()) as { text?: unknown };
+      if (typeof body.text !== "string" || !body.text.trim()) return null;
+      this.note(peer.peerId, "received");
+      return { peerId: peer.peerId, text: body.text };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Have somebody else run this, and say how much the answer can be trusted.
+   *
+   * Two peers are asked when two are available. Both are recorded as having
+   * done us a favour, because both did the work — paying only the one whose
+   * answer we kept would make redundancy something peers learn to avoid.
+   */
+  async borrow(
+    sha256: string,
+    prompt: string,
+    maxTokens = 512,
+  ): Promise<{
+    text: string;
+    confidence: "agreed" | "disagreed" | "single";
+    askedPeers: string[];
+    similarity?: number;
+  } | null> {
+    const candidates = this.computeCandidates(sha256).slice(0, 2);
+    if (candidates.length === 0) return null;
+
+    const answers = (
+      await Promise.all(
+        candidates.map((p) => this.askPeerToRun(p, sha256, prompt, maxTokens)),
+      )
+    ).filter((a): a is { peerId: string; text: string } => a !== null);
+
+    if (answers.length === 0) return null;
+    const asked = answers.map((a) => a.peerId);
+    if (answers.length === 1) {
+      // Honest label. One peer is not verification, and calling it verified
+      // would be the kind of lie that makes a whole system untrustworthy.
+      this.logger.log(`borrowed an answer from one peer — not cross-checked`);
+      return { text: answers[0]!.text, confidence: "single", askedPeers: asked };
+    }
+
+    const sim = PeerService.similarity(answers[0]!.text, answers[1]!.text);
+    const agreed = sim >= 0.6;
+    this.logger.log(
+      agreed
+        ? `two peers agreed (overlap ${sim.toFixed(2)})`
+        : `two peers DISAGREED (overlap ${sim.toFixed(2)}) — treat with suspicion`,
+    );
+    return {
+      text: answers[0]!.text,
+      confidence: agreed ? "agreed" : "disagreed",
+      askedPeers: asked,
+      similarity: Number(sim.toFixed(3)),
+    };
   }
 
   /** This machine's name on the network — the fingerprint of its public key. */
@@ -917,6 +1204,7 @@ export class PeerService implements OnModuleDestroy {
 
   onModuleDestroy(): void {
     if (this.timer) clearInterval(this.timer);
+    if (this.mapTimer) clearInterval(this.mapTimer);
     if (this.sweepTimer) clearInterval(this.sweepTimer);
     try {
       this.sock?.close();
