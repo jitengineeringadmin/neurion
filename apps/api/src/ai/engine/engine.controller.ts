@@ -123,6 +123,8 @@ export class EngineController {
       reciprocity: this.peers.reciprocity(),
       /** Give this to somebody off your network and they can reach you. */
       publicAddress: this.peers.publicAddress(),
+      /** Machines we have met before and will knock on again after a restart. */
+      remembered: this.peers.savedNodes().length,
       /** This machine's own name on the network: its public key fingerprint. */
       me: this.peers.myPeerId(),
       seeds: this.peers.seeds(),

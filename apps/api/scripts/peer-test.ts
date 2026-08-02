@@ -380,6 +380,79 @@ async function main(): Promise<void> {
   lender.onModuleDestroy();
   rmSync(lenderDir, { recursive: true, force: true });
 
+
+  // ---- the network is remembered, the way eMule remembered its servers ----
+
+  await check("a peer that answered is written down for next time", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "neurion-nodes-"));
+    const client = new PeerService(
+      cfg({
+        NEURION_TEXT_DIR: dir,
+        NEURION_PEER_PORT: "48504",
+        NEURION_PEER_SWEEP: "false",
+      }),
+    );
+    assert(client.savedNodes().length === 0, "should start knowing nobody");
+
+    // The in-test seeder is a real peer on 48501; asking it should be enough to
+    // be remembered.
+    await (client as unknown as {
+      ask(a: string, p: number): Promise<void>;
+    }).ask("127.0.0.1", 48501);
+
+    const saved = client.savedNodes();
+    // More than one, because asking that peer also produced the peers IT knew
+    // and we verified those ourselves — which is gossip doing its job. One
+    // introduction is enough to learn the neighbourhood.
+    assert(saved.length >= 1, `nothing was remembered`);
+    assert(
+      saved.some((n) => n.port === 48501),
+      `the peer we actually asked is missing: ${saved.map((n) => n.port).join(", ")}`,
+    );
+
+    // A brand-new instance on the same directory knows where to knock — this is
+    // the whole point: a machine switched off for a week still finds its way in.
+    const afterRestart = new PeerService(cfg({ NEURION_TEXT_DIR: dir }));
+    assert(
+      afterRestart.savedNodes().length === saved.length,
+      "the list did not survive a restart",
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  await check("a machine that answers nothing is not remembered", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "neurion-nonodes-"));
+    const client = new PeerService(
+      cfg({ NEURION_TEXT_DIR: dir, NEURION_PEER_SWEEP: "false" }),
+    );
+    // Port 9 is discard; nothing there speaks our protocol.
+    await (client as unknown as {
+      ask(a: string, p: number): Promise<void>;
+    }).ask("127.0.0.1", 9);
+    assert(
+      client.savedNodes().length === 0,
+      "an address that never answered was written down",
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  await check("the remembered list does not grow without limit", () => {
+    const dir = mkdtempSync(join(tmpdir(), "neurion-cap-"));
+    const client = new PeerService(cfg({ NEURION_TEXT_DIR: dir }));
+    const remember = (client as unknown as {
+      rememberNode(a: string, p: number): void;
+    }).rememberNode.bind(client);
+    for (let i = 0; i < 260; i++) remember(`10.1.${Math.floor(i / 254)}.${i % 254}`, 8097);
+    const saved = client.savedNodes();
+    assert(saved.length === 200, `expected a cap of 200, got ${saved.length}`);
+    // Newest first, so the most recently seen survive a trim.
+    assert(
+      saved[0]!.address.startsWith("10.1."),
+      "the most recent entry should be at the front",
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   seeder.onModuleDestroy();
   leecher.onModuleDestroy();
   rmSync(seederDir, { recursive: true, force: true });

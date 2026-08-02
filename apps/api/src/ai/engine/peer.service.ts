@@ -401,11 +401,26 @@ export class PeerService implements OnModuleDestroy {
   }
 
   private async sweep(): Promise<void> {
-    if (this.sweeping || !this.sweepAllowed()) return;
+    if (this.sweeping) return;
+    if (!this.sweepAllowed()) {
+      // The subnet scan is off, but the remembered nodes and the typed-in
+      // addresses are not a scan — they are places we were invited to.
+      this.sweeping = true;
+      try {
+        await this.askRemembered();
+        await this.askSeeds();
+      } finally {
+        this.sweeping = false;
+      }
+      return;
+    }
     this.sweeping = true;
     try {
       const port = this.sharePort();
-      // Seeds first: they may be the only way out of this network.
+      // Everyone we have ever met first — a machine that already knows the
+      // network should not rediscover its own neighbourhood every time.
+      await this.askRemembered();
+      // Then the addresses the user typed: they may be the only way out.
       await this.askSeeds();
       const bases = this.localSubnets();
       for (const base of bases) {
@@ -459,6 +474,8 @@ export class PeerService implements OnModuleDestroy {
                 typeof h === "string" && /^[0-9a-f]{64}$/.test(h),
             )
           : [];
+        // It answered, so it is worth knocking on again after a restart.
+        this.rememberNode(address, port);
         this.remember(address, port, body.peerId, has, {
           compute: body.compute === true,
           running:
@@ -1160,6 +1177,112 @@ export class PeerService implements OnModuleDestroy {
       askedPeers: asked,
       similarity: Number(sim.toFixed(3)),
     };
+  }
+
+
+  // --- remembering the network across restarts ----------------------------
+  //
+  // eMule did not have a server. It had hundreds, run by whoever felt like it,
+  // in a list that travelled between users — kill any one of them and nothing
+  // happened. The list was the thing that made the network survive its own
+  // operators, and it was kept on disk precisely so a client that had been
+  // switched off for a week could still find its way back in.
+  //
+  // Neurion kept its peers in memory only, which meant every restart began from
+  // nothing and leaned on whatever happened to be reachable that minute. Now the
+  // peers that proved reachable are written down and tried again on the next
+  // start, and they travel between machines through gossip. Anybody who runs
+  // Neurion with an open port becomes one of the ways in — there is no list of
+  // approved ones, and nothing to apply for.
+  //
+  // A starter list ships with the app so a brand-new install has somewhere to
+  // knock. It is a plain file, editable, and losing it costs nothing once the
+  // machine has met anyone at all.
+  //
+  // What this still is not: a DHT. eMule eventually got Kad and stopped needing
+  // any list at all, and that remains the end of this road.
+
+  private nodesPath(dir: string): string {
+    return join(dir, "known-nodes.json");
+  }
+
+  /** Peers worth trying at the next start, newest first, bounded. */
+  private rememberNode(address: string, port: number): void {
+    const dir = this.dir();
+    if (!dir) return;
+    try {
+      const list = this.savedNodes().filter(
+        (n) => !(n.address === address && n.port === port),
+      );
+      list.unshift({ address, port, lastSeen: Date.now() });
+      // 200 is generous for a home network and small enough that the file stays
+      // trivial to read and to hand to somebody else.
+      writeFileSync(
+        this.nodesPath(dir),
+        JSON.stringify(list.slice(0, 200), null, 1),
+      );
+    } catch {
+      /* best effort: forgetting the network only costs a slower start */
+    }
+  }
+
+  savedNodes(): Array<{ address: string; port: number; lastSeen: number }> {
+    const dir = this.dir();
+    if (!dir) return [];
+    try {
+      const raw = JSON.parse(readFileSync(this.nodesPath(dir), "utf8"));
+      if (!Array.isArray(raw)) return [];
+      return raw.filter(
+        (n): n is { address: string; port: number; lastSeen: number } =>
+          typeof n?.address === "string" && Number.isInteger(n?.port),
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Knock on everyone we have ever met, plus the list the app shipped with.
+   *
+   * Runs before the subnet sweep: a machine that already knows the network
+   * should not have to rediscover its own neighbourhood from scratch.
+   */
+  private async askRemembered(): Promise<void> {
+    const seen = new Set<string>();
+    const targets: Array<[string, number]> = [];
+    for (const n of [...this.savedNodes(), ...this.starterNodes()]) {
+      const key = `${n.address}:${n.port}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      targets.push([n.address, n.port]);
+      if (targets.length >= 60) break;
+    }
+    await Promise.all(targets.map(([a, p]) => this.ask(a, p)));
+  }
+
+  /**
+   * The list the app was installed with. One file, meant to be replaced.
+   *
+   * Deliberately not hard-coded in the source: somebody who distributes their
+   * own build, or a community that wants its own entry points, should be able
+   * to change it without touching code.
+   */
+  private starterNodes(): Array<{ address: string; port: number }> {
+    const dir = this.dir();
+    if (!dir) return [];
+    try {
+      const raw = JSON.parse(
+        readFileSync(join(dir, "starter-nodes.json"), "utf8"),
+      );
+      if (!Array.isArray(raw)) return [];
+      return raw
+        .filter((n): n is { address: string; port?: number } =>
+          typeof n?.address === "string",
+        )
+        .map((n) => ({ address: n.address, port: n.port ?? this.sharePort() }));
+    } catch {
+      return [];
+    }
   }
 
   /** This machine's name on the network — the fingerprint of its public key. */

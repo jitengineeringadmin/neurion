@@ -220,10 +220,35 @@ possibile dall'interno, e lì servirebbe un relay — cioè un centro. E la scan
 della sottorete si può spegnere (`NEURION_PEER_SWEEP=false`) per chi sta su una
 rete aziendale e non vuole che la propria macchina la sondi.
 
-### Fase 4 — Il sito diventa un pari fra i pari
+### Fase 4 — Tanti punti d'ingresso, nessun padrone — **FATTA (1.8.28)**
 
-`neurionproject.org` smette di essere il centro e resta: pagina di download,
-forum, e uno dei nodi di avvio. Se si spegne, la rete continua.
+Il modello è quello di eMule, ed è la cosa che lo ha reso difficile da spegnere:
+non aveva **un** server, ne aveva centinaia, gestiti da chiunque, in una lista
+che viaggiava fra gli utenti. Chiuderne uno non cambiava niente.
+
+**Cosa è atterrato:**
+
+- **la rete viene ricordata.** I pari che hanno davvero risposto vengono scritti
+  su disco e ribussati al riavvio successivo — è `nodes.dat` di eMule. Prima
+  l'elenco viveva solo in memoria: si spegneva l'app e si ripartiva da zero,
+  dipendendo da qualunque cosa fosse raggiungibile in quel minuto;
+- **un elenco iniziale sostituibile** (`starter-nodes.json`), un file semplice
+  che chi distribuisce la propria build o una comunità che vuole i propri punti
+  d'ingresso può cambiare senza toccare il codice;
+- **l'elenco viaggia**: una sola presentazione basta a conoscere il vicinato,
+  perché chi risponde racconta anche chi conosce — e ognuno di quelli viene
+  verificato di persona, mai creduto sulla parola;
+- **chiunque è un punto d'ingresso.** Non c'è una lista di nodi approvati e non
+  c'è niente da richiedere: chi tiene Neurion acceso con la porta aperta lo è.
+
+`neurionproject.org` resta quello che deve restare: la pagina da cui si scarica
+la prima volta. Non è più un pezzo del funzionamento.
+
+**Ciò che manca ancora, e chiude davvero il cerchio:** una DHT. eMule alla fine
+ottenne Kad e smise di aver bisogno di qualsiasi lista. È l'ultimo passo, e la
+differenza è precisa: oggi un'installazione nuova ha bisogno di **una**
+presentazione — un indirizzo qualsiasi che risponda — mentre con una DHT non
+avrebbe bisogno di nessuna.
 
 ---
 
@@ -292,6 +317,6 @@ Una sola domanda, da rifarsi a ogni fase:
 - Dopo la fase 1: i modelli continuano a circolare fra le persone.
 - Dopo la fase 2: **i pari continuano a trovarsi** — per indirizzo diretto e passandosi chi conoscono, con identità che nessuno rilascia.
 - Dopo la fase 3: **il lavoro continua a essere condiviso** — a reciprocità, verificato per ridondanza, e attraverso i router senza intermediari.
-- Dopo la fase 4: non cambia niente per nessuno.
+- Dopo la fase 4: **non cambia niente per nessuno** — i punti d'ingresso sono tanti, ricordati su disco e scambiati fra le macchine.
 
 Quando la risposta è "tutto", lo scopo è raggiunto.
