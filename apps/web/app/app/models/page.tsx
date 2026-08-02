@@ -134,6 +134,8 @@ export default function ModelsPage() {
     served: number;
     me?: string;
     seeds?: string[];
+    compute?: boolean;
+    computed?: number;
     peers: Array<{ address: string; models: number }>;
   } | null>(null);
   const [localFound, setLocalFound] = useState<
@@ -196,6 +198,20 @@ export default function ModelsPage() {
     setLocalFound(r.models ?? []);
   };
 
+  /** Lend this machine's processor to other people, or stop. */
+  async function setCompute(on: boolean) {
+    setBundledErr("");
+    try {
+      await api("/ai/engine/compute", {
+        method: "POST",
+        body: JSON.stringify({ enabled: on }),
+      });
+      await loadPeers();
+    } catch (e) {
+      setBundledErr((e as Error).message);
+    }
+  }
+
   /** Add a peer by address — a friend on another network, with no registry. */
   async function addSeed() {
     const entry = window.prompt(t("models.addPeerPrompt"))?.trim();
@@ -222,6 +238,8 @@ export default function ModelsPage() {
         served: number;
         me?: string;
         seeds?: string[];
+        compute?: boolean;
+        computed?: number;
         peers: Array<{ address: string; models: number }>;
       }>("/ai/engine/peers").catch(() => null),
     );
@@ -788,6 +806,27 @@ export default function ModelsPage() {
                     </span>
                   </>
                 )}
+                <span>·</span>
+                {/* Passing on a file costs nothing; running somebody's prompt
+                    takes this machine's processor and slows the owner's own
+                    work. So it is a switch, not a default. */}
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!peerInfo.compute}
+                    onChange={(e) => void setCompute(e.target.checked)}
+                    style={{ cursor: "pointer" }}
+                  />
+                  {t("models.lendCompute")}
+                  {peerInfo.computed ? ` (${peerInfo.computed})` : ""}
+                </label>
                 <span>·</span>
                 {/* Reaching somebody outside this network needs no registry and
                     no account — only their address, once. */}

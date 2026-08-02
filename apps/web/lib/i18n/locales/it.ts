@@ -664,5 +664,6 @@ const dict: Record<string, string> = {
   "models.addPeer": "aggiungi un pari per indirizzo",
   "models.addPeerPrompt":
     "L'indirizzo di un amico (host oppure host:porta). Deve essere raggiungibile da qui: stessa rete, o un indirizzo pubblico.",
+  "models.lendCompute": "presta anche il mio processore",
 };
 export default dict;

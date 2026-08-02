@@ -633,5 +633,6 @@ const dict: Record<string, string> = {
   "models.addPeer": "按地址添加节点",
   "models.addPeerPrompt":
     "朋友的地址（主机或主机:端口）。必须能从这里访问：同一网络，或公网地址。",
+  "models.lendCompute": "也出借我的处理器",
 };
 export default dict;

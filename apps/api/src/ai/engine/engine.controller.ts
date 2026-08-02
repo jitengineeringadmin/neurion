@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Post, Res } from "@nestjs/common";
-import { IsString, MaxLength } from "class-validator";
+import { IsBoolean, IsString, MaxLength } from "class-validator";
 import { Response } from "express";
 import { LlamaEngineService } from "./llama-engine.service";
 import { PeerService } from "./peer.service";
@@ -15,6 +15,11 @@ class FolderDto {
   @IsString()
   @MaxLength(4000)
   path!: string;
+}
+
+class ComputeDto {
+  @IsBoolean()
+  enabled!: boolean;
 }
 
 class SeedDto {
@@ -100,6 +105,9 @@ export class EngineController {
       offeredByPeers: s.offeredByPeers,
       /** How many times this machine has handed a model to somebody else. */
       served: s.served,
+      /** Whether this machine runs prompts for others, and how many so far. */
+      compute: s.compute,
+      computed: s.computed,
       /** This machine's own name on the network: its public key fingerprint. */
       me: this.peers.myPeerId(),
       seeds: this.peers.seeds(),
@@ -117,6 +125,18 @@ export class EngineController {
    * This is what lets two people find each other with no registry at all: tell
    * a friend your address once and neither of you ever needs our server again.
    */
+  /**
+   * Lend this machine's processor to other people, or stop.
+   *
+   * Separate from weight sharing on purpose: passing on a file you already have
+   * costs nothing, running somebody's prompt costs your CPU and slows your own
+   * work. One is on by default, the other is a decision.
+   */
+  @Post("compute")
+  setCompute(@Body() dto: ComputeDto) {
+    return { compute: this.peers.setComputeEnabled(dto.enabled) };
+  }
+
   @Post("seeds")
   addSeed(@Body() dto: SeedDto) {
     return { seeds: this.peers.addSeed(dto.address) };

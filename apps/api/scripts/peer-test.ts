@@ -278,6 +278,97 @@ async function main(): Promise<void> {
     rmSync(dir, { recursive: true, force: true });
   });
 
+
+  // ---- phase 3: lending the machine, not just the file -------------------
+
+  await check("compute is off unless somebody switched it on", () => {
+    // Serving a file is a disk read. Running a prompt takes the owner's
+    // processor and slows their own machine down, so it cannot be a default
+    // they discover afterwards.
+    const off = new PeerService(cfg({ NEURION_TEXT_DIR: seederDir }));
+    assert(!off.computeEnabled(), "compute sharing must default to off");
+    const on = new PeerService(
+      cfg({ NEURION_TEXT_DIR: seederDir, NEURION_PEER_COMPUTE: "true" }),
+    );
+    assert(on.computeEnabled(), "NEURION_PEER_COMPUTE=true must switch it on");
+  });
+
+  await check("a machine with compute off refuses to run anything", async () => {
+    const res = await fetch("http://127.0.0.1:48501/peer/infer", {
+      method: "POST",
+      body: JSON.stringify({ sha256: model.sha256, prompt: "ciao" }),
+    });
+    assert(res.status === 403, `expected 403, got ${res.status}`);
+  });
+
+  // A machine that does lend, but has nothing loaded.
+  const lenderDir = mkdtempSync(join(tmpdir(), "neurion-lender-"));
+  mkdirSync(join(lenderDir, "models"), { recursive: true });
+  const lender = new PeerService(
+    cfg({
+      NEURION_TEXT_DIR: lenderDir,
+      NEURION_PEER_PORT: "48503",
+      NEURION_PEER_COMPUTE: "true",
+    }),
+  );
+  lender.start();
+  await wait(1200);
+
+  await check("a request for a model that is not loaded is turned away", async () => {
+    const res = await fetch("http://127.0.0.1:48503/peer/infer", {
+      method: "POST",
+      body: JSON.stringify({ sha256: model.sha256, prompt: "ciao" }),
+    });
+    // 409 rather than a generic error, so the asker can decide to fetch the
+    // weights instead of guessing why they were refused.
+    assert(res.status === 409, `expected 409, got ${res.status}`);
+    const why = await res.text();
+    assert(/not the one loaded/.test(why), `unhelpful reason: ${why}`);
+  });
+
+  await check("malformed requests are refused", async () => {
+    const cases: Array<[string, unknown]> = [
+      ["no sha", { prompt: "ciao" }],
+      ["not a hash", { sha256: "nope", prompt: "ciao" }],
+      ["no prompt", { sha256: model.sha256 }],
+      ["empty prompt", { sha256: model.sha256, prompt: "   " }],
+    ];
+    for (const [name, payload] of cases) {
+      const res = await fetch("http://127.0.0.1:48503/peer/infer", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      assert(res.status === 400, `${name}: expected 400, got ${res.status}`);
+    }
+    const bad = await fetch("http://127.0.0.1:48503/peer/infer", {
+      method: "POST",
+      body: "{not json",
+    });
+    assert(bad.status === 400, `bad json: expected 400, got ${bad.status}`);
+  });
+
+  await check("an oversized prompt is refused rather than swallowed", async () => {
+    const res = await fetch("http://127.0.0.1:48503/peer/infer", {
+      method: "POST",
+      body: JSON.stringify({
+        sha256: model.sha256,
+        prompt: "x".repeat(300_000),
+      }),
+    });
+    assert(res.status === 413, `expected 413, got ${res.status}`);
+  });
+
+  await check("a peer that does not lend is never chosen to compute", () => {
+    // seeder has compute off; nobody should be picked for it.
+    assert(
+      leecher.computeSourceFor(model.sha256!) === null,
+      "a peer with compute off was offered as a source",
+    );
+  });
+
+  lender.onModuleDestroy();
+  rmSync(lenderDir, { recursive: true, force: true });
+
   seeder.onModuleDestroy();
   leecher.onModuleDestroy();
   rmSync(seederDir, { recursive: true, force: true });

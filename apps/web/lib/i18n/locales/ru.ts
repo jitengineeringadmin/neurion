@@ -673,5 +673,6 @@ const dict: Record<string, string> = {
   "models.addPeer": "добавить узел по адресу",
   "models.addPeerPrompt":
     "Адрес знакомого (хост или хост:порт). Он должен быть доступен отсюда — та же сеть или публичный адрес.",
+  "models.lendCompute": "одалживать и процессор",
 };
 export default dict;

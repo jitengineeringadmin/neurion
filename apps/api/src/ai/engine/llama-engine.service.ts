@@ -542,6 +542,9 @@ export class LlamaEngineService
       if (!this.proc) throw new Error("local engine exited during startup");
       if (await this.probe()) {
         this.ready = true;
+        // Tell the peer service what is loaded: it will only lend compute for
+        // the model already running, so that it never interrupts the owner.
+        this.peers.setRunningModel(m.sha256 ?? null);
         this.writeState(dir, {
           modelId: m.id,
           file: m.file,
@@ -560,6 +563,7 @@ export class LlamaEngineService
   }
 
   async stop(): Promise<void> {
+    this.peers.setRunningModel(null);
     const child = this.proc;
     this.proc = null;
     this.ready = false;

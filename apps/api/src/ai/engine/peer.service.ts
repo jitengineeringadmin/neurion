@@ -8,7 +8,12 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { createServer, Server } from "node:http";
+import {
+  createServer,
+  IncomingMessage,
+  Server,
+  ServerResponse,
+} from "node:http";
 import { join } from "node:path";
 import { createSocket, Socket } from "node:dgram";
 import { networkInterfaces } from "node:os";
@@ -60,6 +65,10 @@ export interface KnownPeer {
   port: number;
   has: string[];
   lastSeen: number;
+  /** Whether this peer will run a prompt for others. */
+  compute?: boolean;
+  /** The model it currently has loaded, if it says. */
+  running?: string | null;
 }
 
 const GROUP = "239.192.71.1"; // administratively scoped, local segment only
@@ -85,6 +94,12 @@ export class PeerService implements OnModuleDestroy {
   /** How many times this machine has handed a model to somebody else. */
   private served = 0;
   private sweepTimer: NodeJS.Timeout | null = null;
+  /** Hash of the model this machine currently has loaded, if any. */
+  private runningModel: string | null = null;
+  /** One borrowed computation at a time. */
+  private busy = false;
+  /** How many prompts this machine has answered for other people. */
+  private computed = 0;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -159,6 +174,8 @@ export class PeerService implements OnModuleDestroy {
             peerId: this.peerId,
             publicKey: this.identity()?.publicKey ?? null,
             has: [...this.localHashes().keys()],
+            compute: this.computeEnabled(),
+            running: this.runningModel,
             // Peer exchange: everyone we know about, so a newcomer that can
             // reach one machine can reach the rest without any registry.
             peers: this.known()
@@ -166,6 +183,10 @@ export class PeerService implements OnModuleDestroy {
               .map((p) => ({ address: p.address, port: p.port })),
           }),
         );
+        return;
+      }
+      if (req.url === "/peer/infer" && req.method === "POST") {
+        void this.lendCompute(req, res);
         return;
       }
       const m = /^\/peer\/blob\/([0-9a-f]{64})$/.exec(req.url ?? "");
@@ -368,6 +389,8 @@ export class PeerService implements OnModuleDestroy {
           peerId?: string;
           has?: unknown;
           peers?: Array<{ address?: unknown; port?: unknown }>;
+          compute?: unknown;
+          running?: unknown;
         };
         if (body?.v !== 1 || typeof body.peerId !== "string") return;
         if (body.peerId === this.peerId) return; // ourselves, another interface
@@ -377,7 +400,13 @@ export class PeerService implements OnModuleDestroy {
                 typeof h === "string" && /^[0-9a-f]{64}$/.test(h),
             )
           : [];
-        this.remember(address, port, body.peerId, has);
+        this.remember(address, port, body.peerId, has, {
+          compute: body.compute === true,
+          running:
+            typeof body.running === "string" && /^[0-9a-f]{64}$/.test(body.running)
+              ? body.running
+              : null,
+        });
         if (Array.isArray(body.peers)) await this.followGossip(body.peers);
         return;
       }
@@ -396,9 +425,20 @@ export class PeerService implements OnModuleDestroy {
     port: number,
     peerId: string,
     has: string[],
+    extra: { compute?: boolean; running?: string | null } = {},
   ): void {
     const known = this.peers.get(peerId);
-    this.peers.set(peerId, { peerId, address, port, has, lastSeen: Date.now() });
+    this.peers.set(peerId, {
+      peerId,
+      address,
+      port,
+      has,
+      lastSeen: Date.now(),
+      // Announcements over UDP do not carry these; keep whatever a direct ask
+      // established rather than blanking it on every heartbeat.
+      compute: extra.compute ?? known?.compute,
+      running: extra.running !== undefined ? extra.running : known?.running,
+    });
     if (!known) {
       this.logger.log(`found a peer at ${address} offering ${has.length} models`);
     }
@@ -657,6 +697,184 @@ export class PeerService implements OnModuleDestroy {
     await Promise.all(fresh.map(([a, p]) => this.ask(a, p)));
   }
 
+
+  // --- lending the machine, not just the file -----------------------------
+  //
+  // Sharing weights costs the sharer nothing: the file is already on the disk
+  // and serving it is a read. Sharing COMPUTE is different — it takes the
+  // owner's processor and their electricity, and it makes their own machine
+  // slower while it runs. So the two are not treated the same:
+  //
+  //  - weight sharing is on unless switched off;
+  //  - compute sharing is OFF unless switched on. Donating a machine has to be
+  //    a decision somebody made, not something they discover afterwards.
+  //
+  // Two more limits that follow from respecting whoever owns the machine:
+  //
+  //  - ONLY THE MODEL ALREADY LOADED. Swapping models for a stranger would
+  //    interrupt the owner's own work. If the request is for something else,
+  //    the answer is no, and the requester can go and fetch the weights instead.
+  //  - ONE AT A TIME. A second request while one is running is refused rather
+  //    than queued: a queue turns somebody's laptop into a server without ever
+  //    telling them.
+  //
+  // And on the other side of the wire: THE PROMPT LEAVES THE MACHINE. This is
+  // never chosen automatically. Local work stays local; a request only goes to
+  // a peer because the user picked a model that only a peer can run.
+
+  private computePath(dir: string): string {
+    return join(dir, "peer-compute.json");
+  }
+
+  computeEnabled(): boolean {
+    // An explicit environment setting wins, so a deployment can force it either
+    // way; otherwise it is whatever the person at the machine chose, and off
+    // until they choose.
+    const v =
+      this.config.get<string>("NEURION_PEER_COMPUTE") ??
+      process.env.NEURION_PEER_COMPUTE;
+    if (v === "true" || v === "1") return true;
+    if (v === "false" || v === "0") return false;
+    const dir = this.dir();
+    if (!dir) return false;
+    try {
+      const saved = JSON.parse(readFileSync(this.computePath(dir), "utf8")) as {
+        enabled?: boolean;
+      };
+      return saved.enabled === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Turn lending on or off, and remember it. */
+  setComputeEnabled(on: boolean): boolean {
+    const dir = this.dir();
+    if (!dir) throw new Error("no engine directory configured");
+    writeFileSync(this.computePath(dir), JSON.stringify({ enabled: on }));
+    this.logger.log(
+      on
+        ? "this machine will now run prompts for other people"
+        : "this machine will no longer run prompts for other people",
+    );
+    return this.computeEnabled();
+  }
+
+  /** Set by the engine so peers can be told what is loaded right now. */
+  setRunningModel(sha256: string | null): void {
+    this.runningModel = sha256;
+  }
+
+  /**
+   * Answer somebody else's question with the model we are already running.
+   *
+   * Streams straight through from the local llama-server. Bounded on tokens so
+   * one request cannot occupy the machine indefinitely.
+   */
+  private async lendCompute(
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> {
+    if (!this.computeEnabled()) {
+      res.statusCode = 403;
+      res.end("compute sharing is off on this machine");
+      return;
+    }
+    if (this.busy) {
+      // Refused, not queued. See the note above.
+      res.statusCode = 429;
+      res.end("busy");
+      return;
+    }
+
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
+      if (body.length > 256_000) {
+        res.statusCode = 413;
+        res.end("too large");
+        return;
+      }
+    }
+    let ask: { sha256?: string; prompt?: string; maxTokens?: number };
+    try {
+      ask = JSON.parse(body) as typeof ask;
+    } catch {
+      res.statusCode = 400;
+      res.end("bad json");
+      return;
+    }
+    if (
+      typeof ask.sha256 !== "string" ||
+      !/^[0-9a-f]{64}$/.test(ask.sha256) ||
+      typeof ask.prompt !== "string" ||
+      !ask.prompt.trim()
+    ) {
+      res.statusCode = 400;
+      res.end("need sha256 and prompt");
+      return;
+    }
+    if (ask.sha256 !== this.runningModel) {
+      // Deliberately specific: the requester can then decide to fetch the
+      // weights instead of guessing why they were turned away.
+      res.statusCode = 409;
+      res.end("that model is not the one loaded here");
+      return;
+    }
+
+    const who = req.socket.remoteAddress ?? "somebody";
+    this.busy = true;
+    this.logger.log(`running a prompt for ${who}`);
+    const startedAt = Date.now();
+    try {
+      const upstream = await fetch(
+        `http://127.0.0.1:${this.enginePort()}/v1/chat/completions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "peer",
+            messages: [{ role: "user", content: ask.prompt.slice(0, 20_000) }],
+            max_tokens: Math.min(Math.max(1, ask.maxTokens ?? 512), 2048),
+            stream: false,
+          }),
+          signal: AbortSignal.timeout(180_000),
+        },
+      );
+      if (!upstream.ok) {
+        res.statusCode = 502;
+        res.end("the engine here refused");
+        return;
+      }
+      const json = (await upstream.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const text = json.choices?.[0]?.message?.content ?? "";
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ v: 1, text }));
+      this.computed += 1;
+      const secs = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      this.logger.log(`answered ${who} in ${secs}s`);
+    } catch (e) {
+      res.statusCode = 504;
+      res.end(`timed out: ${(e as Error).message}`);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private enginePort(): number {
+    return Number(this.config.get<string>("NEURION_LLAMA_PORT") ?? 8095);
+  }
+
+  /** A peer that is running this exact model and will answer for others. */
+  computeSourceFor(sha256: string): string | null {
+    const peer = this.known().find(
+      (p) => p.compute && p.running === sha256,
+    );
+    return peer ? `http://${peer.address}:${peer.port}/peer/infer` : null;
+  }
+
   /** This machine's name on the network — the fingerprint of its public key. */
   myPeerId(): string {
     return this.peerId;
@@ -680,6 +898,8 @@ export class PeerService implements OnModuleDestroy {
     peers: number;
     offeredByPeers: number;
     served: number;
+    compute: boolean;
+    computed: number;
   } {
     const mine = this.localHashes();
     const theirs = new Set<string>();
@@ -690,6 +910,8 @@ export class PeerService implements OnModuleDestroy {
       peers: this.peers.size,
       offeredByPeers: theirs.size,
       served: this.served,
+      compute: this.computeEnabled(),
+      computed: this.computed,
     };
   }
 

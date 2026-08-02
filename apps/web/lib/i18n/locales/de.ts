@@ -673,5 +673,6 @@ const dict: Record<string, string> = {
   "models.addPeer": "Gegenstelle per Adresse hinzufügen",
   "models.addPeerPrompt":
     "Die Adresse einer bekannten Person (Host oder Host:Port). Sie muss von hier erreichbar sein — gleiches Netz oder eine öffentliche Adresse.",
+  "models.lendCompute": "auch meinen Prozessor verleihen",
 };
 export default dict;

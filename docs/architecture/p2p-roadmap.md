@@ -153,7 +153,7 @@ stata fatta perché è una dipendenza grossa e quanto sopra già assolve il comp
 per cui esiste la fase. E resta il NAT: due macchine dietro router diversi non si
 raggiungono senza attraversamento — è la fase 3.
 
-### Fase 3 — Il lavoro condiviso, a reciprocità
+### Fase 3 — Il lavoro condiviso, a reciprocità — **AVVIATA (1.8.26)**
 
 Qui vivono i problemi veri, ed è giusto che sia l'ultima:
 
@@ -165,6 +165,27 @@ Qui vivono i problemi veri, ed è giusto che sia l'ultima:
   `apps/api/src/jobs/verification` (`consensus`, `cosine`, `embeddingMatches`);
 - **reciprocità al posto del pagamento:** chi presta il PC ha precedenza quando
   chiede; chi non contribuisce va in coda.
+
+**Cosa è atterrato in 1.8.26 — il primo pezzo, quello che regge da solo:**
+
+Un pari può **chiedere a un altro di eseguire un modello per lui**, senza server
+in mezzo (`POST /peer/infer`). Con quattro limiti che nascono tutti dal rispetto
+per chi possiede la macchina:
+
+- **spento finché non lo accendi.** Passare un file che hai già non ti costa
+  nulla; eseguire il prompt di uno sconosciuto ti prende il processore e
+  rallenta il tuo lavoro. Non può essere un valore predefinito che scopri dopo;
+- **solo il modello già caricato.** Cambiarlo per un estraneo interromperebbe
+  chi sta usando il computer. Chi chiede altro riceve un 409 esplicito, così può
+  decidere di scaricarsi i pesi invece di indovinare perché è stato respinto;
+- **uno per volta**, rifiutato e non accodato: una coda trasforma il portatile di
+  qualcuno in un server senza dirglielo;
+- **il prompt esce dalla macchina.** Non succede mai in automatico: si va da un
+  pari solo perché l'utente ha scelto un modello che solo lui può eseguire.
+
+**Ancora aperto in questa fase:** l'attraversamento dei NAT (oggi funziona fra
+macchine che si raggiungono già), la verifica per ridondanza, e la reciprocità
+vera — oggi si contano i favori fatti, non si usano ancora per dare precedenza.
 
 ### Fase 4 — Il sito diventa un pari fra i pari
 
