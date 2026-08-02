@@ -319,7 +319,22 @@ Un allarme che suona ogni volta è un allarme che nessuno legge. Ora, **solo
 quando una risposta verrà confrontata con un'altra**, si chiede a entrambi di
 eseguire in modo riproducibile: temperatura zero e lo stesso seme, ricavato
 dalla domanda stessa così che nessuno dei due possa riceverne uno diverso.
-Stessa prova, stesso motore: da 0,45 a 0,74.
+Stessa prova, stesso motore: da 0,45 a 0,74. Poi, con la correzione su
+entrambe le macchine, il numero vero: **due processori diversi, tre domande,
+testo identico byte per byte.** Non era il risultato atteso — la virgola mobile
+fra CPU diverse avrebbe dovuto renderli solo *simili* — e cambia quanto vale un
+confronto. Se gli onesti coincidono esattamente, allora qualunque differenza
+merita di essere segnalata, e chiamare "d'accordo" una sovrapposizione di 0,6
+butterebbe via il segnale più forte che c'è. Quindi tre risposte invece di due:
+
+- **identiche** — stesso testo. È quanto di più vicino a una verifica si possa
+  ottenere qui;
+- **d'accordo** — vicine, non uguali. Del tutto normale fra macchine che non
+  hanno la stessa build, la stessa quantizzazione o lo stesso tipo di
+  processore — e una rete di macchine tutte uguali non è una rete. Vale meno
+  della precedente, e viene detto;
+- **in disaccordo** — una delle due sbaglia, è rotta o mente, e da qui non si
+  può sapere quale.
 
 **Quello che resta impossibile, e non per pigrizia.** Spezzare *un* calcolo su
 più macchine — il vero "distribuire potenza" — non lo fa nessun protocollo: le

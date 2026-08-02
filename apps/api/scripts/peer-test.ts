@@ -463,6 +463,138 @@ async function main(): Promise<void> {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  // ---- what two answers are worth, and saying so honestly ---------------
+  //
+  // Measured on two real machines: asked to run reproducibly, different
+  // processors returned identical text. So "identical" and "similar" are not
+  // the same claim and must not carry the same label.
+
+  await check("two answers are labelled by how much they really agree", async () => {
+    const { createServer } = await import("node:http");
+    const fake = (port: number, id: string, text: string) => {
+      const srv = createServer((req, res) => {
+        if (req.url === "/peer/have") {
+          res.setHeader("content-type", "application/json");
+          res.end(
+            JSON.stringify({
+              v: 1,
+              peerId: id,
+              has: [model.sha256],
+              compute: true,
+              running: model.sha256,
+              peers: [],
+            }),
+          );
+          return;
+        }
+        if (req.url === "/peer/infer") {
+          req.on("data", () => {});
+          req.on("end", () => {
+            res.setHeader("content-type", "application/json");
+            res.end(JSON.stringify({ v: 1, text }));
+          });
+          return;
+        }
+        res.statusCode = 404;
+        res.end();
+      });
+      return new Promise<import("node:http").Server>((r) =>
+        srv.listen(port, "127.0.0.1", () => r(srv)),
+      );
+    };
+
+    const cases: Array<[string, string, string]> = [
+      // Same text: the strongest thing two peers can say.
+      ["identical", "il gatto dorme sul tetto caldo", "il gatto dorme sul tetto caldo"],
+      // Same words, different order and one changed: close, not the same.
+      ["agreed", "il gatto dorme sul tetto caldo", "sul tetto caldo il gatto dorme adesso"],
+      // Nothing in common: one of them is wrong and we cannot say which.
+      ["disagreed", "il gatto dorme sul tetto caldo", "domani piove a Milano forse"],
+    ];
+
+    for (const [i, [expected, one, two]] of cases.entries()) {
+      // Fresh ports each round: a socket just closed is not instantly free to
+      // bind again, and a peer that was not listening yet reads as one peer,
+      // which would quietly turn this into a different test.
+      const portA = 48560 + i * 2;
+      const portB = 48561 + i * 2;
+      const dirX = mkdtempSync(join(tmpdir(), "neurion-conf-"));
+      const asker = new PeerService(
+        cfg({
+          NEURION_TEXT_DIR: dirX,
+          NEURION_PEER_PORT: "48551",
+          NEURION_PEER_SWEEP: "false",
+        }),
+      );
+      const a = await fake(portA, "a".repeat(32), one);
+      const b = await fake(portB, "b".repeat(32), two);
+      await (asker as unknown as { ask(h: string, p: number): Promise<void> }).ask("127.0.0.1", portA);
+      await (asker as unknown as { ask(h: string, p: number): Promise<void> }).ask("127.0.0.1", portB);
+      assert(
+        asker.computeCandidates(model.sha256!).length === 2,
+        `only ${asker.computeCandidates(model.sha256!).length} peer(s) answered; this case needs two`,
+      );
+      const out = await asker.borrow(model.sha256!, "una domanda", 50);
+      assert(out, `no answer for the ${expected} case`);
+      assert(
+        out!.confidence === expected,
+        `expected ${expected}, got ${out!.confidence} (overlap ${out!.similarity})`,
+      );
+      asker.onModuleDestroy();
+      a.closeAllConnections?.();
+      b.closeAllConnections?.();
+      await new Promise<void>((r) => a.close(() => r()));
+      await new Promise<void>((r) => b.close(() => r()));
+      rmSync(dirX, { recursive: true, force: true });
+    }
+  });
+
+  await check("one peer is never called verified", async () => {
+    const { createServer } = await import("node:http");
+    const dirY = mkdtempSync(join(tmpdir(), "neurion-single-"));
+    const asker = new PeerService(
+      cfg({
+        NEURION_TEXT_DIR: dirY,
+        NEURION_PEER_PORT: "48554",
+        NEURION_PEER_SWEEP: "false",
+      }),
+    );
+    const srv = createServer((req, res) => {
+      if (req.url === "/peer/have") {
+        res.setHeader("content-type", "application/json");
+        res.end(
+          JSON.stringify({
+            v: 1,
+            peerId: "c".repeat(32),
+            has: [model.sha256],
+            compute: true,
+            running: model.sha256,
+            peers: [],
+          }),
+        );
+        return;
+      }
+      if (req.url === "/peer/infer") {
+        req.on("data", () => {});
+        req.on("end", () => {
+          res.setHeader("content-type", "application/json");
+          res.end(JSON.stringify({ v: 1, text: "una risposta sola" }));
+        });
+        return;
+      }
+      res.statusCode = 404;
+      res.end();
+    });
+    await new Promise<void>((r) => srv.listen(48555, "127.0.0.1", () => r()));
+    await (asker as unknown as { ask(h: string, p: number): Promise<void> }).ask("127.0.0.1", 48555);
+    const out = await asker.borrow(model.sha256!, "una domanda", 50);
+    assert(out?.confidence === "single", `a lone peer was labelled ${out?.confidence}`);
+    asker.onModuleDestroy();
+    srv.closeAllConnections?.();
+    await new Promise<void>((r) => srv.close(() => r()));
+    rmSync(dirY, { recursive: true, force: true });
+  });
+
   // ---- the switch that has to exist now that the index is global --------
 
   await check("sharing can be switched off, and it stops at once", async () => {

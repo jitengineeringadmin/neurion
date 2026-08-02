@@ -1302,7 +1302,7 @@ export class PeerService implements OnModuleDestroy {
     maxTokens = 512,
   ): Promise<{
     text: string;
-    confidence: "agreed" | "disagreed" | "single";
+    confidence: "identical" | "agreed" | "disagreed" | "single";
     askedPeers: string[];
     similarity?: number;
   } | null> {
@@ -1344,16 +1344,37 @@ export class PeerService implements OnModuleDestroy {
       return { text: answers[0]!.text, confidence: "single", askedPeers: asked };
     }
 
-    const sim = PeerService.similarity(answers[0]!.text, answers[1]!.text);
-    const agreed = sim >= 0.6;
+    // Measured on two real machines, three questions, different processors:
+    // with both asked to run reproducibly the answers came back IDENTICAL,
+    // byte for byte. That was not the expected result — floating point across
+    // different CPUs was supposed to make them merely similar — and it changes
+    // what a comparison is worth. If honest peers match exactly, then any
+    // difference at all is worth knowing about, and calling 0.6 overlap
+    // "agreed" would be throwing away the strongest signal there is.
+    //
+    // So three answers instead of two, because they mean different things:
+    //
+    //   IDENTICAL — the same text. Both ran the same way and got the same
+    //     result, which is as close to verification as this can get.
+    //   AGREED — close, not the same. Entirely normal between machines that
+    //     are not running the same build, the same quantisation, or the same
+    //     kind of processor; a network of identical machines is not a
+    //     network. Worth having, weaker than the above, and labelled as such.
+    //   DISAGREED — one of them is wrong, broken, or lying, and there is no
+    //     way from here to tell which.
+    const same = answers[0]!.text.trim() === answers[1]!.text.trim();
+    const sim = same ? 1 : PeerService.similarity(answers[0]!.text, answers[1]!.text);
+    const confidence = same ? "identical" : sim >= 0.6 ? "agreed" : "disagreed";
     this.logger.log(
-      agreed
-        ? `two peers agreed (overlap ${sim.toFixed(2)})`
-        : `two peers DISAGREED (overlap ${sim.toFixed(2)}) — treat with suspicion`,
+      same
+        ? `two peers returned the same answer, word for word`
+        : confidence === "agreed"
+          ? `two peers agreed but not exactly (overlap ${sim.toFixed(2)})`
+          : `two peers DISAGREED (overlap ${sim.toFixed(2)}) — treat with suspicion`,
     );
     return {
       text: answers[0]!.text,
-      confidence: agreed ? "agreed" : "disagreed",
+      confidence,
       askedPeers: asked,
       similarity: Number(sim.toFixed(3)),
     };
