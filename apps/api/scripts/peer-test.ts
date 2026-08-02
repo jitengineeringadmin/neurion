@@ -664,6 +664,34 @@ async function main(): Promise<void> {
     assert(inner.res.t === "pong", `unexpected answer: ${inner.res.t}`);
   });
 
+  await check("an oversized ANSWER cannot fill this machine's memory", async () => {
+    // The other direction, and the easier one to forget: we ask a peer, and the
+    // peer answers with far more than any real reply could be. Reading it and
+    // then measuring it would already have cost the memory.
+    const { createServer } = await import("node:http");
+    const flood = createServer((_req, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      // Chunked, so there is no content-length to check: only counting stops it.
+      for (let i = 0; i < 40; i++) res.write("x".repeat(50_000));
+      res.end();
+    });
+    await new Promise<void>((r) => flood.listen(48531, "127.0.0.1", () => r()));
+    const answer = await (
+      newcomer as unknown as {
+        kadSend(
+          to: { id: string; address: string; port: number },
+          req: { t: string },
+        ): Promise<unknown>;
+      }
+    ).kadSend(
+      { id: middle.myPeerId(), address: "127.0.0.1", port: 48531 },
+      { t: "ping" },
+    );
+    assert(answer === null, "a two-megabyte answer was accepted as a reply");
+    flood.closeAllConnections?.();
+    await new Promise<void>((r) => flood.close(() => r()));
+  });
+
   await check("an oversized request cannot fill this machine's memory", async () => {
     // Ten megabytes of nothing. The route must stop reading long before that.
     const huge = "x".repeat(10_000_000);

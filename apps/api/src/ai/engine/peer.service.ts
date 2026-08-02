@@ -200,6 +200,10 @@ export class PeerService implements OnModuleDestroy {
   private stopServing(): void {
     if (this.timer) clearInterval(this.timer);
     if (this.sweepTimer) clearInterval(this.sweepTimer);
+    // Including the router renewal: without this, switching sharing off and on
+    // again left the old one running and asked the router twice, forever.
+    if (this.mapTimer) clearInterval(this.mapTimer);
+    this.mapTimer = null;
     if (this.kadTimer) {
       clearTimeout(this.kadTimer);
       clearInterval(this.kadTimer);
@@ -1465,8 +1469,13 @@ export class PeerService implements OnModuleDestroy {
         signal: AbortSignal.timeout(4000),
       });
       if (!res.ok) return null;
-      const text = await res.text();
-      if (text.length > 64_000) return null;
+      // Read with a ceiling rather than reading and then measuring. Every
+      // other bound in here protects this machine from what a peer SENDS us;
+      // this one was the hole on the side where we ASK, and a hostile answer
+      // of a gigabyte would have been held in memory in full before anyone
+      // looked at its size.
+      const text = await PeerService.readCapped(res, 64_000);
+      if (!text) return null;
       const opened = this.opened(text);
       if (!opened) return null;
       const answer = (opened.payload as { res?: unknown }).res as
@@ -1481,15 +1490,52 @@ export class PeerService implements OnModuleDestroy {
     }
   }
 
+  /** Read a response body up to a limit, or nothing at all. */
+  private static async readCapped(
+    res: Response,
+    max: number,
+  ): Promise<string | null> {
+    const declared = Number(res.headers.get("content-length") ?? "0");
+    if (declared > max) return null;
+    const reader = res.body?.getReader();
+    if (!reader) return null;
+    const chunks: Buffer[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value) continue;
+        size += value.length;
+        // A chunked reply declares no length, so the count is what stops it.
+        if (size > max) {
+          await reader.cancel();
+          return null;
+        }
+        chunks.push(Buffer.from(value));
+      }
+    } catch {
+      return null;
+    }
+    return Buffer.concat(chunks).toString("utf8");
+  }
+
   /** Answer somebody else's DHT request. */
   private async answerKad(
     req: IncomingMessage,
     res: ServerResponse,
   ): Promise<void> {
     const finish = (code: number, body?: string): void => {
-      res.statusCode = code;
-      if (body) res.setHeader("content-type", "application/json");
-      res.end(body);
+      try {
+        // The socket may already be gone: an oversized upload is cut off
+        // mid-flight, and answering a corpse should not throw.
+        if (res.destroyed || res.writableEnded) return;
+        res.statusCode = code;
+        if (body) res.setHeader("content-type", "application/json");
+        res.end(body);
+      } catch {
+        /* the other end left */
+      }
     };
     const kad = this.kad();
     if (!kad) return finish(503);
