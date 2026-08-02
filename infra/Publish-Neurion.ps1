@@ -139,11 +139,21 @@ if (-not $SkipInstaller) {
     Write-Host "=== manifest: v$Version sha256=$Sha ==="
 
     Write-Host "=== publishing Neurion installer v$Version ==="
+    # The landing page is a static file that nothing else ever copied, so it sat
+    # on the server advertising a product that had changed underneath it — at one
+    # point promising a token the app no longer had. Published with the release
+    # it belongs to.
+    $Landing = Join-Path $Root 'apps\landing\index.html'
+    if (Test-Path -LiteralPath $Landing) {
+        Write-Host '=== publishing the landing page ==='
+        Invoke-Native -Command $Scp -Arguments ($SshOptions + @($Landing, "${Vps}:/var/www/neurion/index.html"))
+    }
+
     Invoke-Native -Command $Scp -Arguments ($SshOptions + @($Installer, "${Vps}:/var/www/neurion/download/"))
     Invoke-Native -Command $Scp -Arguments ($SshOptions + @($ManifestPath, "${Vps}:/var/www/neurion/download/"))
     # The version stamp matches ANY semver, not just 1.8.x — the old pattern
     # silently stopped rewriting the page as soon as the minor changed.
-    $RemotePublish = "set -e; cd /var/www/neurion/download; cp -f 'Neurion-Setup-$Version.exe' 'Neurion-Setup-latest.exe'; chown www-data:www-data 'Neurion-Setup-$Version.exe' 'Neurion-Setup-latest.exe' latest.json; if [ -f /var/www/neurion/index.html ]; then sed -Ei 's/v[0-9]+\.[0-9]+\.[0-9]+/v$Version/g' /var/www/neurion/index.html; fi"
+    $RemotePublish = "set -e; cd /var/www/neurion/download; cp -f 'Neurion-Setup-$Version.exe' 'Neurion-Setup-latest.exe'; chown www-data:www-data 'Neurion-Setup-$Version.exe' 'Neurion-Setup-latest.exe' latest.json; chown www-data:www-data /var/www/neurion/index.html; if [ -f /var/www/neurion/index.html ]; then sed -Ei 's/v[0-9]+\.[0-9]+\.[0-9]+/v$Version/g' /var/www/neurion/index.html; fi"
     Invoke-Native -Command $Ssh -Arguments ($SshOptions + @($Vps, $RemotePublish))
 }
 
