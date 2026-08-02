@@ -635,6 +635,8 @@ const dict: Record<string, string> = {
   "models.noPeers": "no other Neurion on this network yet",
   "models.servedCount": "you have passed {n} models to other people",
   "models.indexNodes": "reachable through the index: {n} machines",
+  "models.shareWeights": "share models",
+  "models.shareWeightsHint": "Your machine is listed in the shared index: anyone looking for a model you hold can see your address. Off means nothing is served and nothing is announced — finding models still works.",
   "models.addPeer": "add a peer by address",
   "models.addPeerPrompt":
     "A friend's address (host or host:port). They need to be reachable from here — same network, or a public address.",

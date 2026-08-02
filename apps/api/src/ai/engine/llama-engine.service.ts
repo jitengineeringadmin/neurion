@@ -459,7 +459,7 @@ export class LlamaEngineService
     const fromPeer = m.sha256 ? await this.peers.locate(m.sha256) : null;
     if (fromPeer) {
       try {
-        this.logger.log(`fetching ${m.file} from a peer on this network`);
+        this.logger.log(`fetching ${m.file} from a peer: ${new URL(fromPeer).host}`);
         await downloadFile(
           fromPeer,
           this.modelPath(dir, m.file),

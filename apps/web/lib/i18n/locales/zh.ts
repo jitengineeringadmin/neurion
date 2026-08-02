@@ -631,6 +631,8 @@ const dict: Record<string, string> = {
   "models.noPeers": "该网络上暂时没有其他 Neurion",
   "models.servedCount": "你已向他人传递了 {n} 个模型",
   "models.indexNodes": "通过索引可达：{n} 台机器",
+  "models.shareWeights": "共享模型",
+  "models.shareWeightsHint": "你的机器会列入共享索引：寻找你所持模型的人可以看到你的地址。关闭后不提供也不通告任何内容——查找模型仍然可用。",
   "models.addPeer": "按地址添加节点",
   "models.addPeerPrompt":
     "朋友的地址（主机或主机:端口）。必须能从这里访问：同一网络，或公网地址。",

@@ -201,6 +201,19 @@ export default function ModelsPage() {
   };
 
   /** Lend this machine's processor to other people, or stop. */
+  async function setSharing(on: boolean) {
+    setBundledErr("");
+    try {
+      await api("/ai/engine/sharing", {
+        method: "POST",
+        body: JSON.stringify({ enabled: on }),
+      });
+      await loadPeers();
+    } catch (e) {
+      setBundledErr((e as Error).message);
+    }
+  }
+
   async function setCompute(on: boolean) {
     setBundledErr("");
     try {
@@ -823,6 +836,28 @@ export default function ModelsPage() {
                     </span>
                   </>
                 )}
+                <span>·</span>
+                {/* Leaving this on lists this machine's address where people
+                    look for models, which is more than it used to mean. That
+                    makes it something a person has to be able to switch off in
+                    one click, not only through an environment variable. */}
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    cursor: "pointer",
+                  }}
+                  title={t("models.shareWeightsHint")}
+                >
+                  <input
+                    type="checkbox"
+                    checked={peerInfo.enabled}
+                    onChange={(e) => void setSharing(e.target.checked)}
+                    style={{ cursor: "pointer" }}
+                  />
+                  {t("models.shareWeights")}
+                </label>
                 <span>·</span>
                 {/* Passing on a file costs nothing; running somebody's prompt
                     takes this machine's processor and slows the owner's own

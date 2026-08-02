@@ -161,6 +161,21 @@ export class EngineController {
   }
 
   /**
+   * Stop sharing, or start again.
+   *
+   * Reachable from the interface because of what sharing now means: with the
+   * distributed index in place, leaving it on lists this machine's address
+   * where people look for models, rather than merely making it reachable to
+   * somebody who already had the address. Off takes effect at once — nothing
+   * served, nothing announced, no part of the index held for anyone — and
+   * finding models still works, because asking is not publishing.
+   */
+  @Post("sharing")
+  setSharing(@Body() dto: ComputeDto) {
+    return { sharing: this.peers.setSharingEnabled(dto.enabled) };
+  }
+
+  /**
    * Have a peer run something this machine cannot.
    *
    * Never automatic: the prompt leaves this computer, so it happens only

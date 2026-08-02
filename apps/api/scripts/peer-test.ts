@@ -123,9 +123,19 @@ async function main(): Promise<void> {
   await check("a source is resolved for a hash somebody has", () => {
     const src = leecher.sourceFor(model.sha256!);
     assert(src, "no source found for a hash a peer announced");
+    // Any peer offering it is a correct answer, and on a live network there may
+    // genuinely be more than one — a real Neurion on this machine announces too.
+    // What must hold is the shape, and that the seeder is one of the sources.
     assert(
-      /^http:\/\/[\d.]+:48501\/peer\/blob\/[0-9a-f]{64}$/.test(src!),
+      src!.startsWith("http://") &&
+        src!.endsWith(`/peer/blob/${model.sha256}`),
       `unexpected source URL: ${src}`,
+    );
+    assert(
+      leecher
+        .known()
+        .some((p) => p.port === 48501 && p.has.includes(model.sha256!)),
+      "the test seeder was not among the peers offering the model",
     );
   });
 
@@ -450,6 +460,59 @@ async function main(): Promise<void> {
       saved[0]!.address.startsWith("10.1."),
       "the most recent entry should be at the front",
     );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  // ---- the switch that has to exist now that the index is global --------
+
+  await check("sharing can be switched off, and it stops at once", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "neurion-switch-"));
+    mkdirSync(join(dir, "models"), { recursive: true });
+    writeFileSync(
+      join(dir, "models", model.file),
+      Buffer.alloc(model.sizeBytes, 7),
+    );
+    const node = new PeerService(
+      cfg({
+        NEURION_TEXT_DIR: dir,
+        NEURION_PEER_PORT: "48521",
+        NEURION_PEER_SWEEP: "false",
+      }),
+    );
+    const url = `http://127.0.0.1:48521/peer/blob/${model.sha256}`;
+    node.start();
+    await wait(500);
+    assert(
+      (await fetch(url, { method: "HEAD" })).ok,
+      "not serving while sharing is on",
+    );
+
+    node.setSharingEnabled(false);
+    await wait(300);
+    let stopped = false;
+    try {
+      const res = await fetch(url, {
+        method: "HEAD",
+        signal: AbortSignal.timeout(1500),
+      });
+      stopped = !res.ok;
+    } catch {
+      stopped = true; // refused or dropped, both mean off
+    }
+    assert(stopped, "still serving after sharing was switched off");
+    assert(!node.enabled(), "the switch says on while nothing is served");
+
+    // The choice belongs to the person, so it outlives the process.
+    const restarted = new PeerService(cfg({ NEURION_TEXT_DIR: dir }));
+    assert(!restarted.enabled(), "the decision was forgotten on restart");
+
+    node.setSharingEnabled(true);
+    await wait(600);
+    assert(
+      (await fetch(url, { method: "HEAD" })).ok,
+      "sharing did not come back when switched on again",
+    );
+    node.onModuleDestroy();
     rmSync(dir, { recursive: true, force: true });
   });
 

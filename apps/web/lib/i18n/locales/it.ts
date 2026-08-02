@@ -662,6 +662,8 @@ const dict: Record<string, string> = {
   "models.noPeers": "nessun altro Neurion su questa rete per ora",
   "models.servedCount": "hai passato {n} modelli ad altre persone",
   "models.indexNodes": "raggiungibili tramite l'indice: {n} macchine",
+  "models.shareWeights": "condividi modelli",
+  "models.shareWeightsHint": "La tua macchina è elencata nell'indice condiviso: chi cerca un modello che hai può vedere il tuo indirizzo. Spento non serve e non annuncia niente — cercare modelli continua a funzionare.",
   "models.addPeer": "aggiungi un pari per indirizzo",
   "models.addPeerPrompt":
     "L'indirizzo di un amico (host oppure host:porta). Deve essere raggiungibile da qui: stessa rete, o un indirizzo pubblico.",

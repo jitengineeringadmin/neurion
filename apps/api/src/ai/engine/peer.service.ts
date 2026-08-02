@@ -135,17 +135,94 @@ export class PeerService implements OnModuleDestroy {
     return Number(this.config.get<string>("NEURION_PEER_PORT") ?? 8097);
   }
 
+  private sharingPath(dir: string): string {
+    return join(dir, "peer-sharing.json");
+  }
+
   /**
    * Sharing is on unless switched off. It costs the sharer nothing — the file is
    * already on the disk, and serving it is a read — which is exactly the
    * property that made Napster and eMule work and that donated-compute networks
    * never had.
+   *
+   * It has to be reachable from the interface, not only from an environment
+   * variable, and that became true the day the index went global: leaving it on
+   * now means this machine's address is listed where people look, not merely
+   * reachable if somebody already knows it. A default that publishes something
+   * about you is only defensible if turning it off takes one click.
    */
   enabled(): boolean {
+    // An explicit environment setting wins, so a deployment can force it.
     const v =
       this.config.get<string>("NEURION_PEER_SHARING") ??
       process.env.NEURION_PEER_SHARING;
-    return v !== "false" && v !== "0";
+    if (v === "false" || v === "0") return false;
+    if (v === "true" || v === "1") return true;
+    const dir = this.dir();
+    if (!dir) return true;
+    try {
+      const saved = JSON.parse(readFileSync(this.sharingPath(dir), "utf8")) as {
+        enabled?: boolean;
+      };
+      return saved.enabled !== false;
+    } catch {
+      return true; // never chosen: on, which is what the app is for
+    }
+  }
+
+  /**
+   * Turn sharing on or off, now rather than at the next start.
+   *
+   * Off means: no model is served, nothing is announced, and this machine holds
+   * no part of the index for anybody. It can still FIND things — asking is not
+   * publishing, and somebody who cannot spare the upstream should not be cut off
+   * from the network they are helping to justify.
+   */
+  setSharingEnabled(on: boolean): boolean {
+    const dir = this.dir();
+    if (!dir) throw new Error("no engine directory configured");
+    writeFileSync(this.sharingPath(dir), JSON.stringify({ enabled: on }));
+    if (on) {
+      this.started = false;
+      this.start();
+      this.logger.log("sharing is on: this machine is reachable and listed");
+    } else {
+      this.stopServing();
+      this.logger.log(
+        "sharing is off: nothing is served, nothing is announced, and this machine is no longer part of the index",
+      );
+    }
+    return this.enabled();
+  }
+
+  /** Close everything that makes this machine visible, leaving lookups working. */
+  private stopServing(): void {
+    if (this.timer) clearInterval(this.timer);
+    if (this.sweepTimer) clearInterval(this.sweepTimer);
+    if (this.kadTimer) {
+      clearTimeout(this.kadTimer);
+      clearInterval(this.kadTimer);
+    }
+    this.timer = null;
+    this.sweepTimer = null;
+    this.kadTimer = null;
+    try {
+      this.sock?.close();
+    } catch {
+      /* already closed */
+    }
+    this.sock = null;
+    try {
+      // close() alone only stops NEW connections; a peer already talking to us
+      // would keep being served, which is not what "off" means to the person
+      // who just clicked it.
+      this.http?.closeAllConnections?.();
+      this.http?.close();
+    } catch {
+      /* already closed */
+    }
+    this.http = null;
+    this.started = false;
   }
 
   /** Catalogue models present on this machine, by hash. */
@@ -1506,9 +1583,17 @@ export class PeerService implements OnModuleDestroy {
     const kad = this.kad();
     const key = keyFor(sha256);
     if (!kad || !key) return null;
-    let providers;
+    // A deadline, because this sits in front of a download. A lookup is
+    // several requests deep and each hop may be a machine that has gone to
+    // sleep; without a ceiling, somebody with two slow peers would wait a
+    // minute before the publisher was even tried. Fifteen seconds is long
+    // enough for a healthy walk and short enough that a bad one is not felt.
+    let providers: Awaited<ReturnType<Kad["findProviders"]>>;
     try {
-      providers = await kad.findProviders(key, 4);
+      providers = await Promise.race([
+        kad.findProviders(key, 4),
+        new Promise<[]>((resolve) => setTimeout(() => resolve([]), 15_000)),
+      ]);
     } catch {
       return null;
     }
