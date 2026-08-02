@@ -665,6 +665,10 @@ async function main(): Promise<void> {
       NEURION_TEXT_DIR: hostDir,
       NEURION_PEER_PORT: "48571",
       NEURION_PEER_SWEEP: "false",
+      // Everything in a test is loopback, which is exempt from the ceiling by
+      // design. Metering is forced on so the ceiling can be tested at all —
+      // the same setting somebody on a phone hotspot would use for real.
+      NEURION_PEER_METER_LOCAL: "true",
     }),
   );
   (host as unknown as { serve(): void }).serve();
@@ -747,6 +751,40 @@ async function main(): Promise<void> {
     host.unblock("127.0.0.1");
     const back = await fetch("http://127.0.0.1:48571/peer/have");
     assert(back.ok, "unblocking did not restore the machine");
+  });
+
+  await check("a machine on your own network is not slowed down", async () => {
+    // The ceiling protects the line out of the house. A copy that never leaves
+    // the switch costs nothing, and throttling it would turn a one minute
+    // transfer into a quarter of an hour for no reason at all.
+    const homeDir = mkdtempSync(join(tmpdir(), "neurion-home-"));
+    mkdirSync(join(homeDir, "models"), { recursive: true });
+    writeFileSync(
+      join(homeDir, "models", model.file),
+      Buffer.alloc(model.sizeBytes, 7),
+    );
+    const home = new PeerService(
+      cfg({
+        NEURION_TEXT_DIR: homeDir,
+        NEURION_PEER_PORT: "48572",
+        NEURION_PEER_SWEEP: "false",
+      }),
+    );
+    (home as unknown as { serve(): void }).serve();
+    await wait(400);
+    // A ceiling so low that any throttling at all would be obvious.
+    home.setLimits({ slots: 3, kbPerSecond: 1 });
+    const t0 = Date.now();
+    const res = await fetch(`http://127.0.0.1:48572/peer/blob/${model.sha256}`);
+    await res.arrayBuffer();
+    const took = Date.now() - t0;
+    assert(res.ok, `the transfer failed: ${res.status}`);
+    assert(
+      took < 2000,
+      `a copy on the same machine took ${took}ms at a 1 KB/s ceiling — the ceiling is being applied where nothing is being spent`,
+    );
+    home.onModuleDestroy();
+    rmSync(homeDir, { recursive: true, force: true });
   });
 
   await check("a nonsense address cannot be blocked", () => {

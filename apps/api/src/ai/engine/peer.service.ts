@@ -389,6 +389,41 @@ export class PeerService implements OnModuleDestroy {
     return merged;
   }
 
+  /**
+   * Whether a transfer to this address should be counted against the ceiling.
+   *
+   * The ceiling exists to protect the line OUT of the house. A machine on the
+   * same network does not touch it — that traffic never leaves the switch — so
+   * throttling it turns a one minute copy into a quarter of an hour and
+   * protects nothing at all.
+   *
+   * The exception is real and worth the setting: somebody sharing a phone's
+   * hotspot has a "local" network whose every byte is paid for. They can turn
+   * metering on for it.
+   */
+  private meters(who: string): boolean {
+    const forced =
+      this.config.get<string>("NEURION_PEER_METER_LOCAL") ??
+      process.env.NEURION_PEER_METER_LOCAL;
+    if (forced === "true" || forced === "1") return true;
+    return !PeerService.isLocalAddress(who);
+  }
+
+  /** Loopback, or one of the private ranges a home network is built from. */
+  private static isLocalAddress(a: string): boolean {
+    if (a === "127.0.0.1" || a === "::1" || a === "localhost") return true;
+    const m = /^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/.exec(a);
+    if (!m) return false;
+    const x = Number(m[1]);
+    const y = Number(m[2]);
+    if (x === 10) return true;
+    if (x === 127) return true;
+    if (x === 192 && y === 168) return true;
+    if (x === 172 && y >= 16 && y <= 31) return true;
+    if (x === 169 && y === 254) return true; // link-local
+    return false;
+  }
+
   /** Hold the caller back so the total rate stays under the ceiling. */
   private async throttle(bytes: number): Promise<void> {
     const cap = this.limits().kbPerSecond * 1024;
@@ -441,11 +476,14 @@ export class PeerService implements OnModuleDestroy {
     this.served += 1;
     this.logger.log(`sending ${name} to ${who}`);
     try {
+      // The ceiling is about the line out of the house, so a neighbour on the
+      // same network is not slowed down for a cost that is not being paid.
+      const metered = this.meters(who);
       for await (const chunk of createReadStream(hit.path, {
         highWaterMark: 64 * 1024,
       })) {
         if (res.destroyed) break;
-        await this.throttle((chunk as Buffer).length);
+        if (metered) await this.throttle((chunk as Buffer).length);
         if (!res.write(chunk)) {
           await new Promise<void>((r) => res.once("drain", () => r()));
         }
