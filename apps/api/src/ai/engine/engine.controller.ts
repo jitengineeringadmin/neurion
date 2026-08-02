@@ -17,6 +17,13 @@ class FolderDto {
   path!: string;
 }
 
+class SeedDto {
+  /** A peer address: host, or host:port. */
+  @IsString()
+  @MaxLength(300)
+  address!: string;
+}
+
 class UseLocalModelDto {
   /** Absolute path to a .gguf the user already has. */
   @IsString()
@@ -93,12 +100,31 @@ export class EngineController {
       offeredByPeers: s.offeredByPeers,
       /** How many times this machine has handed a model to somebody else. */
       served: s.served,
+      /** This machine's own name on the network: its public key fingerprint. */
+      me: this.peers.myPeerId(),
+      seeds: this.peers.seeds(),
       peers: this.peers.known().map((p) => ({
         address: p.address,
         models: p.has.length,
         lastSeen: p.lastSeen,
       })),
     };
+  }
+
+  /**
+   * Peer addresses the user added by hand.
+   *
+   * This is what lets two people find each other with no registry at all: tell
+   * a friend your address once and neither of you ever needs our server again.
+   */
+  @Post("seeds")
+  addSeed(@Body() dto: SeedDto) {
+    return { seeds: this.peers.addSeed(dto.address) };
+  }
+
+  @Delete("seeds")
+  removeSeed(@Body() dto: SeedDto) {
+    return { seeds: this.peers.removeSeed(dto.address) };
   }
 
   /** Download the engine and a model, then start it, reporting progress live. */

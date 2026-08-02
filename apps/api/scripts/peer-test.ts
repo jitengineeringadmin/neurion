@@ -169,6 +169,115 @@ async function main(): Promise<void> {
     );
   });
 
+
+  // ---- phase 2: identity is a key, not an account ------------------------
+
+  await check("the identity survives a restart", () => {
+    const dir = mkdtempSync(join(tmpdir(), "neurion-ident-"));
+    const a = new PeerService(cfg({ NEURION_TEXT_DIR: dir }));
+    const b = new PeerService(cfg({ NEURION_TEXT_DIR: dir }));
+    const idA = (a as unknown as { peerId: string }).peerId;
+    const idB = (b as unknown as { peerId: string }).peerId;
+    assert(idA.length === 32, `expected a 32-char fingerprint, got ${idA}`);
+    assert(
+      idA === idB,
+      "a second instance on the same directory must be the same peer",
+    );
+    // The random id it replaces changed on every start, so a peer looked like a
+    // stranger every time it came back.
+    const other = new PeerService(
+      cfg({ NEURION_TEXT_DIR: mkdtempSync(join(tmpdir(), "neurion-ident2-")) }),
+    );
+    assert(
+      (other as unknown as { peerId: string }).peerId !== idA,
+      "two different machines must not share an identity",
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  await check("a forged announcement is rejected", () => {
+    const dir = mkdtempSync(join(tmpdir(), "neurion-forge-"));
+    const victimDir = mkdtempSync(join(tmpdir(), "neurion-victim-"));
+    const attacker = new PeerService(cfg({ NEURION_TEXT_DIR: dir }));
+    const victim = new PeerService(cfg({ NEURION_TEXT_DIR: victimDir }));
+    const priv = attacker as unknown as {
+      signed(p: object): string | null;
+      peerId: string;
+    };
+    const recv = victim as unknown as {
+      onAnnounce(b: Buffer, addr: string): void;
+      known(): unknown[];
+    };
+
+    // Signed properly by the attacker, but claiming to be somebody else. The
+    // signature is valid; the NAME is stolen. Only checking the signature would
+    // let this through.
+    const stolen = priv.signed({
+      v: 1,
+      peerId: "0".repeat(32),
+      port: 8097,
+      has: [],
+    });
+    assert(stolen, "the attacker should be able to sign");
+    recv.onAnnounce(Buffer.from(stolen!), "10.0.0.1");
+    assert(
+      recv.known().length === 0,
+      "an announcement naming someone else was accepted",
+    );
+
+    // Unsigned rubbish, which is what a UDP port mostly receives.
+    recv.onAnnounce(Buffer.from('{"v":1,"peerId":"x","port":1,"has":[]}'), "10.0.0.2");
+    recv.onAnnounce(Buffer.from("not json at all"), "10.0.0.3");
+    assert(recv.known().length === 0, "unsigned announcements were accepted");
+
+    // Correctly signed under its own name: accepted.
+    const honest = priv.signed({
+      v: 1,
+      peerId: priv.peerId,
+      port: 8097,
+      has: [],
+    });
+    recv.onAnnounce(Buffer.from(honest!), "10.0.0.4");
+    assert(recv.known().length === 1, "an honest announcement was rejected");
+
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(victimDir, { recursive: true, force: true });
+  });
+
+  await check("seed addresses are kept, and rubbish is refused", () => {
+    const dir = mkdtempSync(join(tmpdir(), "neurion-seeds-"));
+    const p = new PeerService(cfg({ NEURION_TEXT_DIR: dir }));
+    assert(p.seeds().length === 0, "should start with none");
+
+    p.addSeed("192.0.2.10:8097");
+    p.addSeed("http://192.0.2.11/"); // scheme and slash stripped
+    p.addSeed("192.0.2.10:8097"); // duplicate
+    const list = p.seeds();
+    assert(
+      list.length === 2,
+      `expected 2 seeds, got ${list.length}: ${list.join(", ")}`,
+    );
+    assert(list.includes("192.0.2.11"), "the scheme should have been stripped");
+
+    for (const bad of ["", "  ", "not a host!", "1.2.3.4:99999999/x"]) {
+      let threw = false;
+      try {
+        p.addSeed(bad);
+      } catch {
+        threw = true;
+      }
+      assert(threw, `"${bad}" should have been refused`);
+    }
+
+    // Survives a restart: a friend's address is not something to retype.
+    const again = new PeerService(cfg({ NEURION_TEXT_DIR: dir }));
+    assert(again.seeds().length === 2, "seeds should be remembered");
+
+    p.removeSeed("192.0.2.11");
+    assert(p.seeds().length === 1, "removal did not stick");
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   seeder.onModuleDestroy();
   leecher.onModuleDestroy();
   rmSync(seederDir, { recursive: true, force: true });

@@ -1,11 +1,25 @@
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { createReadStream, existsSync, statSync } from "node:fs";
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer, Server } from "node:http";
 import { join } from "node:path";
 import { createSocket, Socket } from "node:dgram";
 import { networkInterfaces } from "node:os";
-import { randomUUID } from "node:crypto";
+import {
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  generateKeyPairSync,
+  sign,
+  verify,
+} from "node:crypto";
 import { CATALOG } from "./llama-catalog";
 
 /**
@@ -57,7 +71,11 @@ const PEER_TTL_MS = 70_000;
 @Injectable()
 export class PeerService implements OnModuleDestroy {
   private readonly logger = new Logger(PeerService.name);
-  private readonly peerId = randomUUID();
+  private ident: { peerId: string; publicKey: string; privateKey: string } | null = null;
+  /** Fingerprint of this machine's public key; empty only if it cannot be created. */
+  private get peerId(): string {
+    return this.identity()?.peerId ?? "";
+  }
   private readonly peers = new Map<string, KnownPeer>();
   private sock: Socket | null = null;
   private http: Server | null = null;
@@ -139,7 +157,13 @@ export class PeerService implements OnModuleDestroy {
           JSON.stringify({
             v: 1,
             peerId: this.peerId,
+            publicKey: this.identity()?.publicKey ?? null,
             has: [...this.localHashes().keys()],
+            // Peer exchange: everyone we know about, so a newcomer that can
+            // reach one machine can reach the rest without any registry.
+            peers: this.known()
+              .slice(0, 40)
+              .map((p) => ({ address: p.address, port: p.port })),
           }),
         );
         return;
@@ -222,7 +246,11 @@ export class PeerService implements OnModuleDestroy {
       // answered. The sweep stops costing anything as soon as a peer is found.
       void this.sweep();
       this.sweepTimer = setInterval(() => {
+        // The subnet sweep stops once somebody is around, but the seeds are
+        // asked regardless: they are how this reaches beyond the local network,
+        // and a friend coming online should be noticed.
         if (this.known().length === 0) void this.sweep();
+        else void this.askSeeds();
       }, 30_000);
     });
     this.sock = sock;
@@ -230,14 +258,20 @@ export class PeerService implements OnModuleDestroy {
 
   private announce(): void {
     if (!this.sock) return;
-    const has = [...this.localHashes().keys()];
+    const id = this.identity();
+    if (!id) return;
     const msg: Announcement = {
       v: 1,
-      peerId: this.peerId,
+      peerId: id.peerId,
       port: this.sharePort(),
-      has,
+      has: [...this.localHashes().keys()],
     };
-    const buf = Buffer.from(JSON.stringify(msg));
+    // Signed, so an announcement cannot be forged in somebody else's name. It
+    // costs nothing here and it is what makes reciprocity possible later: you
+    // can only remember who helped you if names cannot be borrowed.
+    const wire = this.signed(msg);
+    if (!wire) return;
+    const buf = Buffer.from(wire);
     try {
       this.sock.send(buf, 0, buf.length, DISCOVERY_PORT, GROUP);
     } catch {
@@ -247,28 +281,20 @@ export class PeerService implements OnModuleDestroy {
   }
 
   private onAnnounce(buf: Buffer, address: string): void {
-    let msg: Announcement;
-    try {
-      // Anything can be sent to a UDP port. Nothing here is trusted; the worst a
-      // malformed or hostile announcement can do is be ignored, and the worst a
-      // lying one can do is offer a file that fails its hash on arrival.
-      msg = JSON.parse(buf.toString("utf8")) as Announcement;
-    } catch {
-      return;
-    }
-    if (msg?.v !== 1 || typeof msg.peerId !== "string") return;
-    if (msg.peerId === this.peerId) return; // our own announcement, echoed back
-    if (!Array.isArray(msg.has) || !Number.isInteger(msg.port)) return;
-    const has = msg.has.filter(
-      (h) => typeof h === "string" && /^[0-9a-f]{64}$/.test(h),
-    );
-    this.peers.set(msg.peerId, {
-      peerId: msg.peerId,
-      address,
-      port: msg.port,
-      has,
-      lastSeen: Date.now(),
-    });
+    // Anything at all can be sent to a UDP port. An unsigned, malformed or
+    // forged announcement is simply dropped; a signed one only proves who sent
+    // it, never that what it offers is genuine — that is still the hash's job.
+    const opened = this.opened(buf.toString("utf8"));
+    if (!opened) return;
+    const { peerId, payload } = opened;
+    if (peerId === this.peerId) return; // our own announcement, echoed back
+    if (payload.v !== 1 || !Number.isInteger(payload.port)) return;
+    const has = Array.isArray(payload.has)
+      ? (payload.has as unknown[]).filter(
+          (h): h is string => typeof h === "string" && /^[0-9a-f]{64}$/.test(h),
+        )
+      : [];
+    this.remember(address, payload.port as number, peerId, has);
   }
 
   private forget(): void {
@@ -299,6 +325,8 @@ export class PeerService implements OnModuleDestroy {
     this.sweeping = true;
     try {
       const port = this.sharePort();
+      // Seeds first: they may be the only way out of this network.
+      await this.askSeeds();
       const bases = this.localSubnets();
       for (const base of bases) {
         const probes: Array<Promise<void>> = [];
@@ -339,6 +367,7 @@ export class PeerService implements OnModuleDestroy {
           v?: number;
           peerId?: string;
           has?: unknown;
+          peers?: Array<{ address?: unknown; port?: unknown }>;
         };
         if (body?.v !== 1 || typeof body.peerId !== "string") return;
         if (body.peerId === this.peerId) return; // ourselves, another interface
@@ -349,6 +378,7 @@ export class PeerService implements OnModuleDestroy {
             )
           : [];
         this.remember(address, port, body.peerId, has);
+        if (Array.isArray(body.peers)) await this.followGossip(body.peers);
         return;
       }
       // An older Neurion: it serves blobs but cannot list them. It still
@@ -402,6 +432,234 @@ export class PeerService implements OnModuleDestroy {
     // No peerId to key on, so the address is the identity for these. Prefixed
     // to make it obvious in logs that this one was found the slow way.
     this.remember(address, port, `addr:${address}`, has);
+  }
+
+
+  // --- who this machine is ------------------------------------------------
+  //
+  // An Ed25519 key pair, generated once and kept next to the models. The peer
+  // id is the fingerprint of the public key, so identity is something a machine
+  // PROVES rather than something a server hands out. Nobody issues it, nobody
+  // can revoke it, and it survives restarts — which the random id it replaces
+  // did not, so a peer looked like a stranger every time it came back.
+  //
+  // This is what phase 3 will need: reciprocity means remembering who gave you
+  // something, and you cannot remember someone whose name changes every reboot.
+
+  private identityPath(dir: string): string {
+    return join(dir, "peer-identity.json");
+  }
+
+  /** Load the key pair, creating it the first time. */
+  private identity(): { peerId: string; publicKey: string; privateKey: string } | null {
+    if (this.ident) return this.ident;
+    const dir = this.dir();
+    if (!dir) return null;
+    const path = this.identityPath(dir);
+    try {
+      const saved = JSON.parse(readFileSync(path, "utf8")) as {
+        publicKey?: string;
+        privateKey?: string;
+      };
+      if (saved.publicKey && saved.privateKey) {
+        this.ident = {
+          peerId: PeerService.fingerprint(saved.publicKey),
+          publicKey: saved.publicKey,
+          privateKey: saved.privateKey,
+        };
+        return this.ident;
+      }
+    } catch {
+      /* first run, or a file we cannot read: make a new one */
+    }
+    try {
+      const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+      const pub = publicKey
+        .export({ type: "spki", format: "der" })
+        .toString("base64");
+      const priv = privateKey
+        .export({ type: "pkcs8", format: "der" })
+        .toString("base64");
+      mkdirSync(dir, { recursive: true });
+      // 0600 where the platform honours it. On Windows the file sits in the
+      // user's own profile, which is the same protection everything else here
+      // relies on.
+      writeFileSync(path, JSON.stringify({ publicKey: pub, privateKey: priv }), {
+        mode: 0o600,
+      });
+      this.ident = { peerId: PeerService.fingerprint(pub), publicKey: pub, privateKey: priv };
+      this.logger.log(`this machine is peer ${this.ident.peerId}`);
+      return this.ident;
+    } catch (e) {
+      this.logger.warn(`could not create a peer identity: ${(e as Error).message}`);
+      return null;
+    }
+  }
+
+  /** Short, stable name for a public key. */
+  private static fingerprint(publicKeyB64: string): string {
+    return createHash("sha256")
+      .update(Buffer.from(publicKeyB64, "base64"))
+      .digest("hex")
+      .slice(0, 32);
+  }
+
+  /** Sign a payload so a peer cannot claim to be somebody else. */
+  private signed(payload: object): string | null {
+    const id = this.identity();
+    if (!id) return null;
+    const body = JSON.stringify(payload);
+    try {
+      const key = createPrivateKey({
+        key: Buffer.from(id.privateKey, "base64"),
+        format: "der",
+        type: "pkcs8",
+      });
+      const sig = sign(null, Buffer.from(body), key).toString("base64");
+      return JSON.stringify({ body, publicKey: id.publicKey, sig });
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Check a signed message and return its contents, or null.
+   *
+   * Two things have to hold: the signature must be valid for the enclosed
+   * public key, and the claimed peer id must be that key's fingerprint. Without
+   * the second check a peer could sign with its own key while claiming
+   * somebody else's name.
+   */
+  private opened(raw: string): { peerId: string; payload: Record<string, unknown> } | null {
+    try {
+      const outer = JSON.parse(raw) as {
+        body?: string;
+        publicKey?: string;
+        sig?: string;
+      };
+      if (!outer.body || !outer.publicKey || !outer.sig) return null;
+      const key = createPublicKey({
+        key: Buffer.from(outer.publicKey, "base64"),
+        format: "der",
+        type: "spki",
+      });
+      const ok = verify(
+        null,
+        Buffer.from(outer.body),
+        key,
+        Buffer.from(outer.sig, "base64"),
+      );
+      if (!ok) return null;
+      const payload = JSON.parse(outer.body) as Record<string, unknown>;
+      const claimed = payload.peerId;
+      const real = PeerService.fingerprint(outer.publicKey);
+      if (typeof claimed !== "string" || claimed !== real) return null;
+      return { peerId: real, payload };
+    } catch {
+      return null;
+    }
+  }
+
+
+  // --- finding each other without a registry ------------------------------
+  //
+  // Two mechanisms, neither of which needs a server:
+  //
+  //  - PEER EXCHANGE. When we ask a machine what it has, it also tells us who
+  //    else it knows. We never take its word for it — we go and ask those
+  //    addresses ourselves — so a lying peer can waste a few requests and
+  //    nothing more.
+  //  - SEEDS. Addresses the user typed in, kept on disk. This is what makes the
+  //    network work across the internet today: tell a friend your address once
+  //    and neither of you ever needs neurionproject.org to find the other.
+  //
+  // A DHT would remove the last of the manual step, and it is the obvious next
+  // move — but it is a large dependency, and this already does the job it is
+  // for: if every server we run disappeared, two people who know each other's
+  // address still find each other.
+
+  private seedsPath(dir: string): string {
+    return join(dir, "peer-seeds.json");
+  }
+
+  /** Addresses the user added by hand. */
+  seeds(): string[] {
+    const dir = this.dir();
+    if (!dir) return [];
+    try {
+      const raw = JSON.parse(readFileSync(this.seedsPath(dir), "utf8"));
+      return Array.isArray(raw)
+        ? raw.filter((x): x is string => typeof x === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  addSeed(entry: string): string[] {
+    const dir = this.dir();
+    if (!dir) throw new Error("no engine directory configured");
+    const clean = entry.trim().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    if (!/^[A-Za-z0-9._-]+(:\d{1,5})?$/.test(clean)) {
+      throw new Error(`not a host or host:port: ${entry}`);
+    }
+    const list = this.seeds();
+    if (!list.includes(clean)) list.push(clean);
+    writeFileSync(this.seedsPath(dir), JSON.stringify(list, null, 2));
+    // Try it straight away rather than waiting for the next sweep: someone who
+    // just typed an address wants to know now whether it worked.
+    const [host, port] = clean.split(":");
+    if (host) void this.ask(host, Number(port) || this.sharePort());
+    return list;
+  }
+
+  removeSeed(entry: string): string[] {
+    const dir = this.dir();
+    if (!dir) throw new Error("no engine directory configured");
+    const list = this.seeds().filter((s) => s !== entry.trim());
+    writeFileSync(this.seedsPath(dir), JSON.stringify(list, null, 2));
+    return list;
+  }
+
+  /** Ask the seeds, wherever they are. Runs alongside the subnet sweep. */
+  private async askSeeds(): Promise<void> {
+    const port = this.sharePort();
+    await Promise.all(
+      this.seeds().map((s) => {
+        const [host, p] = s.split(":");
+        return host ? this.ask(host, Number(p) || port) : Promise.resolve();
+      }),
+    );
+  }
+
+  /**
+   * Follow the peers a peer told us about.
+   *
+   * Bounded on purpose: only addresses we have not already got, only a handful
+   * per round, and each one is verified by talking to it directly. Without a
+   * bound, one machine advertising a long list would have us probing the world.
+   */
+  private async followGossip(
+    told: Array<{ address?: unknown; port?: unknown }>,
+  ): Promise<void> {
+    const known = new Set(this.known().map((p) => `${p.address}:${p.port}`));
+    const fresh: Array<[string, number]> = [];
+    for (const t of told) {
+      if (typeof t?.address !== "string") continue;
+      const port = Number.isInteger(t.port) ? (t.port as number) : this.sharePort();
+      if (!/^[0-9.]+$/.test(t.address) && !/^[A-Za-z0-9._-]+$/.test(t.address)) {
+        continue;
+      }
+      if (known.has(`${t.address}:${port}`)) continue;
+      fresh.push([t.address, port]);
+      if (fresh.length >= 8) break;
+    }
+    await Promise.all(fresh.map(([a, p]) => this.ask(a, p)));
+  }
+
+  /** This machine's name on the network — the fingerprint of its public key. */
+  myPeerId(): string {
+    return this.peerId;
   }
 
   /** Peers seen recently, newest first. */

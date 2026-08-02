@@ -661,5 +661,8 @@ const dict: Record<string, string> = {
   "models.peersFound": "{n} pari vicini, offrono {m} modelli",
   "models.noPeers": "nessun altro Neurion su questa rete per ora",
   "models.servedCount": "hai passato {n} modelli ad altre persone",
+  "models.addPeer": "aggiungi un pari per indirizzo",
+  "models.addPeerPrompt":
+    "L'indirizzo di un amico (host oppure host:porta). Deve essere raggiungibile da qui: stessa rete, o un indirizzo pubblico.",
 };
 export default dict;

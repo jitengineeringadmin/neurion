@@ -132,6 +132,8 @@ export default function ModelsPage() {
     sharing: number;
     offeredByPeers: number;
     served: number;
+    me?: string;
+    seeds?: string[];
     peers: Array<{ address: string; models: number }>;
   } | null>(null);
   const [localFound, setLocalFound] = useState<
@@ -194,6 +196,22 @@ export default function ModelsPage() {
     setLocalFound(r.models ?? []);
   };
 
+  /** Add a peer by address — a friend on another network, with no registry. */
+  async function addSeed() {
+    const entry = window.prompt(t("models.addPeerPrompt"))?.trim();
+    if (!entry) return;
+    setBundledErr("");
+    try {
+      await api("/ai/engine/seeds", {
+        method: "POST",
+        body: JSON.stringify({ address: entry }),
+      });
+      await loadPeers();
+    } catch (e) {
+      setBundledErr((e as Error).message);
+    }
+  }
+
   /** Who else on this network is sharing, and what we are giving back. */
   async function loadPeers() {
     setPeerInfo(
@@ -202,6 +220,8 @@ export default function ModelsPage() {
         sharing: number;
         offeredByPeers: number;
         served: number;
+        me?: string;
+        seeds?: string[];
         peers: Array<{ address: string; models: number }>;
       }>("/ai/engine/peers").catch(() => null),
     );
@@ -768,6 +788,24 @@ export default function ModelsPage() {
                     </span>
                   </>
                 )}
+                <span>·</span>
+                {/* Reaching somebody outside this network needs no registry and
+                    no account — only their address, once. */}
+                <button
+                  onClick={() => void addSeed()}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: theme.muted,
+                    cursor: "pointer",
+                    fontSize: 12,
+                    textDecoration: "underline",
+                    padding: 0,
+                  }}
+                >
+                  {t("models.addPeer")}
+                  {peerInfo.seeds?.length ? ` (${peerInfo.seeds.length})` : ""}
+                </button>
               </div>
             )}
             {bundledErr && (

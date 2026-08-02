@@ -670,5 +670,8 @@ const dict: Record<string, string> = {
   "models.peersFound": "рядом {n} узлов, предлагают {m} моделей",
   "models.noPeers": "в этой сети пока нет других Neurion",
   "models.servedCount": "вы передали {n} моделей другим",
+  "models.addPeer": "добавить узел по адресу",
+  "models.addPeerPrompt":
+    "Адрес знакомого (хост или хост:порт). Он должен быть доступен отсюда — та же сеть или публичный адрес.",
 };
 export default dict;

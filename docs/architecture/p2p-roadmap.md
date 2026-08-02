@@ -120,7 +120,7 @@ HuggingFace, che nello scenario di disastro non c'è.
 **Ancora aperto:** trasferimento a blocchi con ripresa. Oggi un trasferimento
 interrotto riparte da zero — accettabile in LAN, non lo sarà su internet.
 
-### Fase 2 — Identità e scoperta senza registro
+### Fase 2 — Identità e scoperta senza registro — **FATTA (1.8.25)**
 
 - **Identità = coppia di chiavi.** Sei la tua chiave pubblica, non un account sul
   server di qualcuno. Va nella stessa direzione già scelta in 1.8.21: in locale
@@ -131,6 +131,27 @@ interrotto riparte da zero — accettabile in LAN, non lo sarà su internet.
 
 **Effetto:** toglie neurionproject.org dal centro. È il punto in cui la promessa
 smette di essere contraddetta dall'architettura.
+
+**Cosa è atterrato in 1.8.25:**
+
+- **identità = coppia di chiavi Ed25519**, generata una volta e tenuta accanto ai
+  modelli. Il nome di un pari è l'impronta della sua chiave pubblica: nessuno lo
+  rilascia, nessuno lo revoca, e sopravvive ai riavvii — quello casuale di prima
+  cambiava a ogni accensione, quindi un vicino sembrava uno sconosciuto ogni
+  volta che tornava;
+- **annunci firmati.** Una firma valida ma con il nome di un altro viene
+  rifiutata: si controlla che l'identificativo dichiarato sia l'impronta della
+  chiave che ha firmato. Controllare solo la firma non basterebbe;
+- **scambio di pari.** Chi risponde dice anche chi conosce, e quegli indirizzi
+  vengono verificati interrogandoli di persona — mai per sentito dire;
+- **indirizzi manuali**, memorizzati su disco. È ciò che fa funzionare la rete
+  **oltre la propria sottorete oggi**: dici a un amico il tuo indirizzo una
+  volta, e nessuno dei due ha più bisogno del nostro server per trovare l'altro.
+
+**Ancora aperto:** una DHT, che toglierebbe anche il passaggio manuale. Non è
+stata fatta perché è una dipendenza grossa e quanto sopra già assolve il compito
+per cui esiste la fase. E resta il NAT: due macchine dietro router diversi non si
+raggiungono senza attraversamento — è la fase 3.
 
 ### Fase 3 — Il lavoro condiviso, a reciprocità
 
@@ -215,7 +236,7 @@ Una sola domanda, da rifarsi a ogni fase:
 - Oggi: l'app locale sì, e **dalla 1.8.22 i modelli passano da una macchina
   all'altra sulla stessa rete anche a server spenti**. Il resto della rete no.
 - Dopo la fase 1: i modelli continuano a circolare fra le persone.
-- Dopo la fase 2: i pari continuano a trovarsi.
+- Dopo la fase 2: **i pari continuano a trovarsi** — per indirizzo diretto e passandosi chi conoscono, con identità che nessuno rilascia.
 - Dopo la fase 3: il lavoro continua a essere condiviso.
 - Dopo la fase 4: non cambia niente per nessuno.
 
