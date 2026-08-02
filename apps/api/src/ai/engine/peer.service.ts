@@ -987,7 +987,14 @@ export class PeerService implements OnModuleDestroy {
         return;
       }
     }
-    let ask: { sha256?: string; prompt?: string; maxTokens?: number };
+    let ask: {
+      sha256?: string;
+      prompt?: string;
+      maxTokens?: number;
+      /** Both set when the caller intends to compare two answers. */
+      temperature?: number;
+      seed?: number;
+    };
     try {
       ask = JSON.parse(body) as typeof ask;
     } catch {
@@ -1027,6 +1034,22 @@ export class PeerService implements OnModuleDestroy {
             model: "peer",
             messages: [{ role: "user", content: ask.prompt.slice(0, 20_000) }],
             max_tokens: Math.min(Math.max(1, ask.maxTokens ?? 512), 2048),
+            // Only when asked for. A model left to sample freely gives a
+            // different answer every time, which is fine for one peer and
+            // fatal for two: comparing two independent samples of the same
+            // question tells you nothing about honesty, because they differ
+            // for entirely innocent reasons. When the caller means to
+            // cross-check, both peers are asked to run the same way.
+            ...(typeof ask.temperature === "number" &&
+            ask.temperature >= 0 &&
+            ask.temperature <= 2
+              ? { temperature: ask.temperature }
+              : {}),
+            ...(Number.isInteger(ask.seed) &&
+            (ask.seed as number) >= 0 &&
+            (ask.seed as number) <= 2_147_483_647
+              ? { seed: ask.seed }
+              : {}),
             stream: false,
           }),
           signal: AbortSignal.timeout(180_000),
@@ -1221,12 +1244,39 @@ export class PeerService implements OnModuleDestroy {
     sha256: string,
     prompt: string,
     maxTokens: number,
+    /**
+     * Set when this answer is going to be compared with another one.
+     *
+     * Redundancy only means something if the work is reproducible. Left to
+     * itself a model samples, so two honest machines return different words to
+     * the same question and the comparison reports a disagreement that is not
+     * one — an alarm that goes off every time is an alarm nobody reads. Asking
+     * both to run the same way makes a difference in the answers mean what it
+     * is supposed to mean.
+     */
+    reproducible = false,
   ): Promise<{ peerId: string; text: string } | null> {
     try {
       const res = await fetch(`http://${peer.address}:${peer.port}/peer/infer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sha256, prompt, maxTokens }),
+        body: JSON.stringify({
+          sha256,
+          prompt,
+          maxTokens,
+          ...(reproducible
+            ? {
+                temperature: 0,
+                // The same number for both, derived from the question itself,
+                // so neither peer can be handed a seed the other did not get.
+                seed:
+                  parseInt(
+                    createHash("sha256").update(prompt).digest("hex").slice(0, 8),
+                    16,
+                  ) % 2_147_483_647,
+              }
+            : {}),
+        }),
         signal: AbortSignal.timeout(180_000),
       });
       if (!res.ok) return null;
@@ -1272,7 +1322,16 @@ export class PeerService implements OnModuleDestroy {
 
     const answers = (
       await Promise.all(
-        candidates.map((p) => this.askPeerToRun(p, sha256, prompt, maxTokens)),
+        candidates.map((p) =>
+          this.askPeerToRun(
+            p,
+            sha256,
+            prompt,
+            maxTokens,
+            // Only when there is a second answer to compare it against.
+            candidates.length > 1,
+          ),
+        ),
       )
     ).filter((a): a is { peerId: string; text: string } => a !== null);
 

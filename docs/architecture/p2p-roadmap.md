@@ -310,6 +310,17 @@ persona, e si usa solo chi conferma *adesso* di prestare e di avere caricato
 *quel* modello. Per gli annunci dei pesi basta molto meno: un file sul disco fra
 dieci minuti è ancora lì.
 
+**Una cosa imparata provandola su due macchine vere (1.9.2).** La verifica per
+ridondanza non voleva dire niente, e lo si vedeva solo con l'app in mano: due
+pari onesti, stesso modello, stessa domanda, davano `disaccordo` con
+sovrapposizione 0,45. Non mentiva nessuno — semplicemente il modello *campiona*,
+quindi due esecuzioni indipendenti usano parole diverse per dire la stessa cosa.
+Un allarme che suona ogni volta è un allarme che nessuno legge. Ora, **solo
+quando una risposta verrà confrontata con un'altra**, si chiede a entrambi di
+eseguire in modo riproducibile: temperatura zero e lo stesso seme, ricavato
+dalla domanda stessa così che nessuno dei due possa riceverne uno diverso.
+Stessa prova, stesso motore: da 0,45 a 0,74.
+
 **Quello che resta impossibile, e non per pigrizia.** Spezzare *un* calcolo su
 più macchine — il vero "distribuire potenza" — non lo fa nessun protocollo: le
 attivazioni di ogni strato dovrebbero attraversare la rete a ogni token, e su
