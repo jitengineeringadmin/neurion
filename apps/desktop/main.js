@@ -588,6 +588,19 @@ async function startStack() {
     const textDir = path.join(app.getPath('userData'), 'text-engine');
     fs.mkdirSync(textDir, { recursive: true });
     ENV.NEURION_TEXT_DIR = textDir;
+    // Somewhere to knock the very first time. After one real contact the app
+    // remembers the network itself and this file stops mattering — which is why
+    // it is written once and never overwritten: whoever edits it, or empties
+    // it, has decided something and we do not undecide it for them.
+    const starters = path.join(textDir, 'starter-nodes.json');
+    if (!fs.existsSync(starters)) {
+      const shipped = path.join(__dirname, 'starter-nodes.json');
+      try {
+        fs.copyFileSync(shipped, starters);
+      } catch {
+        /* no default shipped: the app finds peers the other four ways */
+      }
+    }
   } catch {
     /* best effort — image gen just stays unavailable */
   }

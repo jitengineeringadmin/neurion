@@ -33,6 +33,7 @@
       "preload.js",
       "updater.js",
       "splash.html",
+      "starter-nodes.json",
       "build/**",
       "!node_modules/**/*",
       "!staging/**/*",

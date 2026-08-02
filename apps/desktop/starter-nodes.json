@@ -1,0 +1,7 @@
+[
+  {
+    "address": "neurionproject.org",
+    "port": 8097,
+    "note": "One way in, not the way in. Copied to your own settings folder the first time Neurion starts, and never touched again — edit it, add your friends' addresses, or empty it. Once this machine has met anybody at all it finds the rest of the network by itself and this list stops being used."
+  }
+]
