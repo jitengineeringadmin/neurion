@@ -111,6 +111,9 @@ export default function ModelsPage() {
     computed?: number;
     /** This machine's place in the distributed index. */
     index?: { nodes: number; records: number; joined: boolean };
+    limits?: { slots: number; kbPerSecond: number };
+    blocked?: string[];
+    reachable?: "unset" | "on" | "off";
     peers: Array<{ address: string; models: number }>;
   } | null>(null);
   const [localFound, setLocalFound] = useState<
@@ -174,6 +177,33 @@ export default function ModelsPage() {
   };
 
   /** Lend this machine's processor to other people, or stop. */
+  async function setReachable(on: boolean) {
+    setBundledErr("");
+    try {
+      await api("/ai/engine/reachable", {
+        method: "POST",
+        body: JSON.stringify({ enabled: on }),
+      });
+      await loadPeers();
+    } catch (e) {
+      setBundledErr((e as Error).message);
+    }
+  }
+
+  async function blockPeer(address: string) {
+    if (!confirm(t("models.blockConfirm").replace("{a}", address))) return;
+    setBundledErr("");
+    try {
+      await api("/ai/engine/block", {
+        method: "POST",
+        body: JSON.stringify({ address }),
+      });
+      await loadPeers();
+    } catch (e) {
+      setBundledErr((e as Error).message);
+    }
+  }
+
   async function setSharing(on: boolean) {
     setBundledErr("");
     try {
@@ -229,6 +259,9 @@ export default function ModelsPage() {
         compute?: boolean;
         computed?: number;
         index?: { nodes: number; records: number; joined: boolean };
+        limits?: { slots: number; kbPerSecond: number };
+        blocked?: string[];
+        reachable?: "unset" | "on" | "off";
         peers: Array<{ address: string; models: number }>;
       }>("/ai/engine/peers").catch(() => null),
     );
@@ -697,7 +730,33 @@ export default function ModelsPage() {
                 also the honest answer to "what happens if the servers go
                 dark": these models came from, or can go to, the machine next
                 door. */}
-            {peerInfo?.enabled && (
+            {peerInfo?.reachable === "unset" && (
+              <div
+                style={{
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 10,
+                  padding: "10px 12px",
+                  marginTop: 10,
+                  fontSize: 12,
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                {/* Asked, not assumed: this changes the user's home network. */}
+                <span style={{ flex: 1, minWidth: 260, lineHeight: 1.5 }}>
+                  {t("models.reachAsk")}
+                </span>
+                <button onClick={() => void setReachable(true)} style={button}>
+                  {t("models.reachYes")}
+                </button>
+                <button onClick={() => void setReachable(false)} style={ghost}>
+                  {t("models.reachNo")}
+                </button>
+              </div>
+            )}
+            {peerInfo && (
               <div
                 style={{
                   marginTop: 10,
@@ -743,6 +802,24 @@ export default function ModelsPage() {
                         "{n}",
                         String(peerInfo.served),
                       )}
+                    </span>
+                  </>
+                )}
+                {/* What this machine is lending out. Shown next to the counts
+                    it governs, because "you are sharing" and "at what cost to
+                    your own connection" are the same question. */}
+                {peerInfo.limits && (
+                  <>
+                    <span>·</span>
+                    <span>
+                      {t("models.uploadLimits")
+                        .replace("{n}", String(peerInfo.limits.slots))
+                        .replace(
+                          "{r}",
+                          peerInfo.limits.kbPerSecond === 0
+                            ? "∞"
+                            : `${Math.round(peerInfo.limits.kbPerSecond / 1024)} MB/s`,
+                        )}
                     </span>
                   </>
                 )}
@@ -821,6 +898,59 @@ export default function ModelsPage() {
                   {t("models.addPeer")}
                   {peerInfo.seeds?.length ? ` (${peerInfo.seeds.length})` : ""}
                 </button>
+              </div>
+            )}
+            {/* One machine at a time, rather than all of them. Switching
+                sharing off because a single peer misbehaved punishes everybody
+                else for what one address did. */}
+            {peerInfo?.enabled && peerInfo.peers.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  marginTop: 8,
+                  fontSize: 11,
+                  color: theme.muted,
+                }}
+              >
+                {peerInfo.peers.map((p) => (
+                  <span
+                    key={p.address}
+                    style={{
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 20,
+                      padding: "2px 8px",
+                      display: "inline-flex",
+                      gap: 6,
+                      alignItems: "center",
+                    }}
+                  >
+                    {p.address}
+                    <button
+                      onClick={() => void blockPeer(p.address)}
+                      title={t("models.blockPeer")}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: theme.muted,
+                        cursor: "pointer",
+                        padding: 0,
+                        fontSize: 12,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {(peerInfo.blocked?.length ?? 0) > 0 && (
+                  <span>
+                    {t("models.blockedCount").replace(
+                      "{n}",
+                      String(peerInfo.blocked!.length),
+                    )}
+                  </span>
+                )}
               </div>
             )}
             {bundledErr && (

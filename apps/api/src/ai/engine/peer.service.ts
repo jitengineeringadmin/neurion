@@ -121,6 +121,12 @@ export class PeerService implements OnModuleDestroy {
   private kadTimer: NodeJS.Timeout | null = null;
   private kadJoined = false;
   private kadRounds = 0;
+  /** Transfers in flight, and the machines they are going to. */
+  private uploads = 0;
+  private uploadingTo = new Set<string>();
+  /** Token bucket for the shared upload ceiling. */
+  private bucket = 0;
+  private lastRefill = Date.now();
 
   constructor(private readonly config: ConfigService) {}
 
@@ -258,7 +264,9 @@ export class PeerService implements OnModuleDestroy {
     this.started = true;
     this.serve();
     this.discover();
-    void this.becomeReachable();
+    // Only if the person said yes. Opening a port on somebody's router is a
+    // change to their home network, not an implementation detail.
+    if (this.reachability() === "on") void this.becomeReachable();
     // Not immediately: there is nobody to ask until discovery has found at
     // least one machine, and asking nobody teaches us nothing.
     this.kadTimer = setTimeout(() => {
@@ -308,10 +316,273 @@ export class PeerService implements OnModuleDestroy {
     return `${this.mapping.externalAddress}:${this.mapping.externalPort}`;
   }
 
+  // --- being a good guest in somebody's house -----------------------------
+  //
+  // Everything above is about what the network can do. This is about what it
+  // costs the person whose machine it runs on, which is a different question
+  // and the one that decides whether they keep it installed.
+  //
+  // A sharing client with no upload limit is not generous, it is rude: one peer
+  // pulling a five gigabyte model can take a whole household's upstream, and
+  // the family blames the app, correctly. eMule had upload slots in its first
+  // version and not for elegance. So: a few transfers at a time, one per
+  // machine so nobody can hold every slot, and a ceiling on the rate.
+  //
+  // The defaults are deliberately timid. Somebody on fibre can lift them in a
+  // second; somebody on a thin line should never have to discover this setting
+  // by noticing their connection has gone.
+
+  private limitsPath(dir: string): string {
+    return join(dir, "peer-limits.json");
+  }
+
+  /** How much of this machine the owner is lending out. */
+  limits(): { slots: number; kbPerSecond: number } {
+    const dir = this.dir();
+    const fallback = { slots: 3, kbPerSecond: 1024 };
+    if (!dir) return fallback;
+    try {
+      const raw = JSON.parse(readFileSync(this.limitsPath(dir), "utf8")) as {
+        slots?: unknown;
+        kbPerSecond?: unknown;
+      };
+      return {
+        slots:
+          Number.isInteger(raw.slots) && (raw.slots as number) > 0
+            ? Math.min(raw.slots as number, 50)
+            : fallback.slots,
+        // Zero means no ceiling, which is a legitimate choice, not a mistake.
+        kbPerSecond:
+          Number.isInteger(raw.kbPerSecond) && (raw.kbPerSecond as number) >= 0
+            ? (raw.kbPerSecond as number)
+            : fallback.kbPerSecond,
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  setLimits(next: { slots?: number; kbPerSecond?: number }): {
+    slots: number;
+    kbPerSecond: number;
+  } {
+    const dir = this.dir();
+    if (!dir) throw new Error("no engine directory configured");
+    const now = this.limits();
+    const merged = {
+      slots:
+        Number.isInteger(next.slots) && (next.slots as number) > 0
+          ? Math.min(next.slots as number, 50)
+          : now.slots,
+      kbPerSecond:
+        Number.isInteger(next.kbPerSecond) && (next.kbPerSecond as number) >= 0
+          ? (next.kbPerSecond as number)
+          : now.kbPerSecond,
+    };
+    writeFileSync(this.limitsPath(dir), JSON.stringify(merged));
+    this.logger.log(
+      `upload limits: ${merged.slots} at a time, ` +
+        (merged.kbPerSecond === 0
+          ? "no rate ceiling"
+          : `${merged.kbPerSecond} KB/s in total`),
+    );
+    return merged;
+  }
+
+  /** Hold the caller back so the total rate stays under the ceiling. */
+  private async throttle(bytes: number): Promise<void> {
+    const cap = this.limits().kbPerSecond * 1024;
+    if (cap <= 0) return;
+    for (;;) {
+      const now = Date.now();
+      this.bucket = Math.min(
+        cap,
+        this.bucket + ((now - this.lastRefill) / 1000) * cap,
+      );
+      this.lastRefill = now;
+      if (this.bucket >= bytes) {
+        this.bucket -= bytes;
+        return;
+      }
+      const waitMs = ((bytes - this.bucket) / cap) * 1000;
+      await new Promise((r) =>
+        setTimeout(r, Math.min(500, Math.max(5, waitMs))),
+      );
+    }
+  }
+
+  /**
+   * Hand over a model, slowly enough that the owner keeps their connection.
+   *
+   * A refusal here is a plain 503 with a Retry-After rather than a queue. A
+   * queue would hold the door open and quietly turn somebody's laptop into a
+   * server; being told "not now, try again or try somebody else" is honest, and
+   * where a model has more than one copy it is also faster.
+   */
+  private async sendBlob(
+    res: ServerResponse,
+    hit: { path: string; size: number },
+    who: string,
+  ): Promise<void> {
+    const { slots } = this.limits();
+    if (this.uploads >= slots || this.uploadingTo.has(who)) {
+      res.statusCode = 503;
+      res.setHeader("retry-after", "30");
+      res.removeHeader("content-length");
+      res.end();
+      return;
+    }
+    this.uploads += 1;
+    this.uploadingTo.add(who);
+    // Logged on purpose. Seeing that you handed a model to somebody is the only
+    // thing a volunteer gets back, and it has to stand where a payment would.
+    const name = hit.path.split(/[\\/]/).pop();
+    const startedAt = Date.now();
+    this.served += 1;
+    this.logger.log(`sending ${name} to ${who}`);
+    try {
+      for await (const chunk of createReadStream(hit.path, {
+        highWaterMark: 64 * 1024,
+      })) {
+        if (res.destroyed) break;
+        await this.throttle((chunk as Buffer).length);
+        if (!res.write(chunk)) {
+          await new Promise<void>((r) => res.once("drain", () => r()));
+        }
+      }
+      if (!res.destroyed) res.end();
+      const secs = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      const mbps = Math.round(hit.size / secs / 125_000);
+      this.logger.log(
+        `sent ${name} to ${who} — ${Math.round(hit.size / 1e6)} MB in ${secs}s (~${mbps} Mbit/s)`,
+      );
+    } catch {
+      res.destroy();
+    } finally {
+      this.uploads -= 1;
+      this.uploadingTo.delete(who);
+    }
+  }
+
+  // --- refusing one machine instead of all of them ------------------------
+  //
+  // Until now the only answer to a peer behaving badly was to switch sharing
+  // off entirely, which punishes everybody else for what one machine did. A
+  // list of addresses to ignore is the smallest thing that gives the owner a
+  // proportionate reply.
+
+  private blockedPath(dir: string): string {
+    return join(dir, "peer-blocked.json");
+  }
+
+  blocked(): string[] {
+    const dir = this.dir();
+    if (!dir) return [];
+    try {
+      const raw = JSON.parse(readFileSync(this.blockedPath(dir), "utf8"));
+      return Array.isArray(raw)
+        ? raw.filter((x): x is string => typeof x === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private isBlocked(address: string): boolean {
+    return this.blocked().includes(address);
+  }
+
+  block(address: string): string[] {
+    const dir = this.dir();
+    if (!dir) throw new Error("no engine directory configured");
+    const clean = address.trim();
+    if (!/^[A-Za-z0-9._:-]+$/.test(clean)) {
+      throw new Error(`not an address: ${address}`);
+    }
+    const list = this.blocked();
+    if (!list.includes(clean)) list.push(clean);
+    writeFileSync(this.blockedPath(dir), JSON.stringify(list, null, 2));
+    // Drop it from the live picture too, so it stops being chosen at once.
+    for (const [id, p] of this.peers) {
+      if (p.address === clean) this.peers.delete(id);
+    }
+    this.logger.log(`ignoring ${clean} from now on`);
+    return list;
+  }
+
+  unblock(address: string): string[] {
+    const dir = this.dir();
+    if (!dir) throw new Error("no engine directory configured");
+    const list = this.blocked().filter((a) => a !== address.trim());
+    writeFileSync(this.blockedPath(dir), JSON.stringify(list, null, 2));
+    return list;
+  }
+
+  // --- asking before opening the front door -------------------------------
+  //
+  // Making a machine reachable from the internet is a real change to somebody's
+  // home network, and it used to happen on first launch without a word. That is
+  // defensible for a torrent client somebody went looking for; it is not
+  // defensible for a stranger who installed an AI app. Until they answer, the
+  // door stays shut — sharing still works on the local network and with peers
+  // that can already reach them.
+
+  private reachPath(dir: string): string {
+    return join(dir, "peer-reachable.json");
+  }
+
+  /** "unset" until the person has actually been asked. */
+  reachability(): "unset" | "on" | "off" {
+    const forced =
+      this.config.get<string>("NEURION_PEER_OPEN_PORT") ??
+      process.env.NEURION_PEER_OPEN_PORT;
+    if (forced === "true" || forced === "1") return "on";
+    if (forced === "false" || forced === "0") return "off";
+    const dir = this.dir();
+    if (!dir) return "unset";
+    try {
+      const raw = JSON.parse(readFileSync(this.reachPath(dir), "utf8")) as {
+        allowed?: unknown;
+      };
+      if (raw.allowed === true) return "on";
+      if (raw.allowed === false) return "off";
+      return "unset";
+    } catch {
+      return "unset";
+    }
+  }
+
+  setReachable(allowed: boolean): "on" | "off" {
+    const dir = this.dir();
+    if (!dir) throw new Error("no engine directory configured");
+    writeFileSync(this.reachPath(dir), JSON.stringify({ allowed }));
+    if (allowed) {
+      void this.becomeReachable();
+    } else if (this.mapTimer) {
+      clearInterval(this.mapTimer);
+      this.mapTimer = null;
+      // Whatever the router already granted expires by itself; we stop renewing
+      // it rather than pretending we can reliably close it.
+      this.logger.log(
+        "no longer asking the router to keep this machine reachable — a mapping already granted will lapse on its own",
+      );
+    }
+    return allowed ? "on" : "off";
+  }
+
   /** Read-only file server: one route, and it only answers for known hashes. */
   private serve(): void {
     const port = this.sharePort();
     const server = createServer((req, res) => {
+      // Somebody the owner has told us to ignore gets nothing, on any route.
+      // First, because a machine you have refused should not even learn what
+      // you hold.
+      const from = PeerService.plainAddress(req.socket.remoteAddress);
+      if (from && this.isBlocked(from)) {
+        res.statusCode = 403;
+        res.end();
+        return;
+      }
       // What this machine has. Needed because multicast does not survive a lot
       // of consumer Wi-Fi — measured on a real network: the file server was
       // reachable between two machines while not a single announcement got
@@ -362,25 +633,7 @@ export class PeerService implements OnModuleDestroy {
         res.end();
         return;
       }
-      // Logged on purpose. Seeing that you handed a model to someone is the
-      // only thing a volunteer gets back, and it is what has to stand where a
-      // payment would have been. It is also the only way to prove, afterwards,
-      // that a transfer went machine-to-machine and never touched the internet.
-      const who = req.socket.remoteAddress ?? "somebody";
-      const name = hit.path.split(/[\\/]/).pop();
-      const startedAt = Date.now();
-      this.served += 1;
-      this.logger.log(`sending ${name} to ${who}`);
-      createReadStream(hit.path)
-        .on("error", () => res.destroy())
-        .on("end", () => {
-          const secs = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
-          const mbps = Math.round(hit.size / secs / 125_000);
-          this.logger.log(
-            `sent ${name} to ${who} — ${Math.round(hit.size / 1e6)} MB in ${secs}s (~${mbps} Mbit/s)`,
-          );
-        })
-        .pipe(res);
+      void this.sendBlob(res, hit, from ?? "somebody");
     });
     server.on("error", (e) => {
       this.logger.warn(`peer sharing disabled: ${e.message}`);

@@ -648,6 +648,142 @@ async function main(): Promise<void> {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  // ---- being a good guest on somebody else's machine ---------------------
+  //
+  // None of this is about security. It is about whether the person who
+  // installed this keeps it installed: a sharing client with no upload ceiling
+  // takes the household's connection and gets uninstalled, correctly.
+
+  const hostDir = mkdtempSync(join(tmpdir(), "neurion-host-"));
+  mkdirSync(join(hostDir, "models"), { recursive: true });
+  writeFileSync(
+    join(hostDir, "models", model.file),
+    Buffer.alloc(model.sizeBytes, 7),
+  );
+  const host = new PeerService(
+    cfg({
+      NEURION_TEXT_DIR: hostDir,
+      NEURION_PEER_PORT: "48571",
+      NEURION_PEER_SWEEP: "false",
+    }),
+  );
+  (host as unknown as { serve(): void }).serve();
+  await wait(400);
+  const blobUrl = `http://127.0.0.1:48571/peer/blob/${model.sha256}`;
+
+  await check("the defaults protect the connection rather than the network", () => {
+    const l = host.limits();
+    assert(l.slots > 0 && l.slots <= 10, `odd slot default: ${l.slots}`);
+    assert(
+      l.kbPerSecond > 0,
+      "the rate ceiling is off by default; a stranger's install would have no protection",
+    );
+  });
+
+  await check("one machine cannot hold every slot", async () => {
+    host.setLimits({ slots: 2, kbPerSecond: 0 });
+    // Two at once from the SAME address: the second must be refused, or one
+    // peer alone could occupy the whole upload capacity.
+    const first = fetch(blobUrl);
+    await wait(120);
+    const second = await fetch(blobUrl);
+    assert(
+      second.status === 503,
+      `a second transfer to the same machine got ${second.status}`,
+    );
+    assert(
+      second.headers.get("retry-after") !== null,
+      "a refusal should say when to come back",
+    );
+    const done = await first;
+    await done.arrayBuffer();
+  });
+
+  await check("a refused transfer does not count as one served", async () => {
+    const before = host.status().served;
+    host.setLimits({ slots: 1, kbPerSecond: 0 });
+    const first = fetch(blobUrl);
+    await wait(120);
+    const refused = await fetch(blobUrl);
+    assert(refused.status === 503, `expected 503, got ${refused.status}`);
+    await (await first).arrayBuffer();
+    assert(
+      host.status().served === before + 1,
+      "a refusal was counted as a model handed over",
+    );
+  });
+
+  await check("the rate ceiling actually holds the transfer back", async () => {
+    // The file is model.sizeBytes; at this ceiling it cannot possibly arrive
+    // in under a second, and without the throttle it arrives instantly.
+    const perSecond = Math.max(1, Math.floor(model.sizeBytes / 1024 / 2));
+    host.setLimits({ slots: 3, kbPerSecond: perSecond });
+    const t0 = Date.now();
+    const res = await fetch(blobUrl);
+    await res.arrayBuffer();
+    const took = Date.now() - t0;
+    assert(res.ok, `the transfer failed: ${res.status}`);
+    assert(
+      took >= 900,
+      `${model.sizeBytes} bytes at ${perSecond} KB/s took ${took}ms — the ceiling is not being applied`,
+    );
+    host.setLimits({ slots: 3, kbPerSecond: 0 });
+  });
+
+  await check("a blocked machine is told nothing at all", async () => {
+    host.block("127.0.0.1");
+    for (const path of ["/peer/have", `/peer/blob/${model.sha256}`]) {
+      const res = await fetch(`http://127.0.0.1:48571${path}`);
+      assert(
+        res.status === 403,
+        `${path} answered ${res.status} to a blocked machine`,
+      );
+    }
+    // And it is gone from the live picture, not merely refused next time.
+    assert(
+      !host.known().some((p) => p.address === "127.0.0.1"),
+      "a blocked machine was still listed as a peer",
+    );
+    host.unblock("127.0.0.1");
+    const back = await fetch("http://127.0.0.1:48571/peer/have");
+    assert(back.ok, "unblocking did not restore the machine");
+  });
+
+  await check("a nonsense address cannot be blocked", () => {
+    let refused = false;
+    try {
+      host.block("../../etc/passwd");
+    } catch {
+      refused = true;
+    }
+    assert(refused, "a path was accepted as an address to block");
+  });
+
+  await check("the router is not touched until somebody says so", () => {
+    const dir = mkdtempSync(join(tmpdir(), "neurion-reach-"));
+    const fresh = new PeerService(
+      cfg({ NEURION_TEXT_DIR: dir, NEURION_PEER_SWEEP: "false" }),
+    );
+    assert(
+      fresh.reachability() === "unset",
+      "a fresh install already has an answer nobody gave",
+    );
+    assert(fresh.setReachable(false) === "off", "saying no did not take");
+    assert(
+      fresh.reachability() === "off",
+      "the answer was not remembered",
+    );
+    const restarted = new PeerService(cfg({ NEURION_TEXT_DIR: dir }));
+    assert(
+      restarted.reachability() === "off",
+      "the answer did not survive a restart",
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  host.onModuleDestroy();
+  rmSync(hostDir, { recursive: true, force: true });
+
   // ---- the distributed index, over a real wire ---------------------------
   //
   // kad-test.ts proves the algorithm with sixty nodes and a fake transport.

@@ -69,6 +69,21 @@ o il nodo di un amico, o svuotarlo del tutto:
 Neurion lo copia una volta sola alla prima accensione e **non lo tocca mai più**:
 se lo modifichi, resta come lo hai lasciato.
 
+## Quanto ti costa
+
+Da 1.9.5 i limiti ci sono e sono prudenti di partenza: **poche copie alla volta,
+una sola per macchina** — così un solo pari non si prende tutta la banda — e un
+**tetto sulla velocità in salita**. Chi ha la fibra li alza in un secondo; chi ha
+una linea sottile non deve scoprire l'impostazione accorgendosi che internet non
+va più.
+
+C'è anche una **lista di esclusi**: se una macchina si comporta male la ignori,
+senza dover spegnere la condivisione con tutti.
+
+E la porta del router **non si apre più da sola**: te lo chiede, e finché non
+rispondi resta chiusa. Sulla rete locale e con chi ha già il tuo indirizzo la
+condivisione funziona lo stesso.
+
 ## Cosa un nodo d'ingresso non fa
 
 Vale la pena dirlo chiaro, perché chi presta una macchina ha diritto di sapere

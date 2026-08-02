@@ -1,5 +1,13 @@
 import { Body, Controller, Delete, Get, Post, Res } from "@nestjs/common";
-import { IsBoolean, IsString, MaxLength } from "class-validator";
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from "class-validator";
 import { Response } from "express";
 import { LlamaEngineService } from "./llama-engine.service";
 import { PeerService } from "./peer.service";
@@ -31,6 +39,21 @@ class BorrowDto {
   @IsString()
   @MaxLength(20_000)
   prompt!: string;
+}
+
+class LimitsDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  slots?: number;
+
+  /** Zero means no ceiling, which is a choice somebody is allowed to make. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  kbPerSecond?: number;
 }
 
 class SeedDto {
@@ -125,6 +148,15 @@ export class EngineController {
       publicAddress: this.peers.publicAddress(),
       /** Machines we have met before and will knock on again after a restart. */
       remembered: this.peers.savedNodes().length,
+      /** How much of this machine is lent out, and to how many at once. */
+      limits: this.peers.limits(),
+      /** Addresses this machine refuses to talk to. */
+      blocked: this.peers.blocked(),
+      /**
+       * Whether the router has been allowed to open a door from the internet.
+       * "unset" means nobody has been asked yet, and nothing has been opened.
+       */
+      reachable: this.peers.reachability(),
       /**
        * This machine's place in the distributed index: how much of the network
        * it can route through, and how many "who has what" records it is keeping
@@ -192,6 +224,47 @@ export class EngineController {
       return { ok: false, reason: "nobody reachable will run that model" };
     }
     return { ok: true, ...out };
+  }
+
+  /**
+   * How much of this machine goes to other people.
+   *
+   * A sharing client with no upload ceiling is not generous, it is rude: one
+   * peer pulling a five gigabyte model can take a whole household's upstream,
+   * and the person whose machine it is has every right to blame the app.
+   */
+  @Post("limits")
+  setLimits(@Body() dto: LimitsDto) {
+    return { limits: this.peers.setLimits(dto) };
+  }
+
+  /**
+   * Ignore one machine, rather than switching everything off.
+   *
+   * Before this the only response to a peer behaving badly was to stop sharing
+   * with everybody, which punishes the whole network for what one address did.
+   */
+  @Post("block")
+  block(@Body() dto: SeedDto) {
+    return { blocked: this.peers.block(dto.address) };
+  }
+
+  @Delete("block")
+  unblock(@Body() dto: SeedDto) {
+    return { blocked: this.peers.unblock(dto.address) };
+  }
+
+  /**
+   * Let the router open a door to this machine, or do not.
+   *
+   * Asked rather than assumed. Making a computer reachable from the internet is
+   * a change to somebody's home network, and it used to happen on first launch
+   * without a word — defensible for a torrent client somebody went looking for,
+   * not for a stranger who installed an AI app.
+   */
+  @Post("reachable")
+  setReachable(@Body() dto: ComputeDto) {
+    return { reachable: this.peers.setReachable(dto.enabled) };
   }
 
   @Post("seeds")
