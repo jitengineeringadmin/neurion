@@ -136,7 +136,13 @@ if (-not $SkipInstaller) {
         ($Manifest | ConvertTo-Json -Depth 3),
         (New-Object System.Text.UTF8Encoding $false)
     )
-    Write-Host "=== manifest: v$Version sha256=$Sha ==="
+    # Signed with a key that is NOT on the web server. Without this the digest
+    # above proves only that the download was not corrupted: anyone able to
+    # write to the web root could publish a binary and the digest vouching for
+    # it, and every installed Neurion would download and run it.
+    Write-Host '=== signing the manifest ==='
+    Invoke-Native -Command 'node' -Arguments @((Join-Path $Root 'infra\sign-manifest.mjs'), $ManifestPath)
+    Write-Host "=== manifest: v$Version sha256=$Sha (signed) ==="
 
     Write-Host "=== publishing Neurion installer v$Version ==="
     # The landing page is a static file that nothing else ever copied, so it sat
