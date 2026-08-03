@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api } from "../../lib/api";
+import { forumApi } from "../../lib/api";
 import { theme, card, input, button } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
 import { Avatar } from "../Avatar";
@@ -64,17 +64,17 @@ export function ForumBoard({
   const [busy, setBusy] = useState(false);
 
   const loadBoard = () => {
-    void api<Section[]>("/forum/sections")
+    void forumApi<Section[]>("/sections")
       .then(setSections)
       .catch(() => undefined);
-    void api<Latest[]>("/forum/latest")
+    void forumApi<Latest[]>("/latest")
       .then(setLatest)
       .catch(() => undefined);
   };
   useEffect(loadBoard, []);
   useEffect(() => {
     if (sel)
-      void api<Thread[]>(`/forum/threads?section=${sel}`)
+      void forumApi<Thread[]>(`/threads?section=${sel}`)
         .then(setThreads)
         .catch(() => setThreads([]));
   }, [sel]);
@@ -91,7 +91,7 @@ export function ForumBoard({
     if (title.trim().length < 3 || !body.trim() || !formSection) return;
     setBusy(true);
     try {
-      const r = await api<{ id: string }>("/forum/threads", {
+      const r = await forumApi<{ id: string }>("/threads", {
         method: "POST",
         body: JSON.stringify({ sectionId: formSection, title, body }),
       });
@@ -100,7 +100,7 @@ export function ForumBoard({
       setComposing(false);
       loadBoard();
       if (sel)
-        await api<Thread[]>(`/forum/threads?section=${sel}`).then(setThreads);
+        await forumApi<Thread[]>(`/threads?section=${sel}`).then(setThreads);
       void r;
     } finally {
       setBusy(false);

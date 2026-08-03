@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { api } from "../../lib/api";
+import { forumApi } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { theme, card, input, button } from "../../lib/ui";
 import { useT } from "../../lib/i18n";
@@ -51,7 +51,7 @@ export function ForumThread({
   const isMod = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
   const load = () =>
-    api<Thread>(`/forum/threads/${tid}`)
+    forumApi<Thread>(`/threads/${tid}`)
       .then(setTh)
       .catch(() => setTh(null));
   useEffect(() => {
@@ -63,7 +63,7 @@ export function ForumThread({
     if (!reply.trim()) return;
     setBusy(true);
     try {
-      await api(`/forum/threads/${tid}/posts`, {
+      await forumApi(`/threads/${tid}/posts`, {
         method: "POST",
         body: JSON.stringify({ body: reply }),
       });
@@ -74,19 +74,19 @@ export function ForumThread({
     }
   }
   const delPost = async (pid: string) => {
-    await api(`/forum/posts/${pid}`, { method: "DELETE" }).catch(
+    await forumApi(`/posts/${pid}`, { method: "DELETE" }).catch(
       () => undefined,
     );
     await load();
   };
   const delThread = async () => {
-    await api(`/forum/threads/${tid}`, { method: "DELETE" }).catch(
+    await forumApi(`/threads/${tid}`, { method: "DELETE" }).catch(
       () => undefined,
     );
     router.push(backHref);
   };
   const moderate = async (d: { pinned?: boolean; locked?: boolean }) => {
-    await api(`/forum/threads/${tid}`, {
+    await forumApi(`/threads/${tid}`, {
       method: "PATCH",
       body: JSON.stringify(d),
     }).catch(() => undefined);

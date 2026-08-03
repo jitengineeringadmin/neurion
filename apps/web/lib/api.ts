@@ -183,6 +183,35 @@ export async function api<T = unknown>(
   return (text ? JSON.parse(text) : {}) as T;
 }
 
+/**
+ * The forum, which is one place and not one per installation.
+ *
+ * Everything else in the desktop app talks to the embedded API on this machine,
+ * and that is the whole point of the product. The forum is the exception: a
+ * forum that lives in your own database is not a forum, it is a diary. So it
+ * always talks to the shared server — reading needs no account, exactly as on
+ * the website, and writing uses the network login.
+ *
+ * On the website itself the two are the same address, so nothing changes there.
+ */
+export async function forumApi<T = unknown>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const token = getProdToken();
+  const res = await fetch(`${PROD_BASE}/api/forum${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init.headers ?? {}),
+    },
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(text || res.statusText);
+  return (text ? JSON.parse(text) : {}) as T;
+}
+
 // Unauthenticated GET for public endpoints (no Bearer, no refresh) — used by the
 // public landing-adjacent pages (network dashboard, etc.).
 export async function publicApi<T = unknown>(path: string): Promise<T> {

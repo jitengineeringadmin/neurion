@@ -140,7 +140,7 @@
     </div>
     <div class="card">
       <div class="ic">⚡</div>
-      <h3 data-i18n="p2_t">Share &amp; earn</h3>
+      <h3 data-i18n="p2_t">Share</h3>
       <p data-i18n="p2_b">Your machine passes the models it already has to whoever needs them, and can run work for other people. No payment, no account — the same idea that made file sharing work.</p>
     </div>
     <div class="card">
@@ -154,26 +154,26 @@
 <section id="how" class="trust">
   <div class="wrap">
     <div class="eyebrow" data-i18n="how_eyebrow">How it works</div>
-    <h2 class="sec" data-i18n="how_title">From download to earning.</h2>
+    <h2 class="sec" data-i18n="how_title">From download to a network.</h2>
     <div class="steps">
       <div class="step">
         <h3 data-i18n="s1_t">Download the client</h3>
         <p data-i18n="s1_b">A standalone app: database, local AI and UI included. No Docker, no cloud setup. Double-click and go.</p>
       </div>
       <div class="step">
-        <h3 data-i18n="s2_t">Use it or run a node</h3>
-        <p data-i18n="s2_b">Use the AI from the app, or switch on node mode to serve compute to the network from your GPU/CPU.</p>
+        <h3 data-i18n="s2_t">Use it, or share it</h3>
+        <p data-i18n="s2_b">Use the AI from the app. If you want to, pass the models you already have to whoever needs them and lend your processor — both are switches you set, with limits you choose.</p>
       </div>
       <div class="step">
-        <h3 data-i18n="s3_t">Pay / earn the verified</h3>
+        <h3 data-i18n="s3_t">Verified, not trusted</h3>
         <p data-i18n="s3_b">Every model is checked against the publisher's own hash, so a file from a stranger either is the real thing or is thrown away.</p>
       </div>
     </div>
     <div class="row">
-      <div class="chip" data-i18n-html="chip1"><b>Only verified work is paid</b> · re-exec + consensus</div>
-      <div class="chip" data-i18n-html="chip2"><b>Anti-cheat</b> · stake + on-chain slashing</div>
-      <div class="chip" data-i18n-html="chip3"><b>Privacy by design</b> · G2 classifier</div>
-      <div class="chip" data-i18n-html="chip4"><b>Horizontal scale</b> · multi-instance</div>
+      <div class="chip" data-i18n-html="chip1"><b>The hash decides</b> · not the peer</div>
+      <div class="chip" data-i18n-html="chip2"><b>No server in the middle</b> · a distributed index finds who has what</div>
+      <div class="chip" data-i18n-html="chip3"><b>Signed updates</b> · with a key that never touches the server</div>
+      <div class="chip" data-i18n-html="chip4"><b>Your machine, your limits</b> · upload caps, and your router is asked first</div>
     </div>
   </div>
 </section>
@@ -185,33 +185,31 @@
     <div class="card">
       <div class="ic">🪟</div>
       <h3 data-i18n="d_win_t">Windows</h3>
-      <p data-i18n="d_win_b">The full client: chat, agent, wallet. All included, runs offline.</p>
-      <div class="meta" data-i18n="d_win_m">Windows 10/11 · v1.9.6</div>
+      <p data-i18n="d_win_b">The full client: chat, code agent, images. All included, runs offline.</p>
+      <div class="meta" data-i18n="d_win_m">Windows 10/11 · v1.9.7</div>
       <a class="btn" href="/download/Neurion-Setup-latest.exe" data-i18n="d_win_btn">⬇ Windows (.exe)</a>
     </div>
     <div class="card">
       <div class="ic">🍎</div>
       <h3 data-i18n="d_mac_t">macOS</h3>
       <p data-i18n="d_mac_b">Apple Silicon build. Same client, runs offline. First open: right-click → Open.</p>
-      <div class="meta" data-i18n="d_mac_m">macOS (arm64) · v1.9.6</div>
+      <div class="meta" data-i18n="d_mac_m">macOS (arm64) · v1.9.7</div>
       <span class="btn ghost" style="cursor:default;opacity:.55" data-i18n="d_mac_btn">macOS — in arrivo</span>
     </div>
     <div class="card">
       <div class="ic">🐧</div>
       <h3 data-i18n="d_lin_t">Linux</h3>
-      <p data-i18n="d_lin_b">Portable AppImage — runs anywhere. Chat, agent, wallet included.</p>
-      <div class="meta" data-i18n="d_lin_m">Linux x64 · v1.9.6</div>
+      <p data-i18n="d_lin_b">Portable AppImage — runs anywhere. Chat, code agent and images included.</p>
+      <div class="meta" data-i18n="d_lin_m">Linux x64 · v1.9.7</div>
       <span class="btn ghost" style="cursor:default;opacity:.55" data-i18n="d_lin_btn">Linux — in arrivo</span>
     </div>
     <div class="card" id="node">
       <div class="ic">⚡</div>
-      <h3 data-i18n="d2_t">Node agent</h3>
-      <p data-i18n="d2_b">Share your machine with other people. Lightweight, command-line.</p>
+      <h3 data-i18n="d2_t">Entry point</h3>
+      <p data-i18n="d2_b">Keep a door open for people who have just installed and know nobody yet. No models, no compute — one small process and an open port.</p>
       <div class="meta" data-i18n="d2_m">Windows · Linux · macOS</div>
       <div class="node-os">
-        <a class="btn ghost" href="/download/NeurionNodeSetup.exe">Windows</a>
-        <a class="btn ghost" href="/download/neurion-node-linux-x64.zip">Linux</a>
-        <a class="btn ghost" href="/download/neurion-node-macos-arm64.zip">macOS</a>
+        <a class="btn ghost" href="/forum" data-i18n="d2_btn">How to run one</a>
       </div>
     </div>
   </div>
@@ -242,24 +240,24 @@ const I18N = {
     hero_badge:"AI on your own machine · no account · nothing to pay",
     hero_h1:"The world's AI power, <span class=\"accent\">shared.</span>",
     hero_sub:"Chat, a Code agent that works in your folders, AI images and even short videos with soundtrack — all running privately on YOUR machine, offline and free. And the models pass from one machine to the next, so nobody can take them away.",
-    hero_cta1:"⬇ Download for Windows",hero_cta2:"⚡ Become a node",
+    hero_cta1:"⬇ Download for Windows",hero_cta2:"⚡ Keep a way in open",
     hero_os:"Windows · macOS · Linux · no cloud account needed",
     what_eyebrow:"What is Neurion",what_title:"Three things, one network.",
     p1_t:"Create with AI",p1_b:"Chat, a Claude-style Code workspace on your folders, image generation and short AI videos with music or voice-over — locally, offline, free. The network steps in when you want more power.",
     p2_t:"Share",p2_b:"Your machine passes the models it already has to whoever needs them, and can run work for other people. No payment, no account — the same idea that made file sharing work.",
-    p3_t:"Verified & private",p3_b:"Every sampled computation is re-executed and compared: cheaters are slashed, not paid. Classified privacy and trust-level routing.",
-    how_eyebrow:"How it works",how_title:"From download to earning.",
+    p3_t:"Verified, not trusted",p3_b:"Nothing from a stranger is taken on trust. A model is accepted only if it hashes to what the publisher published, so a bad copy costs a retry and nothing else. When two machines run the same work their answers are compared — asked to run reproducibly, honest ones come back identical.",
+    how_eyebrow:"How it works",how_title:"From download to a network.",
     s1_t:"Download the client",s1_b:"A standalone app: database, local AI and UI included. No Docker, no cloud setup. Double-click and go.",
-    s2_t:"Use it or run a node",s2_b:"Use the AI from the app, or switch on node mode to serve compute to the network from your GPU/CPU.",
+    s2_t:"Use it, or share it",s2_b:"Use the AI from the app. If you want to, pass the models you already have to whoever needs them and lend your processor — both are switches you set, with limits you choose.",
     s3_t:"Verified, not trusted",s3_b:"Every model is checked against the publisher's own hash, so a file from a stranger either is the real thing or is thrown away.",
-    chip1:"<b>Only verified work is paid</b> · re-exec + consensus",chip2:"<b>Anti-cheat</b> · stake + on-chain slashing",
-    chip3:"<b>Privacy by design</b> · G2 classifier",chip4:"<b>Horizontal scale</b> · multi-instance",
+    chip1:"<b>The hash decides</b> · not the peer",chip2:"<b>No server in the middle</b> · a distributed index finds who has what",
+    chip3:"<b>Signed updates</b> · with a key that never touches the server",chip4:"<b>Your machine, your limits</b> · upload caps, and your router is asked first",
     dl_eyebrow:"Download",dl_title:"Get Neurion.",
-    d_win_t:"Windows",d_win_b:"The full client: chat, agent, wallet. All included, runs offline.",d_win_m:"Windows 10/11 · v1.9.6",d_win_btn:"⬇ Windows (.exe)",
-    d_mac_t:"macOS",d_mac_b:"Apple Silicon build. Same client, runs offline. First open: right-click → Open.",d_mac_m:"macOS (arm64) · v1.9.6",d_mac_btn:"macOS — coming soon",
-    d_lin_t:"Linux",d_lin_b:"Portable AppImage — runs anywhere. Chat, agent, wallet included.",d_lin_m:"Linux x64 · v1.9.6",d_lin_btn:"Linux — coming soon",
-    d2_t:"Node agent",d2_b:"Share your machine with other people. Lightweight, command-line.",d2_m:"Windows · Linux · macOS",
-    foot_ethos:"Built first and foremost to improve the community's life: accessible AI, shared compute, value distributed to those who create it.",
+    d_win_t:"Windows",d_win_b:"The full client: chat, code agent, images. All included, runs offline.",d_win_m:"Windows 10/11 · v1.9.7",d_win_btn:"⬇ Windows (.exe)",
+    d_mac_t:"macOS",d_mac_b:"Apple Silicon build. Same client, runs offline. First open: right-click → Open.",d_mac_m:"macOS (arm64) · v1.9.7",d_mac_btn:"macOS — coming soon",
+    d_lin_t:"Linux",d_lin_b:"Portable AppImage — runs anywhere. Chat, code agent and images included.",d_lin_m:"Linux x64 · v1.9.7",d_lin_btn:"Linux — coming soon",
+    d2_t:"Entry point",d2_b:"Keep a door open for people who have just installed and know nobody yet. No models, no compute — one small process and an open port.",d2_m:"Windows · Linux · macOS",d2_btn:"How to run one",
+    foot_ethos:"Built so that AI belongs to everyone rather than to whoever owns the servers: it runs on your own machine, the models travel from person to person, and none of it needs our permission to keep working.",
     foot_project:"Project"
   },
   it: {
@@ -267,24 +265,24 @@ const I18N = {
     hero_badge:"AI sul tuo computer · nessun account · niente da pagare",
     hero_h1:"La potenza AI del mondo, <span class=\"accent\">condivisa.</span>",
     hero_sub:"Chat, un agente Code che lavora nelle tue cartelle, immagini AI e perfino brevi video con colonna sonora — tutto in privato sul TUO computer, offline e gratis. E i modelli passano da una macchina all'altra, così nessuno può portarteli via.",
-    hero_cta1:"⬇ Scarica per Windows",hero_cta2:"⚡ Diventa un nodo",
+    hero_cta1:"⬇ Scarica per Windows",hero_cta2:"⚡ Tieni aperta una via d'ingresso",
     hero_os:"Windows · macOS · Linux · nessun account cloud richiesto",
     what_eyebrow:"Cos'è Neurion",what_title:"Tre cose in una rete.",
     p1_t:"Crea con l’AI",p1_b:"Chat, un workspace Code stile Claude sulle tue cartelle, generazione di immagini e brevi video AI con musica o voce narrante — in locale, offline, gratis. La rete entra in gioco quando vuoi più potenza.",
     p2_t:"Condividi",p2_b:"La tua macchina passa i modelli che ha già a chi ne ha bisogno, e può eseguire lavoro per altri. Nessun pagamento, nessun account — la stessa idea che ha fatto funzionare la condivisione di file.",
-    p3_t:"Verificato & privato",p3_b:"Ogni calcolo campionato è ri-eseguito e confrontato: chi bara viene slashato, non pagato. Privacy classificata e routing per livello di fiducia.",
-    how_eyebrow:"Come funziona",how_title:"Dal download al guadagno.",
+    p3_t:"Verificato, non creduto",p3_b:"Da uno sconosciuto non si crede niente sulla parola. Un modello viene accettato solo se la sua impronta è quella pubblicata da chi lo ha fatto, quindi una copia falsa costa un tentativo e nient'altro. Quando due macchine eseguono lo stesso lavoro le risposte vengono confrontate — e chiedendo a entrambe di eseguire in modo riproducibile, quelle oneste tornano identiche.",
+    how_eyebrow:"Come funziona",how_title:"Dal download a una rete.",
     s1_t:"Scarica il client",s1_b:"Un'app standalone: database, AI locale e interfaccia inclusi. Nessun Docker, nessun setup cloud. Doppio click e parte.",
-    s2_t:"Usa o metti un nodo",s2_b:"Usa l'AI dall'app, oppure attiva la modalità nodo per servire calcolo alla rete dalla tua GPU/CPU.",
-    s3_t:"Verificato, non creduto",s3_b:"Ogni modello è confrontato con l'impronta del suo autore: un file che arriva da uno sconosciuto o è quello vero, o viene buttato.",
-    chip1:"<b>Pagato solo il verificato</b> · re-exec + consenso",chip2:"<b>Anti-baro</b> · stake + slashing on-chain",
-    chip3:"<b>Privacy by design</b> · classificatore G2",chip4:"<b>Scala orizzontale</b> · multi-istanza",
+    s2_t:"Usalo, o condividilo",s2_b:"Usa l'IA dall'app. Se vuoi, passa i modelli che hai già a chi ne ha bisogno e presta il processore — sono due interruttori, con i limiti che decidi tu.",
+    s3_t:"Verificato, non creduto",s3_b:"Ogni modello è controllato con l'impronta di chi lo ha pubblicato: un file che arriva da uno sconosciuto o è quello vero o viene buttato.",
+    chip1:"<b>Decide l'impronta</b> · non il pari",chip2:"<b>Nessun server in mezzo</b> · un indice distribuito trova chi ha cosa",
+    chip3:"<b>Aggiornamenti firmati</b> · con una chiave che sul server non sta mai",chip4:"<b>La tua macchina, i tuoi limiti</b> · tetto in upload, e il router te lo chiede prima",
     dl_eyebrow:"Scarica",dl_title:"Prendi Neurion.",
-    d_win_t:"Windows",d_win_b:"Il client completo: chat, agente, wallet. Tutto incluso, gira offline.",d_win_m:"Windows 10/11 · v1.9.6",d_win_btn:"⬇ Windows (.exe)",
-    d_mac_t:"macOS",d_mac_b:"Build Apple Silicon. Stesso client, gira offline. Primo avvio: tasto destro → Apri.",d_mac_m:"macOS (arm64) · v1.9.6",d_mac_btn:"macOS — coming soon",
-    d_lin_t:"Linux",d_lin_b:"AppImage portabile — gira ovunque. Chat, agente, wallet inclusi.",d_lin_m:"Linux x64 · v1.9.6",d_lin_btn:"Linux — coming soon",
-    d2_t:"Node agent",d2_b:"Condividi la tua macchina con altre persone. Leggero, da riga di comando.",d2_m:"Windows · Linux · macOS",
-    foot_ethos:"Costruito prima di tutto per migliorare la vita della comunità: AI accessibile, calcolo condiviso, valore distribuito a chi lo crea.",
+    d_win_t:"Windows",d_win_b:"Il client completo: chat, agente sul codice, immagini. Tutto incluso, funziona offline.",d_win_m:"Windows 10/11 · v1.9.7",d_win_btn:"⬇ Windows (.exe)",
+    d_mac_t:"macOS",d_mac_b:"Build Apple Silicon. Stesso client, gira offline. Primo avvio: tasto destro → Apri.",d_mac_m:"macOS (arm64) · v1.9.7",d_mac_btn:"macOS — coming soon",
+    d_lin_t:"Linux",d_lin_b:"AppImage portatile — gira ovunque. Chat, agente sul codice e immagini inclusi.",d_lin_m:"Linux x64 · v1.9.7",d_lin_btn:"Linux — coming soon",
+    d2_t:"Punto d'ingresso",d2_b:"Tieni una porta aperta per chi ha appena installato e non conosce ancora nessuno. Niente modelli, niente calcolo — un processo piccolo e una porta aperta.",d2_m:"Windows · Linux · macOS",d2_btn:"Come si accende",
+    foot_ethos:"Fatto perché l'IA sia di tutti e non di chi possiede i server: gira sulla tua macchina, i modelli passano da persona a persona, e niente di tutto questo ha bisogno del nostro permesso per continuare a funzionare.",
     foot_project:"Progetto"
   },
   fr: {
@@ -298,46 +296,46 @@ const I18N = {
     hero_h1:"La puissance IA du monde, <span class=\"accent\">partagée.</span>",
     hero_sub:"Chat, un agent Code qui travaille dans vos dossiers, des images IA et même de courtes vidéos avec bande-son — le tout en privé sur VOTRE machine, hors ligne et gratuit. Et les modèles passent d'une machine à l'autre : personne ne peut vous les retirer.",
     hero_cta1:"⬇ Télécharger pour Windows",
-    hero_cta2:"⚡ Devenir un nœud",
+    hero_cta2:"⚡ Gardez une porte d'entrée",
     hero_os:"Windows · macOS · Linux · aucun compte cloud requis",
     what_eyebrow:"C'est quoi Neurion",
     what_title:"Trois choses, un seul réseau.",
     p1_t:"Créez avec l’IA",
     p1_b:"Chat, un espace Code façon Claude sur vos dossiers, génération d’images et courtes vidéos IA avec musique ou voix off — en local, hors ligne, gratuit. Le réseau prend le relais quand il vous faut plus de puissance.",
-    p2_t:"Partager & gagner",
-    p2_b:"Votre machine transmet les modèles qu'elle possède déjà à qui en a besoin, et peut exécuter du travail pour d'autres. Sans paiement, sans compte — l'idée qui a fait marcher le partage de fichiers.",
-    p3_t:"Vérifié & privé",
-    p3_b:"Chaque calcul échantillonné est ré-exécuté et comparé : les tricheurs sont slashés, pas payés. Confidentialité classifiée et routage par niveau de confiance.",
+    p2_t:"Partagez",
+    p2_b:"Votre machine transmet les modèles qu'elle a déjà à qui en a besoin, et peut exécuter du travail pour d'autres. Aucun paiement, aucun compte — l'idée même qui a fait marcher le partage de fichiers.",
+    p3_t:"Vérifié, pas cru sur parole",
+    p3_b:"Rien de ce qui vient d'un inconnu n'est cru sur parole. Un modèle n'est accepté que si son empreinte correspond à celle publiée par son auteur : une fausse copie coûte un essai, rien de plus. Quand deux machines exécutent le même travail, les réponses sont comparées — et si on leur demande de s'exécuter de façon reproductible, les honnêtes reviennent identiques.",
     how_eyebrow:"Comment ça marche",
-    how_title:"Du téléchargement au gain.",
+    how_title:"Du téléchargement à un réseau.",
     s1_t:"Téléchargez le client",
     s1_b:"Une app autonome : base de données, IA locale et interface incluses. Pas de Docker, pas de setup cloud. Double-cliquez et c'est parti.",
-    s2_t:"Utilisez-la ou lancez un nœud",
-    s2_b:"Utilisez l'IA depuis l'app, ou activez le mode nœud pour fournir du calcul au réseau depuis votre GPU/CPU.",
-    s3_t:"Payez / gagnez le vérifié",
-    s3_b:"Chaque modèle est comparé à l'empreinte de son auteur : un fichier venu d'un inconnu est soit le bon, soit jeté.",
-    chip1:"<b>Seul le travail vérifié est payé</b> · ré-exécution + consensus",
-    chip2:"<b>Anti-triche</b> · stake + slashing on-chain",
-    chip3:"<b>Privacy by design</b> · classificateur G2",
-    chip4:"<b>Scalabilité horizontale</b> · multi-instance",
+    s2_t:"Utilisez-le, ou partagez-le",
+    s2_b:"Utilisez l'IA depuis l'app. Si vous le voulez, transmettez les modèles que vous avez déjà et prêtez votre processeur — deux interrupteurs, avec les limites que vous fixez.",
+    s3_t:"Vérifié, pas cru sur parole",
+    s3_b:"Chaque modèle est vérifié avec l'empreinte de son auteur : un fichier venu d'un inconnu est soit le bon, soit jeté.",
+    chip1:"<b>C'est l'empreinte qui décide</b> · pas le pair",
+    chip2:"<b>Aucun serveur au milieu</b> · un index distribué trouve qui a quoi",
+    chip3:"<b>Mises à jour signées</b> · avec une clé qui ne touche jamais le serveur",
+    chip4:"<b>Votre machine, vos limites</b> · plafond d'envoi, et votre routeur est consulté d'abord",
     dl_eyebrow:"Télécharger",
     dl_title:"Obtenez Neurion.",
     d_win_t:"Windows",
-    d_win_b:"Le client complet : chat, agent, wallet. Tout inclus, fonctionne hors ligne.",
-    d_win_m:"Windows 10/11 · v1.9.6",
+    d_win_b:"Le client complet : chat, agent de code, images. Tout inclus, fonctionne hors ligne.",
+    d_win_m:"Windows 10/11 · v1.9.7",
     d_win_btn:"⬇ Windows (.exe)",
     d_mac_t:"macOS",
     d_mac_b:"Build Apple Silicon. Même client, fonctionne hors ligne. Première ouverture : clic droit → Ouvrir.",
-    d_mac_m:"macOS (arm64) · v1.9.6",
+    d_mac_m:"macOS (arm64) · v1.9.7",
     d_mac_btn:"macOS — coming soon",
     d_lin_t:"Linux",
-    d_lin_b:"AppImage portable — fonctionne partout. Chat, agent, wallet inclus.",
-    d_lin_m:"Linux x64 · v1.9.6",
+    d_lin_b:"AppImage portable — fonctionne partout. Chat, agent de code et images inclus.",
+    d_lin_m:"Linux x64 · v1.9.7",
     d_lin_btn:"Linux — coming soon",
-    d2_t:"Node agent",
-    d2_b:"Partagez votre machine avec d'autres personnes. Léger, en ligne de commande.",
-    d2_m:"Windows · Linux · macOS",
-    foot_ethos:"Construit avant tout pour améliorer la vie de la communauté : une IA accessible, du calcul partagé, de la valeur distribuée à ceux qui la créent.",
+    d2_t:"Point d'entrée",
+    d2_b:"Gardez une porte ouverte pour qui vient d'installer et ne connaît encore personne. Aucun modèle, aucun calcul — un petit processus et un port ouvert.",
+    d2_m:"Windows · Linux · macOS",d2_btn:"Comment en tenir un",
+    foot_ethos:"Fait pour que l'IA appartienne à tout le monde plutôt qu'à qui possède les serveurs : elle tourne sur votre machine, les modèles passent de personne à personne, et rien de tout cela n'a besoin de notre permission pour continuer.",
     foot_project:"Projet"
   },
   de: {
@@ -351,46 +349,46 @@ const I18N = {
     hero_h1:"Die KI-Power der Welt, <span class=\"accent\">geteilt.</span>",
     hero_sub:"Chat, ein Code-Agent für deine Ordner, KI-Bilder und sogar kurze Videos mit Soundtrack — alles privat auf DEINEM Rechner, offline und kostenlos. Und die Modelle wandern von einem Rechner zum nächsten — niemand kann sie dir wegnehmen.",
     hero_cta1:"⬇ Für Windows herunterladen",
-    hero_cta2:"⚡ Node werden",
+    hero_cta2:"⚡ Halte einen Zugang offen",
     hero_os:"Windows · macOS · Linux · kein Cloud-Konto nötig",
     what_eyebrow:"Was ist Neurion",
     what_title:"Drei Dinge, ein Netzwerk.",
     p1_t:"Erschaffe mit KI",
     p1_b:"Chat, ein Code-Workspace im Claude-Stil auf deinen Ordnern, Bilderzeugung und kurze KI-Videos mit Musik oder Sprecherstimme — lokal, offline, kostenlos. Das Netzwerk springt ein, wenn du mehr Leistung willst.",
-    p2_t:"Teilen & verdienen",
-    p2_b:"Dein Rechner gibt die Modelle, die er schon hat, an alle weiter, die sie brauchen, und kann Arbeit für andere übernehmen. Ohne Bezahlung, ohne Konto — genau das Prinzip, das Filesharing zum Funktionieren brachte.",
-    p3_t:"Verifiziert & privat",
-    p3_b:"Jede stichprobenartig geprüfte Berechnung wird erneut ausgeführt und verglichen: Betrüger werden geslasht, nicht bezahlt. Klassifizierte Privatsphäre und Routing nach Vertrauensstufe.",
+    p2_t:"Teilen",
+    p2_b:"Deine Maschine gibt die Modelle, die sie schon hat, an alle weiter, die sie brauchen, und kann Arbeit für andere ausführen. Keine Zahlung, kein Konto — genau die Idee, die Filesharing zum Laufen brachte.",
+    p3_t:"Geprüft, nicht geglaubt",
+    p3_b:"Von einem Fremden wird nichts auf sein Wort geglaubt. Ein Modell wird nur angenommen, wenn sein Hash dem entspricht, was der Herausgeber veröffentlicht hat — eine falsche Kopie kostet einen Versuch und sonst nichts. Führen zwei Maschinen dieselbe Arbeit aus, werden die Antworten verglichen; bittet man beide um einen reproduzierbaren Lauf, kommen ehrliche identisch zurück.",
     how_eyebrow:"So funktioniert es",
-    how_title:"Vom Download bis zum Verdienen.",
+    how_title:"Vom Download zu einem Netz.",
     s1_t:"Client herunterladen",
     s1_b:"Eine eigenständige App: Datenbank, lokale KI und UI inklusive. Kein Docker, kein Cloud-Setup. Doppelklick und los.",
-    s2_t:"Nutzen oder Node betreiben",
-    s2_b:"Nutze die KI aus der App oder aktiviere den Node-Modus, um dem Netzwerk Compute über deine GPU/CPU bereitzustellen.",
-    s3_t:"Verifiziertes bezahlen / verdienen",
-    s3_b:"Jedes Modell wird gegen die Prüfsumme seines Herausgebers geprüft: Eine Datei von einem Fremden ist entweder echt oder sie fliegt weg.",
-    chip1:"<b>Nur verifizierte Arbeit wird bezahlt</b> · Re-Exec + Konsens",
-    chip2:"<b>Anti-Cheat</b> · Stake + On-Chain-Slashing",
-    chip3:"<b>Privacy by Design</b> · G2-Klassifizierer",
-    chip4:"<b>Horizontale Skalierung</b> · Multi-Instanz",
+    s2_t:"Nutze es, oder teile es",
+    s2_b:"Nutze die KI aus der App. Wenn du willst, gib die Modelle, die du schon hast, weiter und leihe deinen Prozessor — beides sind Schalter, mit Grenzen, die du setzt.",
+    s3_t:"Geprüft, nicht geglaubt",
+    s3_b:"Jedes Modell wird gegen den Hash des Herausgebers geprüft: eine Datei von einem Fremden ist entweder echt oder sie fliegt weg.",
+    chip1:"<b>Der Hash entscheidet</b> · nicht die Gegenstelle",
+    chip2:"<b>Kein Server dazwischen</b> · ein verteilter Index findet, wer was hat",
+    chip3:"<b>Signierte Updates</b> · mit einem Schlüssel, der nie auf dem Server liegt",
+    chip4:"<b>Deine Maschine, deine Grenzen</b> · Upload-Limit, und dein Router wird vorher gefragt",
     dl_eyebrow:"Download",
     dl_title:"Hol dir Neurion.",
     d_win_t:"Windows",
-    d_win_b:"Der vollständige Client: Chat, Agent, Wallet. Alles inklusive, läuft offline.",
-    d_win_m:"Windows 10/11 · v1.9.6",
+    d_win_b:"Der volle Client: Chat, Code-Agent, Bilder. Alles dabei, läuft offline.",
+    d_win_m:"Windows 10/11 · v1.9.7",
     d_win_btn:"⬇ Windows (.exe)",
     d_mac_t:"macOS",
     d_mac_b:"Apple-Silicon-Build. Gleicher Client, läuft offline. Beim ersten Öffnen: Rechtsklick → Öffnen.",
-    d_mac_m:"macOS (arm64) · v1.9.6",
+    d_mac_m:"macOS (arm64) · v1.9.7",
     d_mac_btn:"macOS — coming soon",
     d_lin_t:"Linux",
-    d_lin_b:"Portables AppImage — läuft überall. Chat, Agent, Wallet inklusive.",
-    d_lin_m:"Linux x64 · v1.9.6",
+    d_lin_b:"Portables AppImage — läuft überall. Chat, Code-Agent und Bilder inklusive.",
+    d_lin_m:"Linux x64 · v1.9.7",
     d_lin_btn:"Linux — coming soon",
-    d2_t:"Node Agent",
-    d2_b:"Teile deinen Rechner mit anderen. Leichtgewichtig, über die Kommandozeile.",
-    d2_m:"Windows · Linux · macOS",
-    foot_ethos:"In erster Linie gebaut, um das Leben der Community zu verbessern: zugängliche KI, geteiltes Compute, Wert verteilt an die, die ihn schaffen.",
+    d2_t:"Einstiegspunkt",
+    d2_b:"Halte eine Tür offen für alle, die gerade installiert haben und noch niemanden kennen. Keine Modelle, keine Rechenleistung — ein kleiner Prozess und ein offener Port.",
+    d2_m:"Windows · Linux · macOS",d2_btn:"So betreibst du einen",
+    foot_ethos:"Gebaut, damit KI allen gehört und nicht denen, denen die Server gehören: sie läuft auf deiner eigenen Maschine, die Modelle wandern von Mensch zu Mensch, und nichts davon braucht unsere Erlaubnis, um weiterzulaufen.",
     foot_project:"Projekt"
   },
   es: {
@@ -404,46 +402,46 @@ const I18N = {
     hero_h1:"La potencia de IA del mundo, <span class=\"accent\">compartida.</span>",
     hero_sub:"Chat, un agente Code que trabaja en tus carpetas, imágenes IA e incluso vídeos cortos con banda sonora — todo en privado en TU equipo, sin conexión y gratis. Y los modelos pasan de una máquina a otra: nadie puede quitártelos.",
     hero_cta1:"⬇ Descargar para Windows",
-    hero_cta2:"⚡ Conviértete en nodo",
+    hero_cta2:"⚡ Mantén una puerta de entrada",
     hero_os:"Windows · macOS · Linux · no necesitas cuenta en la nube",
     what_eyebrow:"Qué es Neurion",
     what_title:"Tres cosas, una red.",
     p1_t:"Crea con IA",
     p1_b:"Chat, un espacio Code estilo Claude sobre tus carpetas, generación de imágenes y vídeos cortos de IA con música o voz en off — en local, sin conexión, gratis. La red entra cuando quieres más potencia.",
-    p2_t:"Comparte y gana",
-    p2_b:"Tu equipo pasa los modelos que ya tiene a quien los necesite, y puede ejecutar trabajo para otras personas. Sin pagos y sin cuenta: la misma idea que hizo funcionar el intercambio de archivos.",
-    p3_t:"Verificado y privado",
-    p3_b:"Cada cómputo muestreado se vuelve a ejecutar y se compara: a los tramposos se les hace slashing, no se les paga. Privacidad clasificada y routing por nivel de confianza.",
+    p2_t:"Comparte",
+    p2_b:"Tu máquina pasa los modelos que ya tiene a quien los necesita, y puede ejecutar trabajo para otras personas. Sin pagos, sin cuenta — la misma idea que hizo funcionar el intercambio de archivos.",
+    p3_t:"Verificado, no creído",
+    p3_b:"De un desconocido no se cree nada por su palabra. Un modelo se acepta solo si su hash coincide con el que publicó quien lo hizo, así que una copia falsa cuesta un reintento y nada más. Cuando dos máquinas ejecutan el mismo trabajo se comparan las respuestas — pidiéndoles ejecutar de forma reproducible, las honestas vuelven idénticas.",
     how_eyebrow:"Cómo funciona",
-    how_title:"De la descarga a las ganancias.",
+    how_title:"De la descarga a una red.",
     s1_t:"Descarga el cliente",
     s1_b:"Una app independiente: base de datos, IA local e interfaz incluidas. Sin Docker, sin configuración en la nube. Doble clic y listo.",
-    s2_t:"Úsalo o monta un nodo",
-    s2_b:"Usa la IA desde la app, o activa el modo nodo para servir cómputo a la red desde tu GPU/CPU.",
-    s3_t:"Paga / gana lo verificado",
-    s3_b:"Cada modelo se comprueba contra la huella de su autor: un archivo que llega de un desconocido o es el auténtico, o se descarta.",
-    chip1:"<b>Solo se paga el trabajo verificado</b> · re-exec + consenso",
-    chip2:"<b>Anti-trampas</b> · stake + slashing on-chain",
-    chip3:"<b>Privacy by design</b> · clasificador G2",
-    chip4:"<b>Escala horizontal</b> · multi-instancia",
+    s2_t:"Úsalo, o compártelo",
+    s2_b:"Usa la IA desde la app. Si quieres, pasa los modelos que ya tienes a quien los necesite y presta tu procesador — son dos interruptores, con los límites que tú decidas.",
+    s3_t:"Verificado, no creído",
+    s3_b:"Cada modelo se comprueba contra el hash de quien lo publicó: un archivo de un desconocido o es el auténtico o se descarta.",
+    chip1:"<b>Decide el hash</b> · no el par",
+    chip2:"<b>Ningún servidor en medio</b> · un índice distribuido encuentra quién tiene qué",
+    chip3:"<b>Actualizaciones firmadas</b> · con una clave que nunca toca el servidor",
+    chip4:"<b>Tu máquina, tus límites</b> · tope de subida, y a tu router se le pregunta antes",
     dl_eyebrow:"Descargar",
     dl_title:"Consigue Neurion.",
     d_win_t:"Windows",
-    d_win_b:"El cliente completo: chat, agente, wallet. Todo incluido, funciona offline.",
-    d_win_m:"Windows 10/11 · v1.9.6",
+    d_win_b:"El cliente completo: chat, agente de código, imágenes. Todo incluido, funciona sin conexión.",
+    d_win_m:"Windows 10/11 · v1.9.7",
     d_win_btn:"⬇ Windows (.exe)",
     d_mac_t:"macOS",
     d_mac_b:"Build para Apple Silicon. Mismo cliente, funciona offline. Primera apertura: clic derecho → Abrir.",
-    d_mac_m:"macOS (arm64) · v1.9.6",
+    d_mac_m:"macOS (arm64) · v1.9.7",
     d_mac_btn:"macOS — coming soon",
     d_lin_t:"Linux",
-    d_lin_b:"AppImage portable — funciona en cualquier sitio. Chat, agente y wallet incluidos.",
-    d_lin_m:"Linux x64 · v1.9.6",
+    d_lin_b:"AppImage portable — funciona en cualquier sitio. Chat, agente de código e imágenes incluidos.",
+    d_lin_m:"Linux x64 · v1.9.7",
     d_lin_btn:"Linux — coming soon",
-    d2_t:"Node agent",
-    d2_b:"Comparte tu equipo con otras personas. Ligero, por línea de comandos.",
-    d2_m:"Windows · Linux · macOS",
-    foot_ethos:"Construido ante todo para mejorar la vida de la comunidad: IA accesible, cómputo compartido, valor distribuido a quienes lo crean.",
+    d2_t:"Punto de entrada",
+    d2_b:"Mantén una puerta abierta para quien acaba de instalar y todavía no conoce a nadie. Sin modelos, sin cómputo — un proceso pequeño y un puerto abierto.",
+    d2_m:"Windows · Linux · macOS",d2_btn:"Cómo montarlo",
+    foot_ethos:"Hecho para que la IA sea de todos y no de quien posee los servidores: funciona en tu propia máquina, los modelos viajan de persona a persona, y nada de esto necesita nuestro permiso para seguir funcionando.",
     foot_project:"Proyecto"
   },
   ru: {
@@ -457,46 +455,46 @@ const I18N = {
     hero_h1:"Мощность ИИ всего мира, <span class=\"accent\">общая.</span>",
     hero_sub:"Чат, Code-агент в ваших папках, ИИ-изображения и даже короткие видео со звуком — всё приватно на ВАШЕМ компьютере, офлайн и бесплатно. А модели переходят с одной машины на другую — их у вас никто не отберёт.",
     hero_cta1:"⬇ Скачать для Windows",
-    hero_cta2:"⚡ Стать узлом",
+    hero_cta2:"⚡ Держите вход открытым",
     hero_os:"Windows · macOS · Linux · аккаунт в облаке не нужен",
     what_eyebrow:"Что такое Neurion",
     what_title:"Три вещи, одна сеть.",
     p1_t:"Творите с ИИ",
     p1_b:"Чат, Code-рабочее пространство в стиле Claude на ваших папках, генерация изображений и короткие ИИ-видео с музыкой или голосом — локально, офлайн, бесплатно. Сеть подключается, когда нужно больше мощности.",
-    p2_t:"Делитесь и зарабатывайте",
-    p2_b:"Ваш компьютер передаёт уже скачанные модели тем, кому они нужны, и может выполнять работу для других. Без оплаты и без аккаунта — тот же принцип, на котором держался файлообмен.",
-    p3_t:"Проверяемо и приватно",
-    p3_b:"Каждое выборочное вычисление повторно выполняется и сравнивается: мошенников штрафуют, а не оплачивают. Классифицированная приватность и маршрутизация по уровню доверия.",
+    p2_t:"Делитесь",
+    p2_b:"Ваша машина передаёт модели, которые у неё уже есть, тем, кому они нужны, и может выполнять работу для других. Без оплаты, без учётной записи — та же идея, благодаря которой работал файлообмен.",
+    p3_t:"Проверено, а не принято на веру",
+    p3_b:"Ничему от незнакомца не верят на слово. Модель принимается, только если её хеш совпадает с опубликованным автором, поэтому поддельная копия стоит одной попытки и ничего больше. Когда две машины выполняют одну и ту же работу, ответы сравниваются — и если попросить обе выполнить воспроизводимо, честные возвращаются одинаковыми.",
     how_eyebrow:"Как это работает",
-    how_title:"От скачивания до заработка.",
+    how_title:"От загрузки к сети.",
     s1_t:"Скачайте клиент",
     s1_b:"Автономное приложение: база данных, локальный ИИ и интерфейс уже включены. Никакого Docker, никакой настройки облака. Двойной клик — и готово.",
-    s2_t:"Используйте или запустите узел",
-    s2_b:"Используйте ИИ из приложения или включите режим узла, чтобы отдавать вычисления сети со своего GPU/CPU.",
-    s3_t:"Платите / зарабатывайте за проверенное",
-    s3_b:"Каждая модель сверяется с контрольной суммой автора: файл от незнакомца либо настоящий, либо отбрасывается.",
-    chip1:"<b>Оплачивается только проверенная работа</b> · повторное выполнение + консенсус",
-    chip2:"<b>Защита от мошенничества</b> · стейк + on-chain штрафы",
-    chip3:"<b>Приватность по умолчанию</b> · классификатор G2",
-    chip4:"<b>Горизонтальное масштабирование</b> · мульти-инстанс",
+    s2_t:"Пользуйтесь или делитесь",
+    s2_b:"Пользуйтесь ИИ из приложения. Если захотите — передавайте модели, которые у вас уже есть, и одалживайте процессор: это два переключателя, с пределами, которые задаёте вы.",
+    s3_t:"Проверено, а не принято на веру",
+    s3_b:"Каждая модель сверяется с хешем издателя: файл от незнакомца либо настоящий, либо выбрасывается.",
+    chip1:"<b>Решает хеш</b> · а не собеседник",
+    chip2:"<b>Никакого сервера посередине</b> · распределённый индекс находит, у кого что есть",
+    chip3:"<b>Подписанные обновления</b> · ключом, которого никогда не было на сервере",
+    chip4:"<b>Ваша машина, ваши пределы</b> · потолок отдачи, и роутер спросят заранее",
     dl_eyebrow:"Скачать",
     dl_title:"Получите Neurion.",
     d_win_t:"Windows",
-    d_win_b:"Полный клиент: чат, агент, кошелёк. Всё включено, работает офлайн.",
-    d_win_m:"Windows 10/11 · v1.9.6",
+    d_win_b:"Полный клиент: чат, агент по коду, изображения. Всё включено, работает офлайн.",
+    d_win_m:"Windows 10/11 · v1.9.7",
     d_win_btn:"⬇ Windows (.exe)",
     d_mac_t:"macOS",
     d_mac_b:"Сборка для Apple Silicon. Тот же клиент, работает офлайн. Первый запуск: правый клик → Открыть.",
-    d_mac_m:"macOS (arm64) · v1.9.6",
+    d_mac_m:"macOS (arm64) · v1.9.7",
     d_mac_btn:"macOS — coming soon",
     d_lin_t:"Linux",
-    d_lin_b:"Портативный AppImage — работает где угодно. Чат, агент, кошелёк включены.",
-    d_lin_m:"Linux x64 · v1.9.6",
+    d_lin_b:"Портативный AppImage — работает везде. Чат, агент по коду и изображения включены.",
+    d_lin_m:"Linux x64 · v1.9.7",
     d_lin_btn:"Linux — coming soon",
-    d2_t:"Node agent",
-    d2_b:"Делитесь своим компьютером с другими. Лёгкий, из командной строки.",
-    d2_m:"Windows · Linux · macOS",
-    foot_ethos:"Создан в первую очередь для улучшения жизни сообщества: доступный ИИ, общие вычисления, ценность распределяется тем, кто её создаёт.",
+    d2_t:"Точка входа",
+    d2_b:"Держите дверь открытой для тех, кто только что установил и пока никого не знает. Без моделей, без вычислений — маленький процесс и открытый порт.",
+    d2_m:"Windows · Linux · macOS",d2_btn:"Как поднять свой",
+    foot_ethos:"Сделано, чтобы ИИ принадлежал всем, а не владельцам серверов: он работает на вашей машине, модели переходят от человека к человеку, и ничему из этого не нужно наше разрешение, чтобы продолжать работать.",
     foot_project:"Проект"
   },
   zh: {
@@ -510,46 +508,46 @@ const I18N = {
     hero_h1:"全世界的 AI 算力，<span class=\"accent\">共享。</span>",
     hero_sub:"聊天、在你文件夹中工作的 Code 智能体、AI 图像，甚至带配乐的短视频 —— 全部私密地在你自己的电脑上运行，离线且免费。模型还会在一台台电脑之间传递，没有人能把它们收回去。",
     hero_cta1:"⬇ 下载 Windows 版",
-    hero_cta2:"⚡ 成为节点",
+    hero_cta2:"⚡ 开一个入口",
     hero_os:"Windows · macOS · Linux · 无需云账户",
     what_eyebrow:"什么是 Neurion",
     what_title:"三件事，一个网络。",
     p1_t:"用 AI 创作",
     p1_b:"聊天、Claude 风格的 Code 工作区、图像生成以及带音乐或旁白的 AI 短视频 —— 本地、离线、免费。需要更强算力时，网络随时接手。",
-    p2_t:"共享与赚取",
-    p2_b:"你的电脑把已有的模型传给需要的人，也可以为别人跑任务。不付费、不注册——正是当年让文件共享成立的那个道理。",
-    p3_t:"已验证且私密",
-    p3_b:"每次抽样的计算都会被重新执行并比对：作弊者会被罚没，而非获得报酬。分级隐私和按信任等级的路由。",
+    p2_t:"分享",
+    p2_b:"你的机器把已有的模型传给需要的人，也可以为别人执行工作。不付费，不需账号——正是让文件共享成立的那个想法。",
+    p3_t:"经过验证，而非轻信",
+    p3_b:"来自陌生人的东西一概不轻信。只有哈希与发布者公布的一致，模型才会被接受，所以假冒的副本只浪费一次尝试。当两台机器执行同一份工作时，答案会被比对——若要求双方以可复现方式运行，诚实的一方会返回完全相同的文本。",
     how_eyebrow:"工作原理",
-    how_title:"从下载到赚取。",
+    how_title:"从下载到一张网络。",
     s1_t:"下载客户端",
     s1_b:"一个独立应用：内置数据库、本地 AI 和界面。无需 Docker，无需云配置。双击即用。",
-    s2_t:"使用它或运行节点",
-    s2_b:"从应用中使用 AI，或开启节点模式，用你的 GPU/CPU 为网络提供算力。",
-    s3_t:"为已验证的工作付费 / 赚取",
-    s3_b:"每个模型都会与发布者的哈希比对：来自陌生人的文件要么是真的，要么被丢弃。",
-    chip1:"<b>只有经过验证的工作才有报酬</b> · 重新执行 + 共识",
-    chip2:"<b>反作弊</b> · 质押 + 链上罚没",
-    chip3:"<b>隐私即设计</b> · G2 分类器",
-    chip4:"<b>横向扩展</b> · 多实例",
+    s2_t:"使用它，或分享它",
+    s2_b:"在应用里使用 AI。愿意的话，把你已有的模型传给需要的人，并出借处理器——这是两个开关，上限由你决定。",
+    s3_t:"经过验证，而非轻信",
+    s3_b:"每个模型都用发布者的哈希校验：来自陌生人的文件要么是真的，要么被丢弃。",
+    chip1:"<b>由哈希决定</b> · 而不是对方",
+    chip2:"<b>中间没有服务器</b> · 分布式索引找出谁有什么",
+    chip3:"<b>已签名的更新</b> · 用一把从不放在服务器上的密钥",
+    chip4:"<b>你的机器，你的上限</b> · 上传封顶，并且会先征询你的路由器",
     dl_eyebrow:"下载",
     dl_title:"获取 Neurion。",
     d_win_t:"Windows",
-    d_win_b:"完整客户端：对话、智能体、钱包。全部内置，可离线运行。",
-    d_win_m:"Windows 10/11 · v1.9.6",
+    d_win_b:"完整客户端：聊天、代码代理、图像。全部内置，可离线运行。",
+    d_win_m:"Windows 10/11 · v1.9.7",
     d_win_btn:"⬇ Windows (.exe)",
     d_mac_t:"macOS",
     d_mac_b:"Apple Silicon 版本。同一客户端，可离线运行。首次打开：右键点击 → 打开。",
-    d_mac_m:"macOS (arm64) · v1.9.6",
+    d_mac_m:"macOS (arm64) · v1.9.7",
     d_mac_btn:"macOS — coming soon",
     d_lin_t:"Linux",
-    d_lin_b:"便携式 AppImage——随处可运行。内置对话、智能体、钱包。",
-    d_lin_m:"Linux x64 · v1.9.6",
+    d_lin_b:"便携 AppImage——到处可跑。含聊天、代码代理与图像。",
+    d_lin_m:"Linux x64 · v1.9.7",
     d_lin_btn:"Linux — coming soon",
-    d2_t:"节点代理",
-    d2_b:"把你的电脑分享给其他人。轻量、命令行。",
-    d2_m:"Windows · Linux · macOS",
-    foot_ethos:"首要目标是改善社区的生活：可获取的 AI、共享的算力、把价值分配给创造它的人。",
+    d2_t:"入口节点",
+    d2_b:"为刚装好、还谁也不认识的人留一扇门。没有模型，不做计算——一个小进程和一个开放端口。",
+    d2_m:"Windows · Linux · macOS",d2_btn:"怎么开一个",
+    foot_ethos:"做出来是为了让 AI 属于所有人，而不属于拥有服务器的人：它跑在你自己的机器上，模型在人与人之间传递，而这一切都不需要我们的许可才能继续。",
     foot_project:"项目"
   }
 };
