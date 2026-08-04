@@ -648,6 +648,77 @@ async function main(): Promise<void> {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  // ---- a model too big for one file, and too big for one person ----------
+  //
+  // Past a certain size a model arrives as a numbered set of files. Each part
+  // carries its own hash, which turns out to matter more than it sounds:
+  // somebody holding two parts of three is already useful to somebody holding
+  // none, and a transfer that dies halfway costs one part instead of eighty
+  // gigabytes.
+
+  await check("each part of a split model is offered on its own", () => {
+    const split = CATALOG.find((m) => m.parts?.length);
+    assert(split, "the catalogue should have at least one split model");
+    const first = split!.parts![0]!;
+    // Only part one is small enough to actually create — which is the point of
+    // the test: having ONE part must already put something on offer.
+    assert(
+      first.sizeBytes < 20_000_000,
+      `part one is ${first.sizeBytes} bytes; this test assumes it is small`,
+    );
+    const dir = mkdtempSync(join(tmpdir(), "neurion-parts-"));
+    mkdirSync(join(dir, "models"), { recursive: true });
+    writeFileSync(join(dir, "models", first.file), Buffer.alloc(first.sizeBytes, 3));
+    const node = new PeerService(
+      cfg({ NEURION_TEXT_DIR: dir, NEURION_PEER_SWEEP: "false" }),
+    );
+    const offered = node.status().sharing;
+    assert(
+      offered === 1,
+      `holding one part of ${split!.parts!.length} should offer exactly one thing, got ${offered}`,
+    );
+    // And it is findable by that part's own hash, not the model's.
+    assert(
+      node.sourceFor(first.sha256) === null,
+      "no peer has it, so no source should be invented",
+    );
+    const inner = node as unknown as {
+      localHashes(): Map<string, unknown>;
+    };
+    assert(
+      inner.localHashes().has(first.sha256),
+      "the part is on disk but not offered under its own hash",
+    );
+    assert(
+      !inner.localHashes().has(split!.parts![1]!.sha256),
+      "a part that is NOT on disk was offered anyway",
+    );
+    node.onModuleDestroy();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  await check("a part of the wrong size is not offered", () => {
+    const split = CATALOG.find((m) => m.parts?.length)!;
+    const first = split.parts![0]!;
+    const dir = mkdtempSync(join(tmpdir(), "neurion-partial-"));
+    mkdirSync(join(dir, "models"), { recursive: true });
+    // A download that stopped halfway. The hash would catch it later; refusing
+    // to announce it saves somebody the wasted transfer.
+    writeFileSync(
+      join(dir, "models", first.file),
+      Buffer.alloc(Math.floor(first.sizeBytes / 2), 3),
+    );
+    const node = new PeerService(
+      cfg({ NEURION_TEXT_DIR: dir, NEURION_PEER_SWEEP: "false" }),
+    );
+    assert(
+      node.status().sharing === 0,
+      "a half-written part was put on offer",
+    );
+    node.onModuleDestroy();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   // ---- being a good guest on somebody else's machine ---------------------
   //
   // None of this is about security. It is about whether the person who

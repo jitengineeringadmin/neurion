@@ -79,6 +79,22 @@ SOFTWARE.
 Source: https://github.com/ggml-org/llama.cpp (release ${LLAMA_TAG})
 `;
 
+/**
+ * One file of a model that ships in several.
+ *
+ * Past a certain size publishers stop shipping a single file — HuggingFace
+ * itself caps them — so a large model arrives as a numbered set. That turns out
+ * to suit this project exactly: each part carries its own hash, so each travels
+ * between peers on its own, is verified on its own, and a transfer that fails
+ * halfway costs one part rather than eighty gigabytes.
+ */
+export interface CatalogPart {
+  file: string;
+  url: string;
+  sha256: string;
+  sizeBytes: number;
+}
+
 export interface CatalogModel {
   id: string;
   label: string;
@@ -103,6 +119,12 @@ export interface CatalogModel {
    */
   sha256?: string;
   sizeBytes: number;
+  /**
+   * Set when the weights are split across several files. `file` and `url` then
+   * describe part one, which is what llama.cpp is pointed at — it finds the
+   * rest itself, provided they sit in the same folder under their own names.
+   */
+  parts?: CatalogPart[];
   /** Context the server is started with. Never 0: that means "read from the
    *  model", and some models declare 262144, which reserves a working set
    *  large enough to make the machine unusable. */
@@ -140,7 +162,12 @@ export interface CatalogModel {
  * llama-server, and a single-file vision GGUF downloads happily and then ignores
  * images — a worse failure than not offering it.
  */
+/** Pinned to an exact revision, like every other entry: a tag can move. */
+const V4_BASE =
+  "https://huggingface.co/unsloth/DeepSeek-V4-Flash-GGUF/resolve/e3aa0d6a5fa4f820d9e132ac1fd1d01e1b2b49e0/UD-IQ1_S";
+
 export const CATALOG: CatalogModel[] = [
+
   {
     id: "qwen2.5-0.5b",
     label: "Qwen 2.5 · 0.5B",
@@ -309,6 +336,43 @@ export const CATALOG: CatalogModel[] = [
     sha256: "2946d28c9e1bb2bcae6d42e8678863a31775df6f740315c7d7e6d6b6411f5937",
     sizeBytes: 8_988_111_072,
     contextTokens: 4096,
+    recommended: false,
+  },
+  {
+    // The first model here that no ordinary machine can hold, and the reason
+    // the parts mechanism exists. 256 experts of which 6 fire per token, so the
+    // work per token is small while the weights are enormous — which is exactly
+    // the shape a network of people is good at carrying and a single laptop is
+    // not.
+    id: "deepseek-v4-flash",
+    label: "DeepSeek V4 Flash · 284B (MoE)",
+    description:
+      "Enorme: 284 miliardi di parametri, di cui 13 attivi per token. Servono circa 90 GB fra RAM e disco veloce — non gira su un portatile. Arriva in tre parti, ognuna verificata per conto suo.",
+    url: `${V4_BASE}/DeepSeek-V4-Flash-UD-IQ1_S-00001-of-00003.gguf`,
+    file: "DeepSeek-V4-Flash-UD-IQ1_S-00001-of-00003.gguf",
+    sha256: "b191572a6376fecf1bb653b0fd04fa0d38c4eadbaa995f1ad8ac604dea64649a",
+    sizeBytes: 82539237024,
+    parts: [
+      {
+        file: "DeepSeek-V4-Flash-UD-IQ1_S-00001-of-00003.gguf",
+        url: `${V4_BASE}/DeepSeek-V4-Flash-UD-IQ1_S-00001-of-00003.gguf`,
+        sha256: "b191572a6376fecf1bb653b0fd04fa0d38c4eadbaa995f1ad8ac604dea64649a",
+        sizeBytes: 5_256_864,
+      },
+      {
+        file: "DeepSeek-V4-Flash-UD-IQ1_S-00002-of-00003.gguf",
+        url: `${V4_BASE}/DeepSeek-V4-Flash-UD-IQ1_S-00002-of-00003.gguf`,
+        sha256: "6907d2c7b3389624c0ad8face70ce8b5e14d662f9aaa51e5f7ef8ae389735750",
+        sizeBytes: 49_975_054_912,
+      },
+      {
+        file: "DeepSeek-V4-Flash-UD-IQ1_S-00003-of-00003.gguf",
+        url: `${V4_BASE}/DeepSeek-V4-Flash-UD-IQ1_S-00003-of-00003.gguf`,
+        sha256: "53dba406a9158bf2628f7b04190096fc236ff63d0a1bf189902c0b87587a3cce",
+        sizeBytes: 32_558_925_248,
+      },
+    ],
+    contextTokens: 8192,
     recommended: false,
   },
 ];

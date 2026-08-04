@@ -370,6 +370,13 @@ export class LlamaEngineService
   }
 
   private modelInstalled(dir: string, m: CatalogModel): boolean {
+    // A split model is present only when every part is. Checking part one
+    // would report a 5 MB header as an installed 82 GB model.
+    if (m.parts?.length) {
+      return m.parts.every((p) =>
+        fileReady(this.modelPath(dir, p.file), p.sizeBytes * 0.9),
+      );
+    }
     return fileReady(this.weightsPath(dir, m), m.sizeBytes * 0.9);
   }
 
@@ -445,6 +452,47 @@ export class LlamaEngineService
   ): Promise<void> {
     if (this.modelInstalled(dir, m)) return;
     mkdirSync(join(dir, "models"), { recursive: true });
+
+    // A model that ships in several files is fetched part by part, each
+    // verified against its own hash, and each looked for among peers first.
+    // A failure costs one part rather than the whole download.
+    if (m.parts?.length) {
+      const total = m.parts.reduce((n, p) => n + p.sizeBytes, 0);
+      let done = 0;
+      for (const part of m.parts) {
+        const target = this.modelPath(dir, part.file);
+        if (fileReady(target, part.sizeBytes * 0.9)) {
+          done += part.sizeBytes;
+          onProgress(Math.round((done / total) * 100));
+          continue;
+        }
+        const fromPeer = await this.peers.locate(part.sha256);
+        const base = done;
+        const step = (p: number): void =>
+          onProgress(Math.round(((base + (part.sizeBytes * p) / 100) / total) * 100));
+        if (fromPeer) {
+          try {
+            this.logger.log(`fetching ${part.file} from a peer: ${new URL(fromPeer).host}`);
+            await downloadFile(fromPeer, target, step, {
+              expectedBytes: part.sizeBytes,
+              sha256: part.sha256,
+            });
+            done += part.sizeBytes;
+            continue;
+          } catch (e) {
+            this.logger.warn(
+              `peer copy of ${part.file} rejected (${(e as Error).message}) — falling back to the publisher`,
+            );
+          }
+        }
+        await downloadFile(part.url, target, step, {
+          expectedBytes: part.sizeBytes,
+          sha256: part.sha256,
+        });
+        done += part.sizeBytes;
+      }
+      return;
+    }
 
     // Someone on this network first, the internet second. Not for speed —
     // though a local link usually is faster — but because this is the path that

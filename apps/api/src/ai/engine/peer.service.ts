@@ -242,19 +242,30 @@ export class PeerService implements OnModuleDestroy {
     const out = new Map<string, { path: string; size: number }>();
     const dir = this.dir();
     if (!dir) return out;
-    for (const m of CATALOG) {
-      if (!m.sha256) continue;
-      const p = join(dir, "models", m.file);
+    // A model that ships in several files is offered part by part: each has
+    // its own hash, so each is a thing a peer can ask for and verify on its
+    // own. Somebody who has two of three parts is still useful to somebody who
+    // has none.
+    const offer = (file: string, sha: string, expect: number): void => {
+      const p = join(dir, "models", file);
       try {
-        if (!existsSync(p)) continue;
+        if (!existsSync(p)) return;
         const st = statSync(p);
         // Size is not a security check — the hash is — but it cheaply skips a
         // half-finished file that would only fail on the other end.
-        if (st.size !== m.sizeBytes) continue;
-        out.set(m.sha256, { path: p, size: st.size });
+        if (st.size !== expect) return;
+        out.set(sha, { path: p, size: st.size });
       } catch {
         /* unreadable: simply not offered */
       }
+    };
+    for (const m of CATALOG) {
+      if (m.parts?.length) {
+        for (const part of m.parts) offer(part.file, part.sha256, part.sizeBytes);
+        continue;
+      }
+      if (!m.sha256) continue;
+      offer(m.file, m.sha256, m.sizeBytes);
     }
     return out;
   }
