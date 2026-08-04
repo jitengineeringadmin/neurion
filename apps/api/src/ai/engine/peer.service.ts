@@ -981,6 +981,28 @@ export class PeerService implements OnModuleDestroy {
         void this.lendCompute(req, res);
         return;
       }
+      // Aggregates for the public network page. Deliberately NO addresses, no
+      // identities, no model names: how many machines and how much is moving,
+      // and nothing that could be harvested. /peer/have already tells a PEER
+      // what it needs to route; a web page needs none of it.
+      if (req.url === "/peer/stats") {
+        const idx = this.indexStatus();
+        res.setHeader("content-type", "application/json");
+        res.setHeader("cache-control", "public, max-age=10");
+        res.setHeader("access-control-allow-origin", "*");
+        res.end(
+          JSON.stringify({
+            v: 1,
+            nodes: idx.nodes,
+            records: idx.records,
+            neighbours: this.known().length,
+            sharing: this.localHashes().size,
+            served: this.served,
+            relaying: this.relayed.size,
+          }),
+        );
+        return;
+      }
       if (req.url === "/peer/kad" && req.method === "POST") {
         void this.answerKad(req, res);
         return;

@@ -111,7 +111,6 @@
     <a href="#how" data-i18n="nav_how">How it works</a>
     <a href="#download" data-i18n="nav_dl">Download</a>
       <a href="/roadmap" data-i18n="nav_roadmap">Roadmap</a>
-    <a href="#node" data-i18n="nav_node">Run a node</a>
     <a href="/forum" data-i18n="nav_forum">Forum</a>
     <a href="/network" data-i18n="nav_network">Network</a>
     <a class="btn ghost" href="/login" data-i18n="nav_open">Account</a>
@@ -125,7 +124,6 @@
   <p class="sub" data-i18n="hero_sub">Chat, a Code agent that works in your folders, AI images and even short videos with soundtrack — all running privately on YOUR machine, offline and free. And the models pass from one machine to the next, so nobody can take them away.</p>
   <div class="cta-row">
     <a class="btn" href="#download" data-i18n="hero_cta1">⬇ Download for Windows</a>
-    <a class="btn ghost" href="#node" data-i18n="hero_cta2">⚡ Become a node</a>
   </div>
   <div class="os-note" data-i18n="hero_os">Windows available · macOS &amp; Linux coming · no cloud account needed</div>
 </header>
@@ -204,15 +202,7 @@
       <div class="meta" data-i18n="d_lin_m">Linux x64 · v1.10.0</div>
       <span class="btn ghost" style="cursor:default;opacity:.55" data-i18n="d_lin_btn">Linux — in arrivo</span>
     </div>
-    <div class="card" id="node">
-      <div class="ic">⚡</div>
-      <h3 data-i18n="d2_t">Entry point</h3>
-      <p data-i18n="d2_b">Keep a door open for people who have just installed and know nobody yet. No models, no compute — one small process and an open port.</p>
-      <div class="meta" data-i18n="d2_m">Windows · Linux · macOS</div>
-      <div class="node-os">
-        <a class="btn ghost" href="/forum" data-i18n="d2_btn">How to run one</a>
-      </div>
-    </div>
+
   </div>
 </section>
 
@@ -237,11 +227,11 @@
 // ---- i18n ----
 const I18N = {
   en: {
-    nav_what:"What is it",nav_how:"How it works",nav_dl:"Download",nav_roadmap:"Roadmap",nav_node:"Run a node",nav_forum:"Forum",nav_network:"Network",nav_open:"Account",
+    nav_what:"What is it",nav_how:"How it works",nav_dl:"Download",nav_roadmap:"Roadmap",nav_forum:"Forum",nav_network:"Network",nav_open:"Account",
     hero_badge:"AI on your own machine · no account · nothing to pay",
     hero_h1:"The world's AI power, <span class=\"accent\">shared.</span>",
     hero_sub:"Chat, a Code agent that works in your folders, AI images and even short videos with soundtrack — all running privately on YOUR machine, offline and free. And the models pass from one machine to the next, so nobody can take them away.",
-    hero_cta1:"⬇ Download for Windows",hero_cta2:"⚡ Keep a way in open",
+    hero_cta1:"⬇ Download for Windows",
     hero_os:"Windows · macOS · Linux · no cloud account needed",
     what_eyebrow:"What is Neurion",what_title:"Three things, one network.",
     p1_t:"Create with AI",p1_b:"Chat, a Claude-style Code workspace on your folders, image generation and short AI videos with music or voice-over — locally, offline, free. The network steps in when you want more power.",
@@ -257,16 +247,16 @@ const I18N = {
     d_win_t:"Windows",d_win_b:"The full client: chat, code agent, images. All included, runs offline.",d_win_m:"Windows 10/11 · v1.10.0",d_win_btn:"⬇ Windows (.exe)",
     d_mac_t:"macOS",d_mac_b:"Apple Silicon build. Same client, runs offline. First open: right-click → Open.",d_mac_m:"macOS (arm64) · v1.10.0",d_mac_btn:"macOS — coming soon",
     d_lin_t:"Linux",d_lin_b:"Portable AppImage — runs anywhere. Chat, code agent and images included.",d_lin_m:"Linux x64 · v1.10.0",d_lin_btn:"Linux — coming soon",
-    d2_t:"Entry point",d2_b:"Keep a door open for people who have just installed and know nobody yet. No models, no compute — one small process and an open port.",d2_m:"Windows · Linux · macOS",d2_btn:"How to run one",
+    
     foot_ethos:"Built so that AI belongs to everyone rather than to whoever owns the servers: it runs on your own machine, the models travel from person to person, and none of it needs our permission to keep working.",
     foot_project:"Project"
   },
   it: {
-    nav_what:"Cos'è",nav_how:"Come funziona",nav_dl:"Scarica",nav_roadmap:"Roadmap",nav_node:"Diventa nodo",nav_forum:"Forum",nav_network:"Rete",nav_open:"Account",
+    nav_what:"Cos'è",nav_how:"Come funziona",nav_dl:"Scarica",nav_roadmap:"Roadmap",nav_forum:"Forum",nav_network:"Rete",nav_open:"Account",
     hero_badge:"AI sul tuo computer · nessun account · niente da pagare",
     hero_h1:"La potenza AI del mondo, <span class=\"accent\">condivisa.</span>",
     hero_sub:"Chat, un agente Code che lavora nelle tue cartelle, immagini AI e perfino brevi video con colonna sonora — tutto in privato sul TUO computer, offline e gratis. E i modelli passano da una macchina all'altra, così nessuno può portarteli via.",
-    hero_cta1:"⬇ Scarica per Windows",hero_cta2:"⚡ Tieni aperta una via d'ingresso",
+    hero_cta1:"⬇ Scarica per Windows",
     hero_os:"Windows · macOS · Linux · nessun account cloud richiesto",
     what_eyebrow:"Cos'è Neurion",what_title:"Tre cose in una rete.",
     p1_t:"Crea con l’AI",p1_b:"Chat, un workspace Code stile Claude sulle tue cartelle, generazione di immagini e brevi video AI con musica o voce narrante — in locale, offline, gratis. La rete entra in gioco quando vuoi più potenza.",
@@ -282,7 +272,7 @@ const I18N = {
     d_win_t:"Windows",d_win_b:"Il client completo: chat, agente sul codice, immagini. Tutto incluso, funziona offline.",d_win_m:"Windows 10/11 · v1.10.0",d_win_btn:"⬇ Windows (.exe)",
     d_mac_t:"macOS",d_mac_b:"Build Apple Silicon. Stesso client, gira offline. Primo avvio: tasto destro → Apri.",d_mac_m:"macOS (arm64) · v1.10.0",d_mac_btn:"macOS — coming soon",
     d_lin_t:"Linux",d_lin_b:"AppImage portatile — gira ovunque. Chat, agente sul codice e immagini inclusi.",d_lin_m:"Linux x64 · v1.10.0",d_lin_btn:"Linux — coming soon",
-    d2_t:"Punto d'ingresso",d2_b:"Tieni una porta aperta per chi ha appena installato e non conosce ancora nessuno. Niente modelli, niente calcolo — un processo piccolo e una porta aperta.",d2_m:"Windows · Linux · macOS",d2_btn:"Come si accende",
+    
     foot_ethos:"Fatto perché l'IA sia di tutti e non di chi possiede i server: gira sulla tua macchina, i modelli passano da persona a persona, e niente di tutto questo ha bisogno del nostro permesso per continuare a funzionare.",
     foot_project:"Progetto"
   },
@@ -290,14 +280,14 @@ const I18N = {
     nav_what:"C'est quoi",
     nav_how:"Comment ça marche",
     nav_dl:"Télécharger",nav_roadmap:"Feuille de route",
-    nav_node:"Lancer un nœud",
+    
     nav_forum:"Forum",nav_network:"Réseau",
     nav_open:"Compte",
     hero_badge:"L'IA sur votre machine · sans compte · rien à payer",
     hero_h1:"La puissance IA du monde, <span class=\"accent\">partagée.</span>",
     hero_sub:"Chat, un agent Code qui travaille dans vos dossiers, des images IA et même de courtes vidéos avec bande-son — le tout en privé sur VOTRE machine, hors ligne et gratuit. Et les modèles passent d'une machine à l'autre : personne ne peut vous les retirer.",
     hero_cta1:"⬇ Télécharger pour Windows",
-    hero_cta2:"⚡ Gardez une porte d'entrée",
+    
     hero_os:"Windows · macOS · Linux · aucun compte cloud requis",
     what_eyebrow:"C'est quoi Neurion",
     what_title:"Trois choses, un seul réseau.",
@@ -333,9 +323,9 @@ const I18N = {
     d_lin_b:"AppImage portable — fonctionne partout. Chat, agent de code et images inclus.",
     d_lin_m:"Linux x64 · v1.10.0",
     d_lin_btn:"Linux — coming soon",
-    d2_t:"Point d'entrée",
-    d2_b:"Gardez une porte ouverte pour qui vient d'installer et ne connaît encore personne. Aucun modèle, aucun calcul — un petit processus et un port ouvert.",
-    d2_m:"Windows · Linux · macOS",d2_btn:"Comment en tenir un",
+    
+    
+    
     foot_ethos:"Fait pour que l'IA appartienne à tout le monde plutôt qu'à qui possède les serveurs : elle tourne sur votre machine, les modèles passent de personne à personne, et rien de tout cela n'a besoin de notre permission pour continuer.",
     foot_project:"Projet"
   },
@@ -343,14 +333,14 @@ const I18N = {
     nav_what:"Was ist das",
     nav_how:"So funktioniert es",
     nav_dl:"Download",nav_roadmap:"Fahrplan",
-    nav_node:"Node betreiben",
+    
     nav_forum:"Forum",nav_network:"Netzwerk",
     nav_open:"Konto",
     hero_badge:"KI auf deinem Rechner · kein Konto · nichts zu zahlen",
     hero_h1:"Die KI-Power der Welt, <span class=\"accent\">geteilt.</span>",
     hero_sub:"Chat, ein Code-Agent für deine Ordner, KI-Bilder und sogar kurze Videos mit Soundtrack — alles privat auf DEINEM Rechner, offline und kostenlos. Und die Modelle wandern von einem Rechner zum nächsten — niemand kann sie dir wegnehmen.",
     hero_cta1:"⬇ Für Windows herunterladen",
-    hero_cta2:"⚡ Halte einen Zugang offen",
+    
     hero_os:"Windows · macOS · Linux · kein Cloud-Konto nötig",
     what_eyebrow:"Was ist Neurion",
     what_title:"Drei Dinge, ein Netzwerk.",
@@ -386,9 +376,9 @@ const I18N = {
     d_lin_b:"Portables AppImage — läuft überall. Chat, Code-Agent und Bilder inklusive.",
     d_lin_m:"Linux x64 · v1.10.0",
     d_lin_btn:"Linux — coming soon",
-    d2_t:"Einstiegspunkt",
-    d2_b:"Halte eine Tür offen für alle, die gerade installiert haben und noch niemanden kennen. Keine Modelle, keine Rechenleistung — ein kleiner Prozess und ein offener Port.",
-    d2_m:"Windows · Linux · macOS",d2_btn:"So betreibst du einen",
+    
+    
+    
     foot_ethos:"Gebaut, damit KI allen gehört und nicht denen, denen die Server gehören: sie läuft auf deiner eigenen Maschine, die Modelle wandern von Mensch zu Mensch, und nichts davon braucht unsere Erlaubnis, um weiterzulaufen.",
     foot_project:"Projekt"
   },
@@ -396,14 +386,14 @@ const I18N = {
     nav_what:"Qué es",
     nav_how:"Cómo funciona",
     nav_dl:"Descargar",nav_roadmap:"Hoja de ruta",
-    nav_node:"Monta un nodo",
+    
     nav_forum:"Foro",nav_network:"Red",
     nav_open:"Cuenta",
     hero_badge:"IA en tu propio equipo · sin cuenta · nada que pagar",
     hero_h1:"La potencia de IA del mundo, <span class=\"accent\">compartida.</span>",
     hero_sub:"Chat, un agente Code que trabaja en tus carpetas, imágenes IA e incluso vídeos cortos con banda sonora — todo en privado en TU equipo, sin conexión y gratis. Y los modelos pasan de una máquina a otra: nadie puede quitártelos.",
     hero_cta1:"⬇ Descargar para Windows",
-    hero_cta2:"⚡ Mantén una puerta de entrada",
+    
     hero_os:"Windows · macOS · Linux · no necesitas cuenta en la nube",
     what_eyebrow:"Qué es Neurion",
     what_title:"Tres cosas, una red.",
@@ -439,9 +429,9 @@ const I18N = {
     d_lin_b:"AppImage portable — funciona en cualquier sitio. Chat, agente de código e imágenes incluidos.",
     d_lin_m:"Linux x64 · v1.10.0",
     d_lin_btn:"Linux — coming soon",
-    d2_t:"Punto de entrada",
-    d2_b:"Mantén una puerta abierta para quien acaba de instalar y todavía no conoce a nadie. Sin modelos, sin cómputo — un proceso pequeño y un puerto abierto.",
-    d2_m:"Windows · Linux · macOS",d2_btn:"Cómo montarlo",
+    
+    
+    
     foot_ethos:"Hecho para que la IA sea de todos y no de quien posee los servidores: funciona en tu propia máquina, los modelos viajan de persona a persona, y nada de esto necesita nuestro permiso para seguir funcionando.",
     foot_project:"Proyecto"
   },
@@ -449,14 +439,14 @@ const I18N = {
     nav_what:"Что это",
     nav_how:"Как это работает",
     nav_dl:"Скачать",nav_roadmap:"Дорожная карта",
-    nav_node:"Запустить узел",
+    
     nav_forum:"Форум",nav_network:"Сеть",
     nav_open:"Аккаунт",
     hero_badge:"ИИ на вашем компьютере · без аккаунта · платить не нужно",
     hero_h1:"Мощность ИИ всего мира, <span class=\"accent\">общая.</span>",
     hero_sub:"Чат, Code-агент в ваших папках, ИИ-изображения и даже короткие видео со звуком — всё приватно на ВАШЕМ компьютере, офлайн и бесплатно. А модели переходят с одной машины на другую — их у вас никто не отберёт.",
     hero_cta1:"⬇ Скачать для Windows",
-    hero_cta2:"⚡ Держите вход открытым",
+    
     hero_os:"Windows · macOS · Linux · аккаунт в облаке не нужен",
     what_eyebrow:"Что такое Neurion",
     what_title:"Три вещи, одна сеть.",
@@ -492,9 +482,9 @@ const I18N = {
     d_lin_b:"Портативный AppImage — работает везде. Чат, агент по коду и изображения включены.",
     d_lin_m:"Linux x64 · v1.10.0",
     d_lin_btn:"Linux — coming soon",
-    d2_t:"Точка входа",
-    d2_b:"Держите дверь открытой для тех, кто только что установил и пока никого не знает. Без моделей, без вычислений — маленький процесс и открытый порт.",
-    d2_m:"Windows · Linux · macOS",d2_btn:"Как поднять свой",
+    
+    
+    
     foot_ethos:"Сделано, чтобы ИИ принадлежал всем, а не владельцам серверов: он работает на вашей машине, модели переходят от человека к человеку, и ничему из этого не нужно наше разрешение, чтобы продолжать работать.",
     foot_project:"Проект"
   },
@@ -502,14 +492,14 @@ const I18N = {
     nav_what:"这是什么",
     nav_how:"工作原理",
     nav_dl:"下载",nav_roadmap:"路线图",
-    nav_node:"运行节点",
+    
     nav_forum:"论坛",nav_network:"网络",
     nav_open:"账户",
     hero_badge:"在你自己的电脑上运行 AI · 无需账号 · 无需付费",
     hero_h1:"全世界的 AI 算力，<span class=\"accent\">共享。</span>",
     hero_sub:"聊天、在你文件夹中工作的 Code 智能体、AI 图像，甚至带配乐的短视频 —— 全部私密地在你自己的电脑上运行，离线且免费。模型还会在一台台电脑之间传递，没有人能把它们收回去。",
     hero_cta1:"⬇ 下载 Windows 版",
-    hero_cta2:"⚡ 开一个入口",
+    
     hero_os:"Windows · macOS · Linux · 无需云账户",
     what_eyebrow:"什么是 Neurion",
     what_title:"三件事，一个网络。",
@@ -545,9 +535,9 @@ const I18N = {
     d_lin_b:"便携 AppImage——到处可跑。含聊天、代码代理与图像。",
     d_lin_m:"Linux x64 · v1.10.0",
     d_lin_btn:"Linux — coming soon",
-    d2_t:"入口节点",
-    d2_b:"为刚装好、还谁也不认识的人留一扇门。没有模型，不做计算——一个小进程和一个开放端口。",
-    d2_m:"Windows · Linux · macOS",d2_btn:"怎么开一个",
+    
+    
+    
     foot_ethos:"做出来是为了让 AI 属于所有人，而不属于拥有服务器的人：它跑在你自己的机器上，模型在人与人之间传递，而这一切都不需要我们的许可才能继续。",
     foot_project:"项目"
   }
