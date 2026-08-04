@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Neurion — what works, what does not, and what is next</title>
+<meta name="description" content="The state of Neurion, stated with the measurements behind it: what is built and proven, what is deliberately not done, and what comes next.">
+<link rel="icon" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#04070a; --surface:#0a1410; --line:#16321f; --accent:#00ff70;
+    --accent2:#16b85a; --text:#dff6e6; --muted:#7fa890;
+    --display:'Orbitron',system-ui,sans-serif; --mono:'Share Tech Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--mono);line-height:1.65}
+  .wrap{max-width:900px;margin:0 auto;padding:0 20px}
+  header{border-bottom:1px solid var(--line);padding:18px 0;position:sticky;top:0;background:rgba(4,7,10,.92);backdrop-filter:blur(6px);z-index:5}
+  header .wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .logo{font-family:var(--display);font-weight:800;letter-spacing:.12em;color:var(--accent);text-decoration:none;font-size:18px}
+  header a{color:var(--muted);text-decoration:none;font-size:13px}
+  header a:hover{color:var(--accent)}
+  h1{font-family:var(--display);font-size:clamp(26px,4vw,40px);line-height:1.2;margin:44px 0 10px}
+  h2{font-family:var(--display);font-size:20px;margin:44px 0 6px;color:var(--accent)}
+  h3{font-size:16px;margin:26px 0 4px}
+  .lede{color:var(--muted);font-size:15px;margin-bottom:8px}
+  .box{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:16px 18px;margin:18px 0}
+  .box.it{border-color:#243b2c}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;display:block;overflow-x:auto}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--muted);font-weight:400}
+  td b{color:var(--accent)}
+  code{background:#08120c;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:13px}
+  ul{padding-left:20px}
+  li{margin:7px 0}
+  .done{color:var(--accent)}
+  .not{color:#e0533d}
+  footer{border-top:1px solid var(--line);margin-top:60px;padding:26px 0 60px;color:var(--muted);font-size:13px}
+  footer a{color:var(--accent2)}
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+  <a class="logo" href="/">NEURION</a>
+  <a href="/">Home</a>
+  <a href="/forum">Forum</a>
+  <a href="/download/Neurion-Setup-latest.exe">Download</a>
+</div></header>
+
+<div class="wrap">
+
+<h1>What works, what does not,<br>and what is next.</h1>
+<p class="lede">Every claim on this page has a measurement behind it. Where something was tried and failed, that is here too — a roadmap that only lists successes is advertising.</p>
+
+<div class="box it">
+  <b>In italiano.</b> Questa pagina dice cosa funziona davvero, cosa non funziona, e cosa manca. Ogni affermazione ha dietro una misura fatta su macchine vere. Anche le cose che abbiamo provato e che <em>non</em> hanno funzionato sono scritte qui: una roadmap che elenca solo i successi è pubblicità, non un documento.
+</div>
+
+<h2>The question we hold ourselves to</h2>
+<p><b>If neurionproject.org is switched off forever tomorrow, what keeps working?</b></p>
+<p>Today the answer is <b class="done">everything</b>, with one reservation: a brand-new install needs <b>one</b> introduction — any address that answers. eMule needed one too. After that, no list matters.</p>
+
+<h2>Built and proven</h2>
+
+<h3>Models travel between people</h3>
+<p>If somebody has a model you want, it comes from them instead of from the internet. Checked against the publisher's own hash, so a bad copy costs a retry and nothing else — a hostile peer can waste your bandwidth and nothing more.</p>
+<p class="lede">Measured: 986 MB between two machines; 398 MB relayed across the internet, hash identical.</p>
+
+<h3>A distributed index — no server in the middle</h3>
+<p>You can find a model on a machine you have never met, in a few hops through strangers. The node's identity is the fingerprint of its key, so it cannot choose where it sits; only nodes that answered you enter your routing table; an announcer's address is the one observed, never the one claimed.</p>
+<p class="lede">Measured: a machine knowing one address found a model on a third it was never told existed.</p>
+
+<h3>Borrowing a processor, and checking the answer</h3>
+<p>A machine that cannot run a model can ask one that can. When two peers answer, both are asked to run <em>reproducibly</em> — temperature zero and the same seed — and the answers are compared.</p>
+<p class="lede">Measured on two different processors: the answers came back <b>identical, byte for byte</b>. Before that fix, two honest peers disagreed at 0.45 word overlap and the check was worse than useless.</p>
+
+<h3>Reaching people who cannot be reached</h3>
+<p>Mobile networks and much shared fibre put whole neighbourhoods behind one address; no amount of asking the router changes it. Such a peer now attaches to one that <em>is</em> reachable and is contacted back through that connection — the arrangement eMule called a LowID.</p>
+<p class="lede">Measured on a phone hotspot: unreachable directly, and 398 MB delivered anyway, correct hash.</p>
+
+<h3>Limits, consent, and a way to say no</h3>
+<ul>
+  <li>a few transfers at a time, one per machine, under a rate ceiling you set;</li>
+  <li>traffic on your own network is exempt — the ceiling protects the line out of the house;</li>
+  <li>your router is <b>asked</b>, never opened silently;</li>
+  <li>one peer can be ignored without switching off sharing for everybody;</li>
+  <li>updates are signed with a key that has never been on the web server, so a compromised website cannot push code to your machine.</li>
+</ul>
+
+<h2>Measured, and it changed our minds</h2>
+<p>Two beliefs this project held and had to drop when somebody actually measured them:</p>
+<table>
+<tr><th>We believed</th><th>The measurement</th></tr>
+<tr><td>Splitting a model across the internet is hopeless</td><td><b>False.</b> Half here, half 32 ms away: 5.6 tok/s, against 5.4 for the far machine alone. The extra hop does not show up — the bottleneck is the slowest processor, not the network.</td></tr>
+<tr><td>Routing between small specialists approaches a big model</td><td><b>False.</b> Specialists are much better at home (+19 to +26 points) but no cheap router captures it on natural phrasing: measured +4 on unseen questions, inside the noise.</td></tr>
+</table>
+
+<h2 class="not">Deliberately not done</h2>
+<ul>
+  <li><b>Splitting one computation across many machines.</b> Possible, and slow: the activations cross the network every token, and a long prompt costs far more than the generation. Real work, not a promise.</li>
+  <li><b>Training models.</b> Distributed training over home connections is a different problem and we are not pretending otherwise.</li>
+  <li><b>Being faster or cheaper than a commercial API.</b> It is not. It is more <em>independent</em>, which is a different thing and worth saying plainly.</li>
+  <li><b>An installer signing certificate.</b> Costs money we have not spent, so Windows shows an "unknown publisher" warning. Verify the SHA-256 against <code>/download/latest.json</code> — that part is real.</li>
+</ul>
+
+<h2>Next</h2>
+<ul>
+  <li><b>Hole punching.</b> Today a relayed transfer passes through somebody else's connection. With hole punching the third party only makes the introduction and the bytes go direct. Needs a UDP transport.</li>
+  <li><b>A Kademlia-style DHT with no starting list at all.</b> One introduction is still needed; Kad removed even that.</li>
+  <li><b>More entry points.</b> Anyone can run one — no models, no compute, one small process and an open port. The fewer that matter, the healthier this is.</li>
+</ul>
+
+<div class="box">
+  <b>The honest bottleneck is not code.</b> The network needs people. If you keep Neurion running with an open port, you are one of the ways in — and there is nothing to apply for.
+</div>
+
+</div>
+
+<footer><div class="wrap">
+  Source: <a href="https://github.com/jitengineeringadmin/neurion">github.com/jitengineeringadmin/neurion</a> — AGPL-3.0.
+  Discussion and the detailed measurements: <a href="/forum">the forum</a>.
+</div></footer>
+
+</body>
+</html>
