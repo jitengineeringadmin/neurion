@@ -343,6 +343,47 @@ una linea di casa sono secondi per parola. Quello lo risolve il cavo, non il
 codice. Qui si distribuiscono **i pesi** e **le richieste**: un prompt intero
 gira su una macchina sola, ma non deve più essere la tua né quella di un'azienda.
 
+### Fase 6 — Chi non puo essere raggiunto — **FATTA**
+
+Un mucchio di connessioni non si aprono dall'interno. Le reti mobili soprattutto,
+e parecchia fibra condivisa, mettono interi quartieri dietro un solo indirizzo, e
+non c'e router da convincere: la porta la dovrebbe aprire l'operatore. Su quelle
+connessioni un pari puo **prendere e mai dare** — e quella non e una rete, e un
+pubblico.
+
+eMule ci sbatte' contro nel 2002 e rispose col **LowID**: chi non poteva essere
+contattato teneva una connessione **aperta verso** qualcuno che poteva, e veniva
+raggiunto all'indietro su quella. Non c'e niente da aprire, perche la connessione
+parte da dentro — e da dentro escono tutti.
+
+**Cosa e atterrato:** chi non e raggiungibile si attacca a un pari che lo e, si
+annuncia nell'indice come *"per parlarmi passa da lui"*, e i byte passano di li.
+
+Due proprieta impediscono che diventi un buco:
+
+- **i byte girati costano lo stesso slot.** Un trasferimento fatto per conto di
+  qualcun altro occupa uno slot di upload e rispetta lo stesso tetto di uno
+  proprio: accettare di fare da tramite non regala mai piu di quanto era gia
+  stato concesso;
+- **si risponde solo per chi si e registrato.** Chiunque puo scrivere
+  nell'indice "raggiungimi tramite R"; R rifiuta un nome che non ha mai sentito,
+  quindi la pretesa e un vicolo cieco e non un modo per puntare traffico sulla
+  macchina di qualcun altro.
+
+**Cosa non fa ancora:** i byte passano *attraverso* il tramite invece di andare
+diretti. Il passo successivo e il **hole punching** — i due pari si scambiano,
+tramite un terzo, l'indirizzo che il NAT ha assegnato loro e poi si mandano
+pacchetti nello stesso istante, cosi il terzo serve solo alle presentazioni e non
+paga banda. Funziona nell'80-90% delle combinazioni di NAT e **richiede UDP**,
+che oggi non usiamo.
+
+E una correzione a quanto scritto in questo stesso documento nelle fasi
+precedenti: il punto d'incontro **non deve essere un server**. Puo essere un pari
+qualsiasi con la porta aperta, e l'indice sa gia trovarli. Il rendez-vous e
+decentralizzato per costruzione.
+
+---
+
 **Cosa resta.** Una macchina nuova ha ancora bisogno di **un** primo contatto:
 un indirizzo qualsiasi che risponda. Anche eMule, per entrare in Kad la prima
 volta, doveva conoscere qualcuno. Da lì in poi non serve più nessuna lista.

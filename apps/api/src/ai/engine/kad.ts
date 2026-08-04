@@ -67,6 +67,17 @@ export interface Provider {
   id: string;
   address: string;
   port: number;
+  /**
+   * Set when this peer cannot be reached directly and answers through another
+   * one. The address is then the RELAY's, and this is the peer being relayed
+   * for — the arrangement eMule called a LowID, and the reason half the world
+   * could still take part from behind a router that opened nothing.
+   *
+   * A peer naming a relay it has no arrangement with achieves nothing: the
+   * relay refuses a name it has not registered, so the record is a dead end
+   * rather than a way to aim traffic at somebody.
+   */
+  via?: string;
 }
 
 export type KadRequest =

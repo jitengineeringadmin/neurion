@@ -893,6 +893,128 @@ async function main(): Promise<void> {
   host.onModuleDestroy();
   rmSync(hostDir, { recursive: true, force: true });
 
+  // ---- reaching somebody who cannot be reached ---------------------------
+  //
+  // Plenty of connections cannot be opened from the inside — mobile networks
+  // above all — and on those a peer could take and never give. eMule answered
+  // this in 2002 with the LowID: keep a connection open TOWARDS somebody who
+  // can be reached, and be reached back through it.
+  //
+  // The test is the whole claim: a machine that never accepts an incoming
+  // connection still hands a model to a stranger.
+
+  const relayDirs: string[] = [];
+  const mkRelayNode = (port: string, withModel: boolean): PeerService => {
+    const dir = mkdtempSync(join(tmpdir(), "neurion-relay-"));
+    relayDirs.push(dir);
+    if (withModel) {
+      mkdirSync(join(dir, "models"), { recursive: true });
+      writeFileSync(
+        join(dir, "models", model.file),
+        Buffer.alloc(model.sizeBytes, 7),
+      );
+    }
+    return new PeerService(
+      cfg({
+        NEURION_TEXT_DIR: dir,
+        NEURION_PEER_PORT: port,
+        NEURION_PEER_SWEEP: "false",
+        // Loopback would otherwise be exempt from the ceiling, and the relay
+        // path has to obey the same limits as a direct transfer.
+        NEURION_PEER_METER_LOCAL: "false",
+      }),
+    );
+  };
+
+  type RelayInnards = {
+    serve(): void;
+    ensureRelayed(): Promise<void>;
+    signed(payload: object): string | null;
+    myRelay: { address: string; port: number } | null;
+    ask(a: string, p: number): Promise<void>;
+  };
+
+  // The carrier has an open door. The hidden one has the model but never
+  // accepts a connection — its server is simply never started.
+  const carrier = mkRelayNode("48581", false);
+  const hidden = mkRelayNode("48582", true);
+  (carrier as unknown as RelayInnards).serve();
+  await wait(400);
+
+  await check("a machine with no open door still finds a carrier", async () => {
+    // It knows the carrier the ordinary way, by asking it.
+    await (hidden as unknown as RelayInnards).ask("127.0.0.1", 48581);
+    await (hidden as unknown as RelayInnards).ensureRelayed();
+    const r = (hidden as unknown as RelayInnards).myRelay;
+    assert(r, "no peer agreed to answer on its behalf");
+    assert(r!.port === 48581, `attached to the wrong peer: ${r!.port}`);
+  });
+
+  await check("a stranger gets the model THROUGH the carrier", async () => {
+    // Proof the hidden machine really is unreachable: nothing is listening.
+    let direct = "reachable";
+    try {
+      await fetch(`http://127.0.0.1:48582/peer/have`, {
+        signal: AbortSignal.timeout(1500),
+      });
+    } catch {
+      direct = "refused";
+    }
+    assert(direct === "refused", "the hidden peer is answering directly; nothing is being proven");
+
+    // Give the poll a moment to be parked on the carrier.
+    await wait(1200);
+    const url =
+      `http://127.0.0.1:48581/peer/blob/${model.sha256}?via=${hidden.myPeerId()}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
+    assert(res.ok, `the relayed fetch answered ${res.status}`);
+    const got = Buffer.from(await res.arrayBuffer());
+    assert(
+      got.length === model.sizeBytes,
+      `got ${got.length} bytes, expected ${model.sizeBytes}`,
+    );
+    assert(got[0] === 7 && got[got.length - 1] === 7, "the bytes are not the model");
+  });
+
+  await check("a carrier refuses a name it never agreed to answer for", async () => {
+    // Anyone can write "reach me through R" in the index. R must not play along.
+    const invented = "f".repeat(32);
+    const res = await fetch(
+      `http://127.0.0.1:48581/peer/blob/${model.sha256}?via=${invented}`,
+      { signal: AbortSignal.timeout(5000) },
+    );
+    assert(
+      res.status === 404,
+      `a stranger's claim to be relayed was honoured with ${res.status}`,
+    );
+  });
+
+  await check("an unsigned request cannot take a relay seat", async () => {
+    for (const path of ["/peer/relay/register", "/peer/relay/poll"]) {
+      const res = await fetch(`http://127.0.0.1:48581${path}`, {
+        method: "POST",
+        body: JSON.stringify({ peerId: "a".repeat(32) }),
+        signal: AbortSignal.timeout(5000),
+      });
+      assert(res.status === 403, `${path} answered ${res.status} to an unsigned request`);
+    }
+  });
+
+  await check("a relayed transfer costs the carrier a normal upload slot", () => {
+    // The point of the design: agreeing to carry somebody never gives away
+    // more than was already agreed to give.
+    const before = carrier.status().served;
+    assert(before >= 1, "the carrier did not count the relayed transfer as served");
+    assert(
+      carrier.limits().slots > 0,
+      "the carrier has no slot limit, so relaying would be unbounded",
+    );
+  });
+
+  hidden.onModuleDestroy();
+  carrier.onModuleDestroy();
+  for (const d of relayDirs) rmSync(d, { recursive: true, force: true });
+
   // ---- the distributed index, over a real wire ---------------------------
   //
   // kad-test.ts proves the algorithm with sixty nodes and a fake transport.

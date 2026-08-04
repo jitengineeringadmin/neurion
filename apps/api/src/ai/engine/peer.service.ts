@@ -22,6 +22,7 @@ import {
   createPrivateKey,
   createPublicKey,
   generateKeyPairSync,
+  randomUUID,
   sign,
   verify,
 } from "node:crypto";
@@ -81,6 +82,28 @@ export interface KnownPeer {
   compute?: boolean;
   /** The model it currently has loaded, if it says. */
   running?: string | null;
+}
+
+/** A transfer being carried on behalf of a peer that cannot be reached. */
+interface RelayJob {
+  id: string;
+  sha256: string;
+  /** The response we are filling: whoever asked for the file. */
+  to: ServerResponse;
+  /** Their address, for the slot accounting and the log. */
+  who: string;
+  startedAt: number;
+}
+
+/** Answer with a status and nothing else, without throwing on a dead socket. */
+function finishPlain(res: ServerResponse, code: number): void {
+  try {
+    if (res.destroyed || res.writableEnded) return;
+    res.statusCode = code;
+    res.end();
+  } catch {
+    /* the other end left */
+  }
 }
 
 const GROUP = "239.192.71.1"; // administratively scoped, local segment only
@@ -215,6 +238,8 @@ export class PeerService implements OnModuleDestroy {
       clearTimeout(this.kadTimer);
       clearInterval(this.kadTimer);
     }
+    if (this.relayTimer) clearInterval(this.relayTimer);
+    this.myRelay = null;
     this.timer = null;
     this.sweepTimer = null;
     this.kadTimer = null;
@@ -284,6 +309,9 @@ export class PeerService implements OnModuleDestroy {
       void this.joinNetwork();
       this.kadTimer = setInterval(() => void this.joinNetwork(), 10 * 60_000);
     }, 20_000);
+    // A machine that cannot be reached has nobody to ask until it has met
+    // somebody, so this keeps looking rather than giving up at startup.
+    this.relayTimer = setInterval(() => void this.ensureRelayed(), 60_000);
   }
 
   /**
@@ -310,10 +338,13 @@ export class PeerService implements OnModuleDestroy {
         this.mapping = m;
       } else if (!this.mapping) {
         // Common and not a fault: plenty of routers have this switched off, and
-        // carrier-grade NAT cannot be opened from the inside at all.
+        // carrier-grade NAT cannot be opened from the inside at all. It used to
+        // end there, which left those people able to take and never give. Now
+        // somebody who CAN be reached is asked to answer on their behalf.
         this.logger.log(
-          "the router would not open a port — sharing still works on this network, and with peers that can already reach you",
+          "the router would not open a port — looking for a peer willing to answer on this machine's behalf",
         );
+        void this.ensureRelayed();
       }
     };
     await renew();
@@ -619,6 +650,297 @@ export class PeerService implements OnModuleDestroy {
     return allowed ? "on" : "off";
   }
 
+  // --- reaching the people who cannot be reached --------------------------
+  //
+  // Plenty of connections cannot be opened from the inside. Mobile networks and
+  // a good deal of shared fibre put whole neighbourhoods behind one address,
+  // and no amount of asking the router changes it. On those connections a peer
+  // can take and never give, which is not a network — it is an audience.
+  //
+  // eMule hit this in 2002 and answered it with the LowID: a client that could
+  // not be contacted kept a connection OPEN TOWARDS somebody who could, and was
+  // reached back through it. Nothing needs to be opened, because the connection
+  // was made from the inside, where every network lets you out.
+  //
+  // Two properties keep this from becoming a hole:
+  //
+  //  - RELAYED BYTES COST THE SAME SLOT. A transfer passed on for somebody else
+  //    takes an upload slot and obeys the same ceiling as one of your own, so
+  //    agreeing to relay never gives away more than was already agreed to.
+  //  - A RELAY ONLY ANSWERS FOR PEERS THAT REGISTERED WITH IT. Anyone can put
+  //    "reach me through R" in the index; R will refuse a name it has never
+  //    heard, so the claim is a dead end rather than a way to point a crowd at
+  //    somebody else's machine.
+
+  /** Peers this machine is passing messages on for, and their waiting poller. */
+  private relayed = new Map<
+    string,
+    { waiting: ServerResponse | null; queue: RelayJob[]; since: number }
+  >();
+  /** Transfers in flight through us, keyed by job id. */
+  private relayJobs = new Map<string, RelayJob>();
+  /** The peer that is passing messages on for US, when we cannot be reached. */
+  private myRelay: { address: string; port: number } | null = null;
+  private relayTimer: NodeJS.Timeout | null = null;
+
+  /** Somebody unreachable asks us to answer on their behalf. */
+  private relayRegister(peerId: string): boolean {
+    if (!this.enabled()) return false;
+    // Bounded: a machine that agreed to share did not agree to hold a thousand
+    // open connections.
+    if (!this.relayed.has(peerId) && this.relayed.size >= 32) return false;
+    const seat = this.relayed.get(peerId);
+    if (seat) seat.since = Date.now();
+    else this.relayed.set(peerId, { waiting: null, queue: [], since: Date.now() });
+    return true;
+  }
+
+  /** The unreachable peer holds this open until there is something to do. */
+  private relayWait(peerId: string, res: ServerResponse): void {
+    const seat = this.relayed.get(peerId);
+    if (!seat) {
+      res.statusCode = 404;
+      res.end();
+      return;
+    }
+    seat.since = Date.now();
+    const next = seat.queue.shift();
+    if (next) {
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify({ job: next.id, sha256: next.sha256 }));
+      return;
+    }
+    // Nothing yet. Held open rather than answered empty, so a request for this
+    // peer reaches it in milliseconds instead of at the next poll.
+    if (seat.waiting) {
+      try {
+        seat.waiting.end();
+      } catch {
+        /* the previous poller left */
+      }
+    }
+    seat.waiting = res;
+    const timer = setTimeout(() => {
+      if (seat.waiting === res) {
+        seat.waiting = null;
+        try {
+          res.statusCode = 204;
+          res.end();
+        } catch {
+          /* gone */
+        }
+      }
+    }, 25_000);
+    res.on("close", () => {
+      clearTimeout(timer);
+      if (seat.waiting === res) seat.waiting = null;
+    });
+  }
+
+  /** Hand a job to a relayed peer, waking its poller if one is parked. */
+  private relayDispatch(peerId: string, job: RelayJob): boolean {
+    const seat = this.relayed.get(peerId);
+    if (!seat) return false;
+    this.relayJobs.set(job.id, job);
+    if (seat.waiting) {
+      const res = seat.waiting;
+      seat.waiting = null;
+      try {
+        res.setHeader("content-type", "application/json");
+        res.end(JSON.stringify({ job: job.id, sha256: job.sha256 }));
+        return true;
+      } catch {
+        /* it left between one line and the next */
+      }
+    }
+    seat.queue.push(job);
+    if (seat.queue.length > 8) seat.queue.shift();
+    return true;
+  }
+
+  /** The relayed peer sends the bytes; we pass them to whoever asked. */
+  private async relayDeliver(
+    jobId: string,
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> {
+    const job = this.relayJobs.get(jobId);
+    if (!job) {
+      res.statusCode = 404;
+      res.end();
+      return;
+    }
+    this.relayJobs.delete(jobId);
+    const out = job.to;
+    const metered = this.meters(job.who);
+    out.setHeader("content-type", "application/octet-stream");
+    const len = req.headers["content-length"];
+    if (len) out.setHeader("content-length", len);
+    try {
+      for await (const chunk of req) {
+        if (out.destroyed) break;
+        if (metered) await this.throttle((chunk as Buffer).length);
+        if (!out.write(chunk)) {
+          await new Promise<void>((r) => out.once("drain", () => r()));
+        }
+      }
+      if (!out.destroyed) out.end();
+      this.served += 1;
+      this.logger.log(`passed a model on to ${job.who} for a peer behind a closed door`);
+    } catch {
+      out.destroy();
+    } finally {
+      this.uploads -= 1;
+      this.uploadingTo.delete(job.who);
+      res.statusCode = 200;
+      res.end();
+    }
+  }
+
+  /** Somebody wants a blob from a peer we relay for. */
+  private relayFetch(
+    via: string,
+    sha256: string,
+    who: string,
+    res: ServerResponse,
+  ): void {
+    if (!this.relayed.has(via)) {
+      // A name we never agreed to answer for. Refused rather than forwarded.
+      res.statusCode = 404;
+      res.end();
+      return;
+    }
+    const { slots } = this.limits();
+    if (this.uploads >= slots || this.uploadingTo.has(who)) {
+      res.statusCode = 503;
+      res.setHeader("retry-after", "30");
+      res.end();
+      return;
+    }
+    this.uploads += 1;
+    this.uploadingTo.add(who);
+    const job: RelayJob = {
+      id: randomUUID(),
+      sha256,
+      to: res,
+      who,
+      startedAt: Date.now(),
+    };
+    if (!this.relayDispatch(via, job)) {
+      this.uploads -= 1;
+      this.uploadingTo.delete(who);
+      res.statusCode = 404;
+      res.end();
+      return;
+    }
+    // If the peer behind the closed door never answers, the asker is told so
+    // rather than left hanging.
+    const timer = setTimeout(() => {
+      if (this.relayJobs.delete(job.id)) {
+        this.uploads -= 1;
+        this.uploadingTo.delete(who);
+        try {
+          res.statusCode = 504;
+          res.end();
+        } catch {
+          /* gone */
+        }
+      }
+    }, 60_000);
+    res.on("close", () => clearTimeout(timer));
+  }
+
+  // --- being the one behind the closed door -------------------------------
+
+  /**
+   * Find somebody willing to answer for us, and stay attached to them.
+   *
+   * Runs only when the router would not open a door. The peer chosen is one we
+   * already know and have verified — the index is full of them — so this adds
+   * no new party to trust beyond the ones already being talked to.
+   */
+  private async ensureRelayed(): Promise<void> {
+    if (!this.enabled()) return;
+    if (this.mapping) return; // reachable on our own; nobody needs to carry us
+    if (this.myRelay) return;
+    const id = this.identity();
+    if (!id) return;
+    for (const p of this.known().slice(0, 8)) {
+      const wire = this.signed({ v: 1, peerId: id.peerId });
+      if (!wire) return;
+      try {
+        const res = await fetch(`http://${p.address}:${p.port}/peer/relay/register`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: wire,
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!res.ok) continue;
+        this.myRelay = { address: p.address, port: p.port };
+        this.logger.log(
+          `this machine cannot be reached directly, so ${p.address} will answer for it`,
+        );
+        void this.relayLoop();
+        return;
+      } catch {
+        /* try the next one */
+      }
+    }
+  }
+
+  /** Sit on the open connection, and send whatever is asked for. */
+  private async relayLoop(): Promise<void> {
+    const id = this.identity();
+    while (this.myRelay && id) {
+      const { address, port } = this.myRelay;
+      try {
+        const wire = this.signed({ v: 1, peerId: id.peerId });
+        if (!wire) return;
+        const res = await fetch(`http://${address}:${port}/peer/relay/poll`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: wire,
+          signal: AbortSignal.timeout(40_000),
+        });
+        if (res.status === 404) {
+          // The relay forgot us — register again from scratch.
+          this.myRelay = null;
+          void this.ensureRelayed();
+          return;
+        }
+        if (res.status !== 200) continue;
+        const job = (await res.json()) as { job?: string; sha256?: string };
+        if (!job.job || !job.sha256) continue;
+        const hit = this.localHashes().get(job.sha256);
+        if (!hit) continue;
+        await fetch(`http://${address}:${port}/peer/relay/deliver/${job.job}`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/octet-stream",
+            "content-length": String(hit.size),
+          },
+          // A stream rather than a buffer: an eighty gigabyte model must not
+          // have to fit in memory to be passed on.
+          body: createReadStream(hit.path) as unknown as ReadableStream,
+          duplex: "half",
+          signal: AbortSignal.timeout(1_800_000),
+        } as RequestInit);
+        this.served += 1;
+        this.logger.log(`sent ${hit.path.split(/[\\/]/).pop()} through ${address}`);
+      } catch {
+        // A dropped poll is normal: it is a long-held request. Pause briefly so
+        // a relay that has actually gone away is not hammered.
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    }
+  }
+
+  /** How this machine should be reached, for the index to publish. */
+  relayInfo(): { address: string; port: number; via: string } | null {
+    if (!this.myRelay) return null;
+    return { ...this.myRelay, via: this.peerId };
+  }
+
   /** Read-only file server: one route, and it only answers for known hashes. */
   private serve(): void {
     const port = this.sharePort();
@@ -661,6 +983,36 @@ export class PeerService implements OnModuleDestroy {
       }
       if (req.url === "/peer/kad" && req.method === "POST") {
         void this.answerKad(req, res);
+        return;
+      }
+      // Passing messages on for somebody who cannot be reached. Each of these
+      // is signed: a relay seat is held in a peer's own name or not at all.
+      if (req.url === "/peer/relay/register" && req.method === "POST") {
+        void this.signedBody(req).then((who) => {
+          if (!who) return finishPlain(res, 403);
+          finishPlain(res, this.relayRegister(who) ? 200 : 503);
+        });
+        return;
+      }
+      if (req.url === "/peer/relay/poll" && req.method === "POST") {
+        void this.signedBody(req).then((who) => {
+          if (!who) return finishPlain(res, 403);
+          this.relayWait(who, res);
+        });
+        return;
+      }
+      const deliver = /^\/peer\/relay\/deliver\/([A-Za-z0-9-]{8,64})$/.exec(req.url ?? "");
+      if (deliver && req.method === "POST") {
+        void this.relayDeliver(deliver[1]!, req, res);
+        return;
+      }
+      // A blob asked for on behalf of a peer we carry: same URL, plus who it
+      // is really for.
+      const relayed = /^\/peer\/blob\/([0-9a-f]{64})\?via=([0-9a-f]{32})$/.exec(
+        req.url ?? "",
+      );
+      if (relayed && req.method === "GET") {
+        this.relayFetch(relayed[2]!, relayed[1]!, from ?? "somebody", res);
         return;
       }
       const m = /^\/peer\/blob\/([0-9a-f]{64})$/.exec(req.url ?? "");
@@ -1843,6 +2195,33 @@ export class PeerService implements OnModuleDestroy {
     return this.kadNode;
   }
 
+  /**
+   * Read a small signed body and return WHO sent it, or null.
+   *
+   * Same rule as everywhere else: the signature decides the name, and a body
+   * claiming to be somebody is not evidence of anything.
+   */
+  private async signedBody(req: IncomingMessage): Promise<string | null> {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    const body = await new Promise<string | null>((resolve) => {
+      req.on("data", (c: Buffer) => {
+        size += c.length;
+        if (size > 16_000) {
+          resolve(null);
+          req.destroy();
+          return;
+        }
+        chunks.push(c);
+      });
+      req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+      req.on("error", () => resolve(null));
+    });
+    if (!body) return null;
+    const opened = this.opened(body);
+    return opened ? opened.peerId : null;
+  }
+
   /** Strip the IPv4-in-IPv6 form Node hands back on dual-stack sockets. */
   private static plainAddress(a: string | undefined | null): string | null {
     if (!a) return null;
@@ -2070,7 +2449,10 @@ export class PeerService implements OnModuleDestroy {
     }
     for (const p of providers) {
       try {
-        const url = `http://${p.address}:${p.port}/peer/blob/${sha256}`;
+        // A peer behind a closed door is fetched through whoever carries it.
+        const url = p.via
+          ? `http://${p.address}:${p.port}/peer/blob/${sha256}?via=${p.via}`
+          : `http://${p.address}:${p.port}/peer/blob/${sha256}`;
         const r = await fetch(url, {
           method: "HEAD",
           signal: AbortSignal.timeout(3000),
