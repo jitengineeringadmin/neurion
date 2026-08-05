@@ -70,8 +70,43 @@ const SDCPP_ZIP: Record<string, string> = {
   darwin: "sd-master-484baa4-bin-Darwin-macOS-15.7.7-arm64.zip",
   linux: "sd-master-484baa4-bin-Linux-Ubuntu-24.04-x86_64.zip",
 };
-/** The engine exists for a platform iff we have an archive for it. */
-const SDCPP_SUPPORTED = (): boolean => !!SDCPP_ZIP[process.platform];
+/**
+ * The Linux archive is built on Ubuntu 24.04 and wants glibc 2.38. On anything
+ * older it downloads and unpacks perfectly and then dies with
+ *
+ *   ./sd-cli: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
+ *
+ * which tells the person nothing they can use. Measured on Ubuntu 22.04
+ * (glibc 2.35): llama.cpp needs only 2.34 and runs fine there, so text is
+ * unaffected — this is the image engine alone.
+ */
+const LINUX_MIN_GLIBC = [2, 38] as const;
+function glibcTooOld(): string | null {
+  if (process.platform !== "linux") return null;
+  try {
+    const header = (
+      process.report?.getReport() as {
+        header?: { glibcVersionRuntime?: string };
+      }
+    )?.header;
+    const v = header?.glibcVersionRuntime;
+    // No glibc at all (musl, e.g. Alpine): not our case to diagnose, let it try.
+    if (!v) return null;
+    const [maj = 0, min = 0] = v.split(".").map(Number);
+    const old =
+      maj < LINUX_MIN_GLIBC[0] ||
+      (maj === LINUX_MIN_GLIBC[0] && min < LINUX_MIN_GLIBC[1]);
+    return old
+      ? `the image engine needs glibc ${LINUX_MIN_GLIBC.join(".")} or newer (Ubuntu 24.04+); this system has ${v}`
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The engine exists for a platform iff we have an archive it can actually run. */
+const SDCPP_SUPPORTED = (): boolean =>
+  !!SDCPP_ZIP[process.platform] && !glibcTooOld();
 const SDCPP_URL = (zip: string) =>
   `https://github.com/leejet/stable-diffusion.cpp/releases/download/${SDCPP_TAG}/${zip}`;
 const CLI = process.platform === "win32" ? "sd-cli.exe" : "sd-cli";
@@ -205,7 +240,14 @@ export class ImageController {
         percent: setup.percent,
         stage: setup.stage,
       };
-    if (!SDCPP_SUPPORTED()) return { engine: "unsupported" as const };
+    if (!SDCPP_SUPPORTED())
+      return {
+        engine: "unsupported" as const,
+        // Not shown by the current UI, but a person reading /ai/image/status
+        // should not have to guess which of the two reasons applies.
+        reason:
+          glibcTooOld() ?? `no image engine build for ${process.platform}`,
+      };
     const a = this.active(dir);
     if (this.binReady(dir) && a)
       return {
