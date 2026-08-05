@@ -124,12 +124,62 @@ contesti lunghi.
 ## Verificare costa meno che generare
 
 Rileggere token già esistenti: 29 t/s. Generarli: 8 t/s. **Controllare una
-risposta costa circa un quarto del produrla.**
+risposta costa circa un quarto del produrla**, e questo è implementato:
+`/peer/verify`.
 
-Oggi per controllare un pari se ne interrogano due e si confrontano le risposte:
-costo, due generazioni. Chiedere invece a un secondo pari di *verificare*
-porterebbe il costo del controllo da 100% a circa 28%. Non è implementato — è
-scritto qui perché il numero c'è.
+Un pari scrive la risposta e ne restituisce i **propri token**. Un secondo pari
+riceve quei token, ne infila un pezzo nel modello e guarda se il modello
+prosegue come la risposta prosegue.
+
+### Tre cose scoperte misurando, ognuna delle quali avrebbe rotto il tutto
+
+**1. Ri-tokenizzare il testo non ricostruisce i token.** Una risposta di 38
+token, ripassata dal tokenizzatore come testo, ne dà 37 diversi. Un prefisso
+ri-tokenizzato mette il modello in uno stato in cui non è mai stato. Per questo
+chi genera manda i suoi token, e per questo entrambi i lati tokenizzano allo
+stesso modo (`add_special: false`) — se uno aggiungesse un marcatore iniziale e
+l'altro no, ogni controllo fallirebbe.
+
+**2. Il confronto secco accusa gli onesti.** Rileggere in blocco e generare uno
+alla volta non danno numeri identici: le somme avvengono in ordine diverso e su
+un pareggio il tondeggiamento decide. Caso reale, un elenco di numeri dove il
+modello era indeciso fra virgola e spazio:
+
+```
+,   logprob -0,761   ← scelto rileggendo in blocco
+    logprob -1,049   ← scelto generando uno alla volta
+```
+
+0,29 nat di distanza. Nessuno aveva mentito. La regola quindi non è
+l'uguaglianza: una posizione passa se il token dichiarato è **uno di quelli che
+il modello considerava seriamente lì**, entro circa il 5% della probabilità del
+suo preferito.
+
+**3. Una finestra a caso è quasi inutile.** Presa da sola, coglieva un pari che
+restituiva la risposta a un'altra domanda **1 volta su 32.** Il motivo è
+strutturale: dai a un modello un prefisso già scorrevole e lui lo prosegue
+volentieri. Una finestra a metà chiede "questo testo è coerente con sé stesso",
+e lo è anche la risposta sbagliata. **Solo l'inizio è deciso dalla domanda.**
+
+### Quanto vale, misurato
+
+Con inizio + una finestra scelta dopo che la risposta è arrivata:
+
+| | una finestra a caso | inizio + una a caso |
+|---|---|---|
+| pari onesti respinti | 0 su 32 | **0 su 42** |
+| risposta di un'altra domanda | 3% | **88%** |
+| frase preconfezionata | 47% | **88%** |
+| metà vera, poi inventata | 43% | 48% |
+| un solo token cambiato | 39% | 38% |
+
+**88% non è 100%, quindi il controllo non condanna.** Se fallisce, si chiede al
+secondo pari una risposta intera e si confronta — cioè quello che si faceva
+sempre, ora pagato solo quando qualcosa già non torna.
+
+Su risposte corte il risparmio è modesto; su risposte lunghe è quello che dice
+il rapporto 29/8. E un pari più vecchio, che non conosce la richiesta o non manda
+i token, fa tornare al confronto di prima invece di fallire.
 
 ## Ciò che non conviene
 

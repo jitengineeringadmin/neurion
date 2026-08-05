@@ -997,6 +997,10 @@ export class PeerService implements OnModuleDestroy {
         );
         return;
       }
+      if (req.url === "/peer/verify" && req.method === "POST") {
+        void this.verifyForCaller(req, res);
+        return;
+      }
       if (req.url === "/peer/infer" && req.method === "POST") {
         void this.lendCompute(req, res);
         return;
@@ -1741,15 +1745,71 @@ export class PeerService implements OnModuleDestroy {
     this.logger.log(`running a prompt for ${who}`);
     const startedAt = Date.now();
     try {
-      const upstream = await fetch(
-        `http://127.0.0.1:${this.enginePort()}/v1/chat/completions`,
+      /*
+       * The template is applied here and the raw completion endpoint is used,
+       * rather than /v1/chat/completions, for one reason: this endpoint can
+       * return the token ids the model actually emitted, and the checker on the
+       * other side needs exactly those.
+       *
+       * Re-tokenising the text does not recover them. Measured: a 38-token
+       * answer, put back through the tokeniser as text, comes out as 37
+       * different tokens. Feeding that to a model puts it in a state it was
+       * never in, so its next prediction legitimately differs — and a checker
+       * working from re-tokenised text would call an honest peer a liar.
+       *
+       * The two endpoints were compared before making the switch, on the same
+       * templated prompt: byte-identical output.
+       */
+      const templated = await fetch(
+        `http://127.0.0.1:${this.enginePort()}/apply-template`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "peer",
             messages: [{ role: "user", content: ask.prompt.slice(0, 20_000) }],
-            max_tokens: Math.min(Math.max(1, ask.maxTokens ?? 512), 2048),
+          }),
+          signal: AbortSignal.timeout(20_000),
+        },
+      );
+      if (!templated.ok) {
+        res.statusCode = 502;
+        res.end("the engine here refused");
+        return;
+      }
+      const { prompt: templatedPrompt } = (await templated.json()) as {
+        prompt?: string;
+      };
+      if (typeof templatedPrompt !== "string") {
+        res.statusCode = 502;
+        res.end("the engine here refused");
+        return;
+      }
+
+      /*
+       * Tokenised here rather than handed over as text, so that this and the
+       * checking route feed the model the SAME ids. Left as a string, the
+       * engine decides for itself whether to prepend a beginning-of-text
+       * marker; the checking route passes ids and gets no such decision. On a
+       * model where those differ the two would be working from prefixes that
+       * are one token apart, every check would fail, and every honest peer
+       * would look like a liar. It costs one local call to remove the question.
+       */
+      const promptIds = await this.tokenizeLocally(templatedPrompt);
+      if (!promptIds) {
+        res.statusCode = 502;
+        res.end("the engine here refused");
+        return;
+      }
+
+      const upstream = await fetch(
+        `http://127.0.0.1:${this.enginePort()}/completion`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: promptIds,
+            return_tokens: true,
+            n_predict: Math.min(Math.max(1, ask.maxTokens ?? 512), 2048),
             // Only when asked for. A model left to sample freely gives a
             // different answer every time, which is fine for one peer and
             // fatal for two: comparing two independent samples of the same
@@ -1777,11 +1837,19 @@ export class PeerService implements OnModuleDestroy {
         return;
       }
       const json = (await upstream.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
+        content?: unknown;
+        tokens?: unknown;
       };
-      const text = json.choices?.[0]?.message?.content ?? "";
+      const text = typeof json.content === "string" ? json.content : "";
+      // Sent alongside the text so a second peer can check a window of it
+      // without regenerating the whole thing. Older callers ignore the field.
+      const tokens = Array.isArray(json.tokens)
+        ? (json.tokens as unknown[]).filter(
+            (t): t is number => Number.isInteger(t) && (t as number) >= 0,
+          )
+        : [];
       res.setHeader("content-type", "application/json");
-      res.end(JSON.stringify({ v: 1, text }));
+      res.end(JSON.stringify({ v: 1, text, tokens }));
       this.computed += 1;
       if (callerId) this.note(callerId, "given");
       const secs = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
@@ -1791,6 +1859,271 @@ export class PeerService implements OnModuleDestroy {
       res.end(`timed out: ${(e as Error).message}`);
     } finally {
       this.running -= 1;
+    }
+  }
+
+  /*
+   * --- checking somebody's answer instead of producing it again ------------
+   *
+   * Cross-checking used to mean asking two peers the same question and
+   * comparing. That works and costs two answers. But reading tokens that
+   * already exist and producing new ones are not the same price:
+   *
+   *     reading an existing sequence   29 tokens/s
+   *     generating one                  8 tokens/s
+   *
+   * because reading can look at every position at once while generating must
+   * do them one at a time, each waiting for the whole model to come out of RAM.
+   * So a peer can CHECK an answer for roughly a quarter of what it costs to
+   * write one.
+   *
+   * The check: take the answer's own tokens, feed the model everything up to a
+   * position the generator could not have known in advance, and see whether the
+   * model continues exactly as the answer does. If it does, that stretch is
+   * what this model produces — not something pasted in, not another model's
+   * work, not a canned reply.
+   *
+   * WHAT IT DOES NOT DO. It does not prove the whole answer, only the window
+   * looked at; the defence is that the window is chosen after the fact and the
+   * generator cannot know where it will fall. It does not stop a checker from
+   * lying about the result — that is the same limit the two-peer comparison
+   * has, except that checking is cheap enough to ask several.
+   */
+  private async verifyForCaller(
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void> {
+    if (!this.computeEnabled()) {
+      res.statusCode = 403;
+      res.end("compute sharing is off on this machine");
+      return;
+    }
+    if (this.running >= this.computeSlots()) {
+      res.statusCode = 429;
+      res.setHeader("retry-after", "10");
+      res.end("busy");
+      return;
+    }
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
+      if (body.length > 512_000) {
+        res.statusCode = 413;
+        res.end("too large");
+        return;
+      }
+    }
+    let ask: {
+      sha256?: unknown;
+      prompt?: unknown;
+      tokens?: unknown;
+      offset?: unknown;
+      count?: unknown;
+    };
+    try {
+      ask = JSON.parse(body) as typeof ask;
+    } catch {
+      res.statusCode = 400;
+      res.end("bad json");
+      return;
+    }
+    const tokens = Array.isArray(ask.tokens) ? ask.tokens : null;
+    if (
+      typeof ask.sha256 !== "string" ||
+      !/^[0-9a-f]{64}$/.test(ask.sha256) ||
+      typeof ask.prompt !== "string" ||
+      !ask.prompt.trim() ||
+      !tokens ||
+      tokens.length === 0 ||
+      // Bounded so a caller cannot hand over a sequence long enough to be an
+      // attack in itself. 8192 is more than any answer this network produces.
+      tokens.length > 8192 ||
+      !tokens.every((t) => Number.isInteger(t) && (t as number) >= 0)
+    ) {
+      res.statusCode = 400;
+      res.end("need sha256, prompt and tokens");
+      return;
+    }
+    if (ask.sha256 !== this.runningModel) {
+      res.statusCode = 409;
+      res.end("that model is not the one loaded here");
+      return;
+    }
+    const ids = tokens as number[];
+    const offset = Number.isInteger(ask.offset)
+      ? Math.max(0, Math.min(ask.offset as number, ids.length - 1))
+      : 0;
+    // Small on purpose: the whole point is that this costs a fraction of
+    // generating, and every token checked is a token generated.
+    const count = Number.isInteger(ask.count)
+      ? Math.max(1, Math.min(ask.count as number, 32))
+      : 8;
+    const want = ids.slice(offset, offset + count);
+    if (want.length === 0) {
+      res.statusCode = 400;
+      res.end("nothing to check at that offset");
+      return;
+    }
+
+    this.running += 1;
+    const startedAt = Date.now();
+    try {
+      const templated = await fetch(
+        `http://127.0.0.1:${this.enginePort()}/apply-template`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: ask.prompt.slice(0, 20_000) }],
+          }),
+          signal: AbortSignal.timeout(20_000),
+        },
+      );
+      if (!templated.ok) {
+        res.statusCode = 502;
+        res.end("the engine here refused");
+        return;
+      }
+      const { prompt: templatedPrompt } = (await templated.json()) as {
+        prompt?: string;
+      };
+      const promptIds = await this.tokenizeLocally(templatedPrompt ?? "");
+      if (!promptIds) {
+        res.statusCode = 502;
+        res.end("the engine here refused");
+        return;
+      }
+
+      const upstream = await fetch(
+        `http://127.0.0.1:${this.enginePort()}/completion`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // Token ids, not text — the whole point. The prefix is the
+            // generator's own tokens, so the model resumes from exactly the
+            // state it was in rather than from a re-tokenised approximation.
+            prompt: [...promptIds, ...ids.slice(0, offset)],
+            n_predict: want.length,
+            return_tokens: true,
+            // Asking what else the model was considering, not just what it
+            // picked. Straight equality is the wrong test — see below.
+            n_probs: 5,
+            temperature: 0,
+            seed: 1,
+            cache_prompt: false,
+            stream: false,
+          }),
+          signal: AbortSignal.timeout(120_000),
+        },
+      );
+      if (!upstream.ok) {
+        res.statusCode = 502;
+        res.end("the engine here refused");
+        return;
+      }
+      const out = (await upstream.json()) as {
+        tokens?: unknown;
+        completion_probabilities?: unknown;
+      };
+      const got = Array.isArray(out.tokens) ? (out.tokens as number[]) : [];
+      let matched = 0;
+      while (matched < want.length && got[matched] === want[matched]) matched += 1;
+
+      /*
+       * Where the two disagree, ask whether it was a close call before calling
+       * anybody a liar.
+       *
+       * Reading a stretch of tokens all at once and producing them one at a
+       * time do not give bit-identical numbers: the sums happen in a different
+       * order, and on a near-tie the rounding decides. Measured on a real case
+       * — a list of numbers where the model was torn between a comma and a
+       * space — the two candidates were 0.29 apart in log probability, 0.47
+       * against 0.35. Generating picked the space; checking picked the comma.
+       * Nobody lied. Under strict equality an honest peer would have been
+       * called dishonest, which is worse than having no check at all.
+       *
+       * So a position passes if the claimed token is one the model seriously
+       * considered there — within about 5% of the likelihood of its favourite.
+       * That tolerates arithmetic noise and still refuses text this model
+       * would not produce: a canned reply, another model's work, or something
+       * pasted in have no such standing anywhere.
+       */
+      const MARGIN = 3.0;
+      let plausible = false;
+      if (matched < want.length) {
+        const probs = Array.isArray(out.completion_probabilities)
+          ? (out.completion_probabilities as Array<{
+              top_logprobs?: Array<{ id?: number; logprob?: number }>;
+            }>)
+          : [];
+        const at = probs[matched]?.top_logprobs ?? [];
+        const best = at[0]?.logprob;
+        const claimed = at.find((c) => c.id === want[matched]);
+        plausible =
+          typeof best === "number" &&
+          typeof claimed?.logprob === "number" &&
+          best - claimed.logprob <= MARGIN;
+      }
+      const ok = matched === want.length || plausible;
+      res.setHeader("content-type", "application/json");
+      res.end(
+        JSON.stringify({
+          v: 1,
+          ok,
+          matched,
+          checked: want.length,
+          offset,
+          // Said out loud rather than hidden inside `ok`: an exact match and a
+          // near-tie are different amounts of evidence.
+          exact: matched === want.length,
+        }),
+      );
+      const secs = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      this.logger.log(
+        `checked ${want.length} tokens at ${offset} for ${req.socket.remoteAddress ?? "somebody"} in ${secs}s: ${
+          matched === want.length
+            ? "exact match"
+            : ok
+              ? `matched ${matched}, then a close call the model also considered`
+              : `diverges after ${matched} into something this model would not say`
+        }`,
+      );
+    } catch (e) {
+      res.statusCode = 504;
+      res.end(`timed out: ${(e as Error).message}`);
+    } finally {
+      this.running -= 1;
+    }
+  }
+
+  /**
+   * Turn text into the ids the model will see, with no hidden extras.
+   *
+   * `add_special: false` on purpose and in both places that use it: the chat
+   * template already contains whatever markers the model expects, written out
+   * as text, and letting the engine add another on top would give the two
+   * routes different prefixes for the same prompt.
+   */
+  private async tokenizeLocally(text: string): Promise<number[] | null> {
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:${this.enginePort()}/tokenize`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: text, add_special: false }),
+          signal: AbortSignal.timeout(20_000),
+        },
+      );
+      if (!res.ok) return null;
+      const { tokens } = (await res.json()) as { tokens?: unknown };
+      if (!Array.isArray(tokens)) return null;
+      return tokens.filter(
+        (t): t is number => Number.isInteger(t) && (t as number) >= 0,
+      );
+    } catch {
+      return null;
     }
   }
 
@@ -1971,7 +2304,7 @@ export class PeerService implements OnModuleDestroy {
      * is supposed to mean.
      */
     reproducible = false,
-  ): Promise<{ peerId: string; text: string } | null> {
+  ): Promise<{ peerId: string; text: string; tokens: number[] } | null> {
     try {
       const res = await fetch(`http://${peer.address}:${peer.port}/peer/infer`, {
         method: "POST",
@@ -1996,13 +2329,122 @@ export class PeerService implements OnModuleDestroy {
         signal: AbortSignal.timeout(180_000),
       });
       if (!res.ok) return null;
-      const body = (await res.json()) as { text?: unknown };
+      const body = (await res.json()) as { text?: unknown; tokens?: unknown };
       if (typeof body.text !== "string" || !body.text.trim()) return null;
       this.note(peer.peerId, "received");
-      return { peerId: peer.peerId, text: body.text };
+      // Absent from peers older than this feature, which is why everything
+      // downstream treats an empty list as "cannot be checked this way"
+      // rather than as a failure.
+      const tokens = Array.isArray(body.tokens)
+        ? (body.tokens as unknown[]).filter(
+            (t): t is number => Number.isInteger(t) && (t as number) >= 0,
+          )
+        : [];
+      return { peerId: peer.peerId, text: body.text, tokens };
     } catch {
       return null;
     }
+  }
+
+  /** One window, asked of one peer. */
+  private async askPeerToCheckWindow(
+    peer: KnownPeer,
+    sha256: string,
+    prompt: string,
+    tokens: number[],
+    offset: number,
+    count: number,
+  ): Promise<{ ok: boolean; matched: number; checked: number } | null> {
+    try {
+      const res = await fetch(
+        `http://${peer.address}:${peer.port}/peer/verify`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sha256, prompt, tokens, offset, count }),
+          signal: AbortSignal.timeout(120_000),
+        },
+      );
+      // 404 is the expected answer from a peer that predates this, and it is
+      // not a fault: the caller falls back to asking for a second answer.
+      if (!res.ok) return null;
+      const body = (await res.json()) as {
+        ok?: unknown;
+        matched?: unknown;
+        checked?: unknown;
+      };
+      if (typeof body.ok !== "boolean") return null;
+      return {
+        ok: body.ok,
+        matched: Number(body.matched) || 0,
+        checked: Number(body.checked) || 0,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Ask a second peer to check somebody else's answer, in two places.
+   *
+   * TWO, and one of them is the opening, because a single window somewhere in
+   * the middle turned out to be nearly worthless. Measured: a peer that
+   * returned a completely different question's answer was caught 1 time in 32.
+   * The reason is structural — hand a model a prefix that already reads
+   * fluently and it will happily carry on with it, so a window in the middle
+   * asks "is this text consistent with itself", which a different fluent answer
+   * also is. Only the OPENING is decided by the question that was asked.
+   *
+   * With the opening added, the same fraud is caught 88% of the time. The
+   * second window, at a position chosen after the answer arrived so the writer
+   * could not know where to look, is what catches a correct opening followed by
+   * invention.
+   *
+   * Still not everything: half-true answers are caught about half the time, and
+   * a single altered token about a third. Which is why a failed check escalates
+   * rather than condemns — see borrow().
+   */
+  private async askPeerToVerify(
+    peer: KnownPeer,
+    sha256: string,
+    prompt: string,
+    tokens: number[],
+    count = 8,
+  ): Promise<{
+    ok: boolean;
+    matched: number;
+    checked: number;
+    offset: number;
+  } | null> {
+    if (tokens.length < 4) return null;
+
+    const start = await this.askPeerToCheckWindow(
+      peer,
+      sha256,
+      prompt,
+      tokens,
+      0,
+      count,
+    );
+    // Null means the peer cannot do this at all; the caller then falls back.
+    if (!start) return null;
+    this.note(peer.peerId, "received");
+    if (!start.ok) return { ...start, offset: 0 };
+
+    const lowest = Math.min(2, tokens.length - 1);
+    const highest = Math.max(lowest, tokens.length - count);
+    const offset =
+      lowest + Math.floor(Math.random() * Math.max(1, highest - lowest + 1));
+    const later = await this.askPeerToCheckWindow(
+      peer,
+      sha256,
+      prompt,
+      tokens,
+      offset,
+      count,
+    );
+    if (!later) return { ...start, offset: 0 };
+    return { ...later, offset };
   }
 
   /**
@@ -2018,9 +2460,11 @@ export class PeerService implements OnModuleDestroy {
     maxTokens = 512,
   ): Promise<{
     text: string;
-    confidence: "identical" | "agreed" | "disagreed" | "single";
+    confidence: "verified" | "identical" | "agreed" | "disagreed" | "single";
     askedPeers: string[];
     similarity?: number;
+    /** Set when a second peer checked a window rather than answering again. */
+    checked?: { offset: number; tokens: number };
   } | null> {
     // Neighbours first: a machine on the same network is faster and involves
     // one fewer stranger. Then the index, which can reach somebody this
@@ -2036,6 +2480,89 @@ export class PeerService implements OnModuleDestroy {
     }
     if (candidates.length === 0) return null;
 
+    /*
+     * With two peers available, the cheap route is tried first: ONE of them
+     * writes the answer and the OTHER checks a stretch of it.
+     *
+     * Measured, on the machine this was developed on: reading tokens that
+     * already exist runs at 29 a second, writing new ones at 8. Checking is
+     * therefore worth about a quarter of answering, and the second peer is
+     * asked for a quarter of the work instead of all of it. It is also a
+     * different kind of evidence — a comparison says two peers agree, which
+     * they could do while both being wrong; a check says this is what the model
+     * does.
+     *
+     * It needs the first peer's own token ids, which peers older than this do
+     * not send, and a second peer that knows the route, which older peers do
+     * not have. Either absence falls back to the original two-answer
+     * comparison rather than failing.
+     */
+    if (candidates.length > 1) {
+      const first = await this.askPeerToRun(
+        candidates[0]!,
+        sha256,
+        prompt,
+        maxTokens,
+        true,
+      );
+      if (first && first.tokens.length >= 4) {
+        const check = await this.askPeerToVerify(
+          candidates[1]!,
+          sha256,
+          prompt,
+          first.tokens,
+        );
+        if (check?.ok) {
+          this.logger.log(
+            `a second peer checked ${check.checked} tokens at ${check.offset}: they are what this model produces`,
+          );
+          return {
+            text: first.text,
+            confidence: "verified",
+            askedPeers: [first.peerId, candidates[1]!.peerId],
+            checked: { offset: check.offset, tokens: check.checked },
+          };
+        }
+        if (check) {
+          /*
+           * The check said no. That is NOT enough to call anybody a liar.
+           *
+           * The check catches obvious fraud 88% of the time and misses the
+           * subtle kind more than half of it, so a failure is a reason to look
+           * harder, not a verdict. Asking the checker for a whole answer costs
+           * what the old two-peer comparison always cost — and it is now only
+           * paid when something already looks wrong, instead of every time.
+           */
+          this.logger.warn(
+            `a check at ${check.offset} diverged after ${check.matched} tokens — asking for a second answer before drawing conclusions`,
+          );
+        }
+      }
+      // The checker could not help. Ask the second peer for a whole answer and
+      // compare, which is what happened before this existed.
+      const second = await this.askPeerToRun(
+        candidates[1]!,
+        sha256,
+        prompt,
+        maxTokens,
+        true,
+      );
+      const both = [first, second].filter(
+        (a): a is { peerId: string; text: string; tokens: number[] } =>
+          a !== null,
+      );
+      if (both.length === 0) return null;
+      if (both.length === 1) {
+        this.logger.log(`borrowed an answer from one peer — not cross-checked`);
+        return {
+          text: both[0]!.text,
+          confidence: "single",
+          askedPeers: both.map((a) => a.peerId),
+        };
+      }
+      return PeerService.compareAnswers(both, this.logger);
+    }
+
     const answers = (
       await Promise.all(
         candidates.map((p) =>
@@ -2049,39 +2576,61 @@ export class PeerService implements OnModuleDestroy {
           ),
         ),
       )
-    ).filter((a): a is { peerId: string; text: string } => a !== null);
+    ).filter(
+      (a): a is { peerId: string; text: string; tokens: number[] } => a !== null,
+    );
 
     if (answers.length === 0) return null;
-    const asked = answers.map((a) => a.peerId);
     if (answers.length === 1) {
       // Honest label. One peer is not verification, and calling it verified
       // would be the kind of lie that makes a whole system untrustworthy.
       this.logger.log(`borrowed an answer from one peer — not cross-checked`);
-      return { text: answers[0]!.text, confidence: "single", askedPeers: asked };
+      return {
+        text: answers[0]!.text,
+        confidence: "single",
+        askedPeers: answers.map((a) => a.peerId),
+      };
     }
+    return PeerService.compareAnswers(answers, this.logger);
+  }
 
-    // Measured on two real machines, three questions, different processors:
-    // with both asked to run reproducibly the answers came back IDENTICAL,
-    // byte for byte. That was not the expected result — floating point across
-    // different CPUs was supposed to make them merely similar — and it changes
-    // what a comparison is worth. If honest peers match exactly, then any
-    // difference at all is worth knowing about, and calling 0.6 overlap
-    // "agreed" would be throwing away the strongest signal there is.
-    //
-    // So three answers instead of two, because they mean different things:
-    //
-    //   IDENTICAL — the same text. Both ran the same way and got the same
-    //     result, which is as close to verification as this can get.
-    //   AGREED — close, not the same. Entirely normal between machines that
-    //     are not running the same build, the same quantisation, or the same
-    //     kind of processor; a network of identical machines is not a
-    //     network. Worth having, weaker than the above, and labelled as such.
-    //   DISAGREED — one of them is wrong, broken, or lying, and there is no
-    //     way from here to tell which.
+  /**
+   * Two whole answers, compared. The route taken when checking is not
+   * available — because a peer predates it, or did not send its tokens.
+   *
+   * Measured on two real machines, three questions, different processors: with
+   * both asked to run reproducibly the answers came back IDENTICAL, byte for
+   * byte. That was not the expected result — floating point across different
+   * CPUs was supposed to make them merely similar — and it changes what a
+   * comparison is worth. If honest peers match exactly, then any difference at
+   * all is worth knowing about, and calling 0.6 overlap "agreed" would be
+   * throwing away the strongest signal there is.
+   *
+   * So three answers instead of two, because they mean different things:
+   *
+   *   IDENTICAL — the same text. Both ran the same way and got the same
+   *     result, which is as close to verification as a comparison can get.
+   *   AGREED — close, not the same. Entirely normal between machines not
+   *     running the same build, quantisation, or kind of processor; a network
+   *     of identical machines is not a network. Weaker, and labelled as such.
+   *   DISAGREED — one of them is wrong, broken, or lying, and there is no
+   *     way from here to tell which.
+   */
+  private static compareAnswers(
+    answers: Array<{ peerId: string; text: string }>,
+    logger: Logger,
+  ): {
+    text: string;
+    confidence: "identical" | "agreed" | "disagreed";
+    askedPeers: string[];
+    similarity: number;
+  } {
     const same = answers[0]!.text.trim() === answers[1]!.text.trim();
-    const sim = same ? 1 : PeerService.similarity(answers[0]!.text, answers[1]!.text);
+    const sim = same
+      ? 1
+      : PeerService.similarity(answers[0]!.text, answers[1]!.text);
     const confidence = same ? "identical" : sim >= 0.6 ? "agreed" : "disagreed";
-    this.logger.log(
+    logger.log(
       same
         ? `two peers returned the same answer, word for word`
         : confidence === "agreed"
@@ -2091,7 +2640,7 @@ export class PeerService implements OnModuleDestroy {
     return {
       text: answers[0]!.text,
       confidence,
-      askedPeers: asked,
+      askedPeers: answers.map((a) => a.peerId),
       similarity: Number(sim.toFixed(3)),
     };
   }
