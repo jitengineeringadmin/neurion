@@ -63,11 +63,46 @@ const ARTIFACTS = [
 ];
 
 const run = (cmd, args, opts = {}) =>
-  execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts });
+  execFileSync(cmd, args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    maxBuffer: 16 * 1024 * 1024,
+    ...opts,
+  });
 
-const ssh = (script) => run("ssh", ["-i", SSH_KEY, "-o", "StrictHostKeyChecking=no", HOST, script]);
+/**
+ * Windows ships OpenSSH but does not always have it on PATH, and a publish that
+ * fails halfway because `scp` was not found is worse than one that refuses to
+ * start. Resolve both up front.
+ */
+function tool(name) {
+  const win = process.platform === "win32";
+  const candidates = win
+    ? [join(process.env.WINDIR || "C:\\Windows", "System32", "OpenSSH", `${name}.exe`), `${name}.exe`]
+    : [name];
+  for (const c of candidates) {
+    if (c.includes("\\") || c.includes("/")) {
+      if (existsSync(c)) return c;
+      continue;
+    }
+    try {
+      execFileSync(c, ["-V"], { stdio: "ignore" });
+      return c;
+    } catch (e) {
+      // ssh -V exits non-zero on some builds but the binary clearly exists.
+      if (e.code !== "ENOENT") return c;
+    }
+  }
+  throw new Error(`${name} not found — install OpenSSH or put it on PATH`);
+}
+const SSH = tool("ssh");
+const SCP = tool("scp");
+
+const ssh = (script) => run(SSH, ["-i", SSH_KEY, "-o", "StrictHostKeyChecking=no", HOST, script]);
 const scp = (local, remote) =>
-  run("scp", ["-i", SSH_KEY, "-o", "StrictHostKeyChecking=no", local, `${HOST}:${remote}`]);
+  run(SCP, ["-i", SSH_KEY, "-o", "StrictHostKeyChecking=no", local, `${HOST}:${remote}`], {
+    stdio: ["ignore", "inherit", "inherit"],
+  });
 
 const sha256 = (p) => createHash("sha256").update(readFileSync(p)).digest("hex");
 

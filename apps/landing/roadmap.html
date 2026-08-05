@@ -90,6 +90,18 @@
   <li>updates are signed with a key that has never been on the web server, so a compromised website cannot push code to your machine.</li>
 </ul>
 
+<h2>Three systems, and what each one actually gets</h2>
+<p>Windows, macOS and Linux installers are built from the tagged source by a machine nobody logs into. They are not the same in every respect, and pretending otherwise would waste your evening:</p>
+<table>
+<tr><th></th><th>Windows</th><th>macOS</th><th>Linux</th></tr>
+<tr><td>Text, and everything the network moves</td><td><b>yes</b></td><td><b>yes</b></td><td><b>yes</b></td></tr>
+<tr><td>Voice</td><td><b>yes</b></td><td><b>yes</b></td><td><b>yes</b></td></tr>
+<tr><td>Video</td><td><b>yes</b></td><td>needs ffmpeg installed</td><td><b>yes</b></td></tr>
+<tr><td>Images</td><td><b>yes</b></td><td><b>yes</b></td><td>Ubuntu 24.04 or newer</td></tr>
+</table>
+<p class="lede">The two exceptions are somebody else's build, not our decision. There is no macOS ffmpeg from the project we take it from, so a Mac uses one you install — the app says so and finds it by itself. The image engine's Linux build is compiled on Ubuntu 24.04 and asks for a newer glibc than 22.04 has; where it cannot run, Neurion now says which glibc is missing instead of failing with a linker error after a 50 MB download.</p>
+<p class="lede">Text was checked on the same old system, because that would have been the serious version of the problem: it needs glibc 2.34, runs on 2.35, and is unaffected. <b>Everything the peer network carries works on all three.</b></p>
+
 <h2>Measured, and it changed our minds</h2>
 <p>Two beliefs this project held and had to drop when somebody actually measured them:</p>
 <table>
@@ -103,7 +115,7 @@
   <li><b>Splitting one computation across many machines.</b> Possible, and slow: the activations cross the network every token, and a long prompt costs far more than the generation. Real work, not a promise.</li>
   <li><b>Training models.</b> Distributed training over home connections is a different problem and we are not pretending otherwise.</li>
   <li><b>Being faster or cheaper than a commercial API.</b> It is not. It is more <em>independent</em>, which is a different thing and worth saying plainly.</li>
-  <li><b>An installer signing certificate.</b> Costs money we have not spent, so Windows shows an "unknown publisher" warning. Verify the SHA-256 against <code>/download/latest.json</code> — that part is real.</li>
+  <li><b>An installer signing certificate.</b> Costs money we have not spent, so Windows shows an "unknown publisher" warning and macOS calls it an unidentified developer — on a Mac, right-click the app and choose Open the first time. Verify the SHA-256 against <code>/download/latest.json</code>, which is signed with a key that has never been on the web server; that part is real, and it is the part that actually protects you.</li>
 </ul>
 
 <h2>Next</h2>
