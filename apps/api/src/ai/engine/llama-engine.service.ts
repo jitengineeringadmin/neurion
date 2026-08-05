@@ -16,6 +16,7 @@ import {
   statSync,
 } from "node:fs";
 import { join } from "node:path";
+import { cpus } from "node:os";
 import AdmZip from "adm-zip";
 import {
   CATALOG,
@@ -550,6 +551,39 @@ export class LlamaEngineService
 
   async start(dir: string, m: CatalogModel): Promise<void> {
     await this.stop();
+
+    /*
+     * One slot for the person at the keyboard, plus one per peer this machine
+     * has agreed to answer at the same time.
+     *
+     * `-c` is the TOTAL across slots, not the size of each: with `-c 4096
+     * -np 2` the engine reports n_ctx_slot = 2048. Multiplying is therefore not
+     * a nicety — without it, switching lending on would silently halve the
+     * owner's own context window, and nothing would say so.
+     *
+     * Which is also why no slot is added unless lending is on: the key/value
+     * memory for every slot is reserved up front, and a person who is not
+     * lending should not pay a megabyte for the possibility.
+     */
+    const peerSlots = this.peers.computeEnabled() ? this.peers.computeSlots() : 0;
+    const slots = 1 + peerSlots;
+
+    /*
+     * Threads: two numbers, because the two halves of the work are limited by
+     * different things. Measured here on a 16-thread machine, 7B at Q4_K_M:
+     *
+     *              4 thr   6 thr   8 thr   12 thr   16 thr
+     *   prompt     17.1    24.0    29.2     34.8     35.2     <- more is better
+     *   generation  7.4     8.6     9.1      8.4      7.4     <- 8 is the peak
+     *
+     * Generation gets WORSE past eight threads. It is not computing; it is
+     * waiting for the model to come out of RAM, and extra threads only add
+     * contention for the same memory bus. Reading the prompt is real
+     * arithmetic and keeps scaling. llama.cpp's automatic choice is already
+     * right for generation, so it is left alone; only the batch figure is
+     * raised, which is worth about a fifth of the prompt-processing time and
+     * costs nothing.
+     */
     const args = [
       "-m",
       this.weightsPath(dir, m),
@@ -563,7 +597,11 @@ export class LlamaEngineService
       // declare a 262144-token context reserve a working set big enough to
       // bring a normal machine to its knees.
       "-c",
-      String(m.contextTokens),
+      String(m.contextTokens * slots),
+      "-np",
+      String(slots),
+      "--threads-batch",
+      String(Math.max(1, cpus().length)),
       "--no-webui",
     ];
     this.logger.log(`starting local engine: ${SERVER_BIN} ${args.join(" ")}`);
