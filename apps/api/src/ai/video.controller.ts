@@ -11,6 +11,7 @@ import { ConfigService } from "@nestjs/config";
 import { Response } from "express";
 import { spawn, spawnSync } from "node:child_process";
 import {
+  chmodSync,
   createReadStream,
   createWriteStream,
   existsSync,
@@ -42,8 +43,22 @@ import { AudioService, MOODS, Mood } from "./audio.service";
 
 const CLI = process.platform === "win32" ? "sd-cli.exe" : "sd-cli";
 const FF = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-const FF_ZIP_URL =
-  "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip";
+/**
+ * One-click ffmpeg, where a build exists to click on. BtbN publishes Windows and
+ * Linux and no macOS at all — so on a Mac the only route is the system ffmpeg
+ * that ffmpeg() already looks for, and the UI says "install ffmpeg" rather than
+ * offering a button that could not work.
+ */
+const FF_ASSET: Record<string, string> = {
+  "win32-x64": "ffmpeg-master-latest-win64-gpl.zip",
+  "win32-arm64": "ffmpeg-master-latest-winarm64-gpl.zip",
+  "linux-x64": "ffmpeg-master-latest-linux64-gpl.tar.xz",
+  "linux-arm64": "ffmpeg-master-latest-linuxarm64-gpl.tar.xz",
+};
+const ffAsset = (): string | null =>
+  FF_ASSET[`${process.platform}-${process.arch}`] ?? null;
+const FF_URL = (file: string) =>
+  `https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/${file}`;
 const FRAMES = 4; // keyframes per clip
 const CLIP_S = 3; // seconds per keyframe
 const FADE_S = 0.7; // crossfade
@@ -303,6 +318,37 @@ export class VideoController {
     return null;
   }
 
+  /** Pull one member out of a .tar.xz, flattened into `into`. */
+  private untarOne(
+    archive: string,
+    into: string,
+    pattern: string,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const cp = spawn(
+        "tar",
+        [
+          "-xJf",
+          archive,
+          "-C",
+          into,
+          "--strip-components=2",
+          "--wildcards",
+          pattern,
+        ],
+        { windowsHide: true },
+      );
+      let err = "";
+      cp.stderr.on("data", (c) => (err += c.toString()));
+      cp.on("error", reject);
+      cp.on("close", (code) =>
+        code === 0
+          ? resolve()
+          : reject(new Error(err.slice(-200) || `tar exited ${code}`)),
+      );
+    });
+  }
+
   private saveMeta(galleryDir: string, meta: Record<string, unknown>): void {
     const id = typeof meta.id === "string" ? meta.id : "";
     if (!/^[a-f0-9-]{10,}$/i.test(id)) return;
@@ -404,10 +450,7 @@ export class VideoController {
       return { status: "engine_missing" as const };
     if (!this.ffmpeg(dir))
       return {
-        status:
-          process.platform === "win32"
-            ? ("needs_setup" as const)
-            : ("unsupported" as const),
+        status: ffAsset() ? ("needs_setup" as const) : ("unsupported" as const),
       };
     this.recoverRunningGallery(dir);
     return { status: busy ? ("generating" as const) : ("ready" as const) };
@@ -431,32 +474,47 @@ export class VideoController {
       send("error", { message: "video engine unavailable in this deployment" });
       return res.end();
     }
-    if (process.platform !== "win32") {
+    const asset = ffAsset();
+    if (!asset) {
       send("error", {
         message: "install ffmpeg (e.g. brew install ffmpeg) and retry",
       });
       return res.end();
     }
     try {
-      const zipPath = path.join(dir, "ffmpeg-dl.zip");
-      mkdirSync(path.join(dir, "ffbin"), { recursive: true });
+      const isZip = asset.endsWith(".zip");
+      const archive = path.join(
+        dir,
+        isZip ? "ffmpeg-dl.zip" : "ffmpeg-dl.tar.xz",
+      );
+      const ffbin = path.join(dir, "ffbin");
+      mkdirSync(ffbin, { recursive: true });
       send("progress", { stage: "download", percent: 0 });
-      await this.download(FF_ZIP_URL, zipPath, (pct) =>
+      await this.download(FF_URL(asset), archive, (pct) =>
         send("progress", { stage: "download", percent: Math.round(pct) }),
       );
       send("progress", { stage: "extract", percent: 100 });
-      // pull just ffmpeg.exe out of the zip (nested under <build>/bin/)
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const AdmZip = require("adm-zip");
-      const zip = new AdmZip(zipPath);
-      const entry = zip
-        .getEntries()
-        .find((e: { entryName: string }) =>
-          e.entryName.endsWith("/bin/ffmpeg.exe"),
-        );
-      if (!entry) throw new Error("ffmpeg.exe not found in the archive");
-      writeFileSync(this.ffLocal(dir), entry.getData());
-      rmSync(zipPath, { force: true });
+      if (isZip) {
+        // pull just ffmpeg.exe out of the zip (nested under <build>/bin/)
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const AdmZip = require("adm-zip");
+        const zip = new AdmZip(archive);
+        const entry = zip
+          .getEntries()
+          .find((e: { entryName: string }) =>
+            e.entryName.endsWith("/bin/ffmpeg.exe"),
+          );
+        if (!entry) throw new Error("ffmpeg.exe not found in the archive");
+        writeFileSync(this.ffLocal(dir), entry.getData());
+      } else {
+        // Same idea for the tarball: take the one file, drop <build>/bin/ from
+        // its path. These are Linux-only, so GNU tar's --wildcards is available.
+        await this.untarOne(archive, ffbin, "*/bin/ffmpeg");
+        if (!existsSync(this.ffLocal(dir)))
+          throw new Error("ffmpeg not found in the archive");
+        chmodSync(this.ffLocal(dir), 0o755);
+      }
+      rmSync(archive, { force: true });
       send("done", { ok: true });
     } catch (e) {
       send("error", { message: (e as Error).message });

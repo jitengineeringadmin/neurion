@@ -885,6 +885,24 @@ async function checkForUpdates(silent = true) {
       return;
     }
     bootLog('update', `update available: ${current} -> ${latest}`);
+
+    // The manifest describes the Windows installer, and installing it means
+    // writing an .exe and running it. Everywhere else that is meaningless at
+    // best, so the update is announced and not performed: the signature still
+    // proves the version number is ours, which is all a notice needs.
+    if (process.platform !== 'win32') {
+      bootLog('update', `announced only on ${process.platform} — no installer for it in the manifest`);
+      if (!silent) {
+        dialog.showMessageBox({
+          type: 'info',
+          title: T.updTitle,
+          message: T.updTitle,
+          detail: `${T.updBody(latest, current)}\n\nhttps://neurionproject.org/#download`,
+        });
+      }
+      return;
+    }
+
     const choice = dialog.showMessageBoxSync({
       type: 'info',
       title: T.updTitle,

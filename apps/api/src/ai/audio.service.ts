@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { spawn } from "node:child_process";
 import {
+  chmodSync,
   createWriteStream,
   existsSync,
   mkdirSync,
@@ -29,8 +30,27 @@ const MUSIC_BASE = "https://neurionproject.org/assets/music";
 export const MOODS = ["epic", "calm", "happy", "dark"] as const;
 export type Mood = (typeof MOODS)[number];
 
-const PIPER_ZIP =
-  "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip";
+/**
+ * Piper ships a build per platform AND per architecture, so the key is both —
+ * an Apple Silicon Mac and an Intel one need different files, and so do a
+ * Raspberry Pi and a desktop. A missing entry means "no build exists for this
+ * machine", which is a different thing from "we never got round to it".
+ */
+const PIPER_TAG = "2023.11.14-2";
+const PIPER_ASSET: Record<string, string> = {
+  "win32-x64": "piper_windows_amd64.zip",
+  "linux-x64": "piper_linux_x86_64.tar.gz",
+  "linux-arm64": "piper_linux_aarch64.tar.gz",
+  "linux-arm": "piper_linux_armv7l.tar.gz",
+  "darwin-arm64": "piper_macos_aarch64.tar.gz",
+  "darwin-x64": "piper_macos_x64.tar.gz",
+};
+const piperAsset = (): string | null =>
+  PIPER_ASSET[`${process.platform}-${process.arch}`] ?? null;
+const PIPER_URL = (file: string) =>
+  `https://github.com/rhasspy/piper/releases/download/${PIPER_TAG}/${file}`;
+const PIPER_BIN = process.platform === "win32" ? "piper.exe" : "piper";
+
 const VOICE_BASE =
   "https://huggingface.co/rhasspy/piper-voices/resolve/main/it/it_IT/paola/medium";
 const VOICE = "it_IT-paola-medium.onnx";
@@ -53,9 +73,14 @@ export class AudioService {
     const d = this.dir();
     return d ? path.join(d, "music", `${mood}.mp3`) : "";
   }
-  private piperExe() {
+  /** Every piper archive unpacks into a `piper/` directory of its own. */
+  private piperDir() {
     const d = this.dir();
-    return d ? path.join(d, "piper", "piper", "piper.exe") : "";
+    return d ? path.join(d, "piper", "piper") : "";
+  }
+  private piperExe() {
+    const d = this.piperDir();
+    return d ? path.join(d, PIPER_BIN) : "";
   }
   private voicePath() {
     const d = this.dir();
@@ -87,7 +112,7 @@ export class AudioService {
       music: this.musicReady() ? "ready" : "needs_setup",
       tts: this.ttsReady()
         ? "ready"
-        : process.platform === "win32"
+        : piperAsset()
           ? "needs_setup"
           : "unsupported",
       gen: this.genReady() ? "ready" : "needs_setup",
@@ -111,23 +136,40 @@ export class AudioService {
     }
   }
 
-  /** Download piper + the Italian voice (Windows turnkey). */
+  /** Download piper + the Italian voice — turnkey on every platform piper builds for. */
   async setupTts(onPct: (p: number) => void): Promise<void> {
     const d = this.dir();
     if (!d) throw new Error("audio unavailable in this deployment");
-    if (process.platform !== "win32")
-      throw new Error("install piper manually on this OS");
+    const asset = piperAsset();
+    if (!asset)
+      throw new Error(
+        `piper publishes no build for ${process.platform}-${process.arch}`,
+      );
     const pdir = path.join(d, "piper");
     mkdirSync(pdir, { recursive: true });
     if (!existsSync(this.piperExe())) {
-      const zipPath = path.join(pdir, "piper.zip");
-      await this.download(PIPER_ZIP, zipPath, (p) =>
+      const isZip = asset.endsWith(".zip");
+      const archive = path.join(pdir, isZip ? "piper.zip" : "piper.tar.gz");
+      await this.download(PIPER_URL(asset), archive, (p) =>
         onPct(Math.round(p * 0.2)),
       );
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const AdmZip = require("adm-zip");
-      new AdmZip(zipPath).extractAllTo(pdir, true);
-      rmSync(zipPath, { force: true });
+      if (isZip) {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const AdmZip = require("adm-zip");
+        // keepOriginalPermission: without it adm-zip writes everything 0666 and
+        // the binary comes out unable to run.
+        new AdmZip(archive).extractAllTo(pdir, true, true);
+      } else {
+        await this.untar(archive, pdir);
+      }
+      rmSync(archive, { force: true });
+      if (process.platform !== "win32") {
+        try {
+          chmodSync(this.piperExe(), 0o755);
+        } catch {
+          /* tar normally carries the mode; this only covers the case it did not */
+        }
+      }
     }
     onPct(20);
     if (!existsSync(this.voicePath())) {
@@ -193,6 +235,19 @@ export class AudioService {
   async tts(text: string, outWav: string): Promise<void> {
     if (!this.ttsReady()) throw new Error("voice not set up");
     await new Promise<void>((resolve, reject) => {
+      // Outside Windows piper links against shared libraries it ships beside
+      // itself, and finds its espeak-ng data relative to where it runs. Neither
+      // is on a default search path, so both are pointed at its own directory.
+      const pdir = this.piperDir();
+      const env = { ...process.env };
+      if (process.platform === "linux")
+        env.LD_LIBRARY_PATH = env.LD_LIBRARY_PATH
+          ? `${pdir}:${env.LD_LIBRARY_PATH}`
+          : pdir;
+      else if (process.platform === "darwin")
+        env.DYLD_LIBRARY_PATH = env.DYLD_LIBRARY_PATH
+          ? `${pdir}:${env.DYLD_LIBRARY_PATH}`
+          : pdir;
       const cp = spawn(
         this.piperExe(),
         [
@@ -203,7 +258,7 @@ export class AudioService {
           "-f",
           outWav,
         ],
-        { windowsHide: true },
+        { windowsHide: true, cwd: pdir, env },
       );
       let err = "";
       cp.stderr.on("data", (c) => (err += c.toString()));
@@ -250,6 +305,27 @@ export class AudioService {
     b.writeUInt32LE(pcm.length * 2, 40);
     Buffer.from(pcm.buffer).copy(b, 44);
     return b;
+  }
+
+  /**
+   * Unpack a .tar.gz with the system tar. Every platform that gets a tarball
+   * here (Linux, macOS) ships one, and shelling out to it keeps the mode bits
+   * that a JavaScript unpacker would drop.
+   */
+  private untar(archive: string, into: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const cp = spawn("tar", ["-xzf", archive, "-C", into], {
+        windowsHide: true,
+      });
+      let err = "";
+      cp.stderr.on("data", (c) => (err += c.toString()));
+      cp.on("error", reject);
+      cp.on("close", (code) =>
+        code === 0
+          ? resolve()
+          : reject(new Error(err.slice(-200) || `tar exited ${code}`)),
+      );
+    });
   }
 
   // Atomic download, same rationale as the model files.

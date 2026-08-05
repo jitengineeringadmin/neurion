@@ -10,6 +10,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { spawn } from "node:child_process";
 import {
+  chmodSync,
   createReadStream,
   createWriteStream,
   existsSync,
@@ -59,11 +60,18 @@ interface Active {
 }
 
 // stable-diffusion.cpp binary (win-vulkan auto-uses GPU + falls back to CPU; mac-arm64).
+// Linux gets the plain CPU build on purpose: the release also ships a Vulkan one,
+// but on Linux the Vulkan loader and an ICD are not a given (headless boxes and
+// minimal images frequently have neither), and a binary that cannot start is worse
+// than one that is merely slower.
 const SDCPP_TAG = "master-741-484baa4";
 const SDCPP_ZIP: Record<string, string> = {
   win32: "sd-master-484baa4-bin-win-vulkan-x64.zip",
   darwin: "sd-master-484baa4-bin-Darwin-macOS-15.7.7-arm64.zip",
+  linux: "sd-master-484baa4-bin-Linux-Ubuntu-24.04-x86_64.zip",
 };
+/** The engine exists for a platform iff we have an archive for it. */
+const SDCPP_SUPPORTED = (): boolean => !!SDCPP_ZIP[process.platform];
 const SDCPP_URL = (zip: string) =>
   `https://github.com/leejet/stable-diffusion.cpp/releases/download/${SDCPP_TAG}/${zip}`;
 const CLI = process.platform === "win32" ? "sd-cli.exe" : "sd-cli";
@@ -197,9 +205,7 @@ export class ImageController {
         percent: setup.percent,
         stage: setup.stage,
       };
-    const supported =
-      process.platform === "win32" || process.platform === "darwin";
-    if (!supported) return { engine: "unsupported" as const };
+    if (!SDCPP_SUPPORTED()) return { engine: "unsupported" as const };
     const a = this.active(dir);
     if (this.binReady(dir) && a)
       return {
@@ -216,7 +222,7 @@ export class ImageController {
     const a = dir ? this.active(dir) : null;
     return {
       bin: dir ? this.binReady(dir) : false,
-      custom: process.platform === "win32" || process.platform === "darwin",
+      custom: SDCPP_SUPPORTED(),
       active: a
         ? { id: a.id ?? "custom", label: a.label, source: a.source }
         : null,
@@ -537,10 +543,23 @@ export class ImageController {
     mkdirSync(binDir, { recursive: true });
     const zip = path.join(dir, "engine.zip");
     await this.download(SDCPP_URL(zipName), zip, onProgress);
-    new AdmZip(zip).extractAllTo(binDir, true);
+    // The third argument is keepOriginalPermission, and leaving it off is not a
+    // detail: adm-zip then writes every file 0666, so on macOS and Linux the
+    // extracted sd-cli came out without its execute bit and could never run —
+    // while binReady(), which only checks that the file exists, reported "ready".
+    new AdmZip(zip).extractAllTo(binDir, true, true);
     rmSync(zip, { force: true });
     if (!this.binReady(dir))
       throw new Error("engine binary missing after extract");
+    // Belt and braces: an archive built without unix attributes carries no mode
+    // to keep, so set it outright rather than trusting the packaging.
+    if (process.platform !== "win32") {
+      try {
+        chmodSync(this.binPath(dir), 0o755);
+      } catch {
+        /* a filesystem without modes; the binary either runs or reports why */
+      }
+    }
   }
   // Atomic: stream to a .part file and only rename into place when complete, so an
   // interrupted download never leaves a truncated file that looks "installed".
